@@ -3,26 +3,21 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Application, CREDENTIALS, ICON_MAP } from "@/lib/app-data"
 import { Button } from "@/components/ui/button"
-import { User as UserIcon, Calendar, Lock, ShieldCheck, Copy, Eye, EyeOff, Settings } from "lucide-react"
+import { User as UserIcon, Calendar, Lock, ShieldCheck, Copy, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
-import { User } from "@/lib/auth-store"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 
 interface CredentialDialogProps {
   app: Application | null
-  user: User | null
   isOpen: boolean
   onClose: () => void
 }
 
-export function CredentialDialog({ app, user, isOpen, onClose }: CredentialDialogProps) {
+export function CredentialDialog({ app, isOpen, onClose }: CredentialDialogProps) {
   const [showPassword, setShowPassword] = useState(false)
   
   if (!app) return null
   
   const credential = CREDENTIALS[app.id]
-  const canEdit = user?.role === 'admin'
   const IconComponent = ICON_MAP[app.icon] || ICON_MAP.Settings
 
   return (
@@ -37,7 +32,7 @@ export function CredentialDialog({ app, user, isOpen, onClose }: CredentialDialo
               <div>
                 <DialogTitle className="text-2xl font-headline font-black tracking-tight">{app.name}</DialogTitle>
                 <DialogDescription className="text-primary-foreground/60 font-medium">
-                  Acceso seguro a la bóveda corporativa
+                  Información de acceso organizacional
                 </DialogDescription>
               </div>
             </div>
@@ -65,7 +60,7 @@ export function CredentialDialog({ app, user, isOpen, onClose }: CredentialDialo
                 <div className="grid gap-0.5">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-[0.1em]">Contraseña</span>
                   <span className="text-base font-mono font-bold tracking-wider">
-                    {showPassword ? "AppCentral_Vault_2024" : (credential?.passwordHash || "••••••••••••")}
+                    {showPassword ? (credential?.passwordHash || "••••••••••••") : "••••••••••••"}
                   </span>
                 </div>
               </div>
@@ -95,20 +90,11 @@ export function CredentialDialog({ app, user, isOpen, onClose }: CredentialDialo
               AES-256 Activo
             </div>
           </div>
-
-          {canEdit && (
-            <div className="pt-2">
-              <Button className="w-full h-12 gap-2 text-sm font-bold shadow-lg" variant="secondary">
-                <Settings className="w-4 h-4" />
-                Editar Credenciales
-              </Button>
-            </div>
-          )}
         </div>
         
         <DialogFooter className="px-8 pb-8 pt-0">
           <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-2 font-bold" onClick={onClose}>
-            Cerrar Bóveda
+            Cerrar Detalles
           </Button>
         </DialogFooter>
       </DialogContent>

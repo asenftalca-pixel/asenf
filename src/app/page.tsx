@@ -1,40 +1,20 @@
-
 "use client"
 
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-store'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { CredentialDialog } from '@/components/dashboard/CredentialDialog'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
-import { Button } from '@/components/ui/button'
-import { LogOut, AppWindow, Shield } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { AppWindow } from 'lucide-react'
 
 export default function Home() {
-  const { user, login, logout, isLoading } = useAuth()
-  const { toast } = useToast()
   const [selectedApp, setSelectedApp] = useState<Application | null>(null)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
 
-  if (isLoading) return null
-
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
       setIsReportOpen(true)
-      return
-    }
-
-    if (app.isRestricted && !user) {
-      toast({
-        title: "Identificación Requerida",
-        description: "Por favor, inicie sesión como administrador para ver estas credenciales.",
-        variant: "destructive",
-      })
-      // Opcionalmente podemos disparar el login directamente si se desea una experiencia más fluida
-      // login('admin')
       return
     }
 
@@ -53,38 +33,6 @@ export default function Home() {
             <h1 className="text-xl font-headline font-black tracking-tighter uppercase">
               FENASENF <span className="text-secondary">Control</span>
             </h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {user ? (
-              <div className="flex items-center gap-4">
-                <div className="hidden sm:flex flex-col items-end">
-                  <span className="text-sm font-bold">{user.name}</span>
-                  <Badge variant="secondary" className="text-[10px] py-0 px-2 uppercase font-black tracking-wider">
-                    Administrador
-                  </Badge>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={logout}
-                  className="bg-white/5 border-white/20 hover:bg-white/10 text-white transition-all gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Salir
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={() => login('admin')}
-                className="font-bold gap-2 px-6 shadow-md"
-              >
-                <Shield className="w-4 h-4" />
-                Acceso Admin
-              </Button>
-            )}
           </div>
         </div>
       </header>
@@ -116,28 +64,10 @@ export default function Home() {
             />
           ))}
         </div>
-
-        {!user && (
-          <div className="mt-20 p-12 bg-primary/5 rounded-[2.5rem] border text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-            
-            <div className="max-w-2xl mx-auto relative z-10">
-              <Shield className="w-16 h-16 text-primary/30 mx-auto mb-6" />
-              <h3 className="text-3xl font-black mb-6 tracking-tight">Acceso a Bóveda</h3>
-              <p className="text-muted-foreground text-lg mb-8">
-                Aunque puede ver los sistemas disponibles, el acceso a las credenciales y configuraciones críticas requiere autenticación de administrador.
-              </p>
-              <Button size="lg" className="h-14 px-10 text-lg font-bold shadow-xl" onClick={() => login('admin')}>
-                Iniciar Sesión como Admin
-              </Button>
-            </div>
-          </div>
-        )}
       </main>
 
       <CredentialDialog 
         app={selectedApp} 
-        user={user}
         isOpen={isVaultOpen} 
         onClose={() => setIsVaultOpen(false)} 
       />

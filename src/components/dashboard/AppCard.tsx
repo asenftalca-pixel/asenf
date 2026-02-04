@@ -2,8 +2,7 @@
 
 import { Application, ICON_MAP } from "@/lib/app-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ShieldAlert, ArrowRight } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { ArrowRight } from "lucide-react"
 
 interface AppCardProps {
   app: Application
@@ -22,12 +21,6 @@ export function AppCard({ app, onClick }: AppCardProps) {
         <div className="p-4 bg-primary/5 rounded-2xl group-hover:bg-secondary/20 transition-all duration-300">
           <IconComponent className="w-8 h-8 text-primary group-hover:text-primary transition-colors" />
         </div>
-        {app.isRestricted && (
-          <Badge variant="outline" className="text-xs font-bold border-secondary/50 bg-secondary/5 text-secondary-foreground py-1 px-3 rounded-full">
-            <ShieldAlert className="w-3 h-3 mr-1.5" />
-            Solo Admin
-          </Badge>
-        )}
       </CardHeader>
       <CardContent className="flex flex-col flex-grow pt-2 pb-8 px-6">
         <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors mb-2 tracking-tight">
@@ -37,7 +30,7 @@ export function AppCard({ app, onClick }: AppCardProps) {
           {app.description}
         </p>
         <div className="flex items-center text-xs font-bold text-primary/40 group-hover:text-primary uppercase tracking-[0.15em] transition-all duration-300">
-          Ver Credenciales
+          Ver Detalles
           <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
         </div>
       </CardContent>
