@@ -12,8 +12,9 @@ export default function Home() {
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
       setIsReportOpen(true)
+    } else if (app.url) {
+      window.open(app.url, '_blank')
     }
-    // Para las otras aplicaciones, por ahora no hay acción de credenciales
   }
 
   return (
