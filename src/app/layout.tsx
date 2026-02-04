@@ -1,10 +1,9 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'App Central | Secure Application Management',
-  description: 'Centralized dashboard for organizational applications and secure credential management.',
+  title: 'App Central | Gestión Segura de Aplicaciones',
+  description: 'Panel centralizado para aplicaciones organizacionales y gestión segura de credenciales.',
 };
 
 export default function RootLayout({
@@ -13,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
