@@ -2,7 +2,7 @@
 
 import { Application, ICON_MAP } from "@/lib/app-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 
 interface AppCardProps {
   app: Application
@@ -30,8 +30,8 @@ export function AppCard({ app, onClick }: AppCardProps) {
           {app.description}
         </p>
         <div className="flex items-center text-xs font-bold text-primary/40 group-hover:text-primary uppercase tracking-[0.15em] transition-all duration-300">
-          Ver Detalles
-          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
+          {app.id === 'app-report' ? 'Generar Reporte' : 'Abrir Sistema'}
+          <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
         </div>
       </CardContent>
     </Card>

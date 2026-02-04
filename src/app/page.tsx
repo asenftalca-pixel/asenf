@@ -3,23 +3,17 @@
 import { useState } from 'react'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
-import { CredentialDialog } from '@/components/dashboard/CredentialDialog'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { AppWindow } from 'lucide-react'
 
 export default function Home() {
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null)
-  const [isVaultOpen, setIsVaultOpen] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
       setIsReportOpen(true)
-      return
     }
-
-    setSelectedApp(app)
-    setIsVaultOpen(true)
+    // Para las otras aplicaciones, por ahora no hay acción de credenciales
   }
 
   return (
@@ -65,12 +59,6 @@ export default function Home() {
           ))}
         </div>
       </main>
-
-      <CredentialDialog 
-        app={selectedApp} 
-        isOpen={isVaultOpen} 
-        onClose={() => setIsVaultOpen(false)} 
-      />
 
       <FinanceReportDialog
         isOpen={isReportOpen}
