@@ -2,8 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'App Central | Gestión Segura de Aplicaciones',
-  description: 'Panel centralizado para aplicaciones organizacionales y gestión segura de credenciales.',
+  title: 'Centro de Control FENASENF Talca y DSSM',
+  description: 'Panel centralizado de gestión segura para FENASENF Talca y DSSM.',
 };
 
 export default function RootLayout({
