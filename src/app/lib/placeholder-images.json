@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "app-email",
+      "description": "Email Service Icon",
+      "imageUrl": "https://picsum.photos/seed/app1/100/100",
+      "imageHint": "email envelope"
+    },
+    {
+      "id": "app-cloud",
+      "description": "Cloud Storage Icon",
+      "imageUrl": "https://picsum.photos/seed/app2/100/100",
+      "imageHint": "cloud storage"
+    },
+    {
+      "id": "app-crm",
+      "description": "CRM System Icon",
+      "imageUrl": "https://picsum.photos/seed/app3/100/100",
+      "imageHint": "business dashboard"
+    },
+    {
+      "id": "app-finance",
+      "description": "Finance Tool Icon",
+      "imageUrl": "https://picsum.photos/seed/app4/100/100",
+      "imageHint": "finance chart"
+    }
+  ]
+}
