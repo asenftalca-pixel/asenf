@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react'
@@ -9,18 +10,16 @@ import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { Button } from '@/components/ui/button'
 import { LogOut, AppWindow, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Home() {
   const { user, login, logout, isLoading } = useAuth()
+  const { toast } = useToast()
   const [selectedApp, setSelectedApp] = useState<Application | null>(null)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
 
   if (isLoading) return null
-
-  const filteredApps = APPS.filter(app => {
-    return user?.role === 'admin' || !app.isRestricted
-  })
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
@@ -28,9 +27,17 @@ export default function Home() {
       return
     }
 
-    if (!user) {
+    if (app.isRestricted && !user) {
+      toast({
+        title: "Identificación Requerida",
+        description: "Por favor, inicie sesión como administrador para ver estas credenciales.",
+        variant: "destructive",
+      })
+      // Opcionalmente podemos disparar el login directamente si se desea una experiencia más fluida
+      // login('admin')
       return
     }
+
     setSelectedApp(app)
     setIsVaultOpen(true)
   }
@@ -54,7 +61,7 @@ export default function Home() {
                 <div className="hidden sm:flex flex-col items-end">
                   <span className="text-sm font-bold">{user.name}</span>
                   <Badge variant="secondary" className="text-[10px] py-0 px-2 uppercase font-black tracking-wider">
-                    {user.role === 'admin' ? 'Administrador' : 'Colaborador'}
+                    Administrador
                   </Badge>
                 </div>
                 <Button 
@@ -88,22 +95,20 @@ export default function Home() {
             <h2 className="text-4xl font-headline font-extrabold mb-3 tracking-tight text-primary">
               Bienvenidos al Centro de Control FENASENF Talca y DSSM
             </h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
+            <p className="text-muted-foreground text-lg leading-relaxed font-medium">
               Gestión centralizada de nuestra asociación
             </p>
           </div>
-          {user && (
-            <div className="flex gap-4">
-              <div className="bg-white p-5 rounded-2xl border shadow-sm text-center min-w-[140px]">
-                <div className="text-3xl font-black text-primary">{filteredApps.length}</div>
-                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">Sistemas</div>
-              </div>
+          <div className="flex gap-4">
+            <div className="bg-white p-5 rounded-2xl border shadow-sm text-center min-w-[140px]">
+              <div className="text-3xl font-black text-primary">{APPS.length}</div>
+              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">Sistemas Activos</div>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredApps.map((app) => (
+          {APPS.map((app) => (
             <AppCard 
               key={app.id} 
               app={app} 
@@ -118,9 +123,9 @@ export default function Home() {
             
             <div className="max-w-2xl mx-auto relative z-10">
               <Shield className="w-16 h-16 text-primary/30 mx-auto mb-6" />
-              <h3 className="text-3xl font-black mb-6 tracking-tight">Acceso Restringido</h3>
+              <h3 className="text-3xl font-black mb-6 tracking-tight">Acceso a Bóveda</h3>
               <p className="text-muted-foreground text-lg mb-8">
-                Esta plataforma contiene información sensible. Por favor, autentíquese con sus credenciales de administrador para visualizar y gestionar las herramientas internas.
+                Aunque puede ver los sistemas disponibles, el acceso a las credenciales y configuraciones críticas requiere autenticación de administrador.
               </p>
               <Button size="lg" className="h-14 px-10 text-lg font-bold shadow-xl" onClick={() => login('admin')}>
                 Iniciar Sesión como Admin
