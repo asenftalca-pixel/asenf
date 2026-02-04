@@ -1,4 +1,4 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins } from 'lucide-react'
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3 } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -18,12 +18,11 @@ export interface Credential {
 
 export const APPS: Application[] = [
   { id: 'app1', name: 'FinanzasASENF', description: 'Gestión presupuestaria y control financiero de la asociación.', icon: 'Coins', isRestricted: true, category: 'Finanzas' },
+  { id: 'app-report', name: 'Reporte Financiero', description: 'Generación automática de balances y estados financieros del panel central.', icon: 'BarChart3', isRestricted: false, category: 'Análisis' },
   { id: 'app2', name: 'Nube Central', description: 'Sistema compartido de archivos y almacenamiento.', icon: 'Cloud', isRestricted: false, category: 'Almacenamiento' },
   { id: 'app3', name: 'Gestor de Clientes', description: 'CRM e información estratégica de clientes.', icon: 'Users', isRestricted: true, category: 'Negocios' },
   { id: 'app4', name: 'Escudo de Autenticación', description: 'Gestión de identidad y accesos de red.', icon: 'Shield', isRestricted: true, category: 'Seguridad' },
   { id: 'app5', name: 'Hub de Proyectos', description: 'Seguimiento de tareas y proyectos colaborativos.', icon: 'LayoutGrid', isRestricted: false, category: 'Productividad' },
-  { id: 'app6', name: 'Reportes Legales', description: 'Informes de presupuesto y gastos operativos.', icon: 'FileText', isRestricted: true, category: 'Legal' },
-  { id: 'app7', name: 'Bóveda de Datos', description: 'Almacenamiento de datos analíticos crudos.', icon: 'Database', isRestricted: true, category: 'Infraestructura' },
 ]
 
 export const CREDENTIALS: Record<string, Credential> = {
@@ -35,5 +34,5 @@ export const CREDENTIALS: Record<string, Credential> = {
 }
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3
 }

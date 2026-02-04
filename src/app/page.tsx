@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-store'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { CredentialDialog } from '@/components/dashboard/CredentialDialog'
+import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { Button } from '@/components/ui/button'
 import { LogOut, AppWindow, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -13,16 +14,20 @@ export default function Home() {
   const { user, login, logout, isLoading } = useAuth()
   const [selectedApp, setSelectedApp] = useState<Application | null>(null)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
+  const [isReportOpen, setIsReportOpen] = useState(false)
 
   if (isLoading) return null
 
   const filteredApps = APPS.filter(app => {
-    // Si no hay usuario, mostramos solo las no restringidas
-    // Si es admin, mostramos todo
     return user?.role === 'admin' || !app.isRestricted
   })
 
   const handleAppClick = (app: Application) => {
+    if (app.id === 'app-report') {
+      setIsReportOpen(true)
+      return
+    }
+
     if (!user) {
       return
     }
@@ -115,7 +120,7 @@ export default function Home() {
               <Shield className="w-16 h-16 text-primary/30 mx-auto mb-6" />
               <h3 className="text-3xl font-black mb-6 tracking-tight">Acceso Restringido</h3>
               <p className="text-muted-foreground text-lg mb-8">
-                Esta plataforma contiene información sensible. Por favor, autentíquese con sus credenciales de administrador para visualizar y gestionar las herramientas.
+                Esta plataforma contiene información sensible. Por favor, autentíquese con sus credenciales de administrador para visualizar y gestionar las herramientas internas.
               </p>
               <Button size="lg" className="h-14 px-10 text-lg font-bold shadow-xl" onClick={() => login('admin')}>
                 Iniciar Sesión como Admin
@@ -130,6 +135,11 @@ export default function Home() {
         user={user}
         isOpen={isVaultOpen} 
         onClose={() => setIsVaultOpen(false)} 
+      />
+
+      <FinanceReportDialog
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
       />
 
       <footer className="mt-24 py-12 border-t bg-muted/30">
