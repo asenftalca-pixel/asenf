@@ -6,7 +6,7 @@ import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { CredentialDialog } from '@/components/dashboard/CredentialDialog'
 import { Button } from '@/components/ui/button'
-import { LogOut, AppWindow, Shield, LayoutDashboard } from 'lucide-react'
+import { LogOut, AppWindow, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export default function Home() {
@@ -24,7 +24,6 @@ export default function Home() {
 
   const handleAppClick = (app: Application) => {
     if (!user) {
-      alert("Por favor, inicia sesión como Administrador para acceder a las credenciales.")
       return
     }
     setSelectedApp(app)
@@ -85,7 +84,7 @@ export default function Home() {
               Bienvenidos al Centro de Control FENASENF Talca y DSSM
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Gestión centralizada de herramientas y credenciales de seguridad para la organización.
+              Gestión centralizada de nuestra asociación
             </p>
           </div>
           {user && (
@@ -138,10 +137,10 @@ export default function Home() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
               <AppWindow className="w-5 h-5 text-muted-foreground" />
-              <span className="font-headline font-bold text-muted-foreground">FENASENF TALCA & DSSM</span>
+              <span className="font-headline font-bold text-muted-foreground uppercase tracking-wider">FENASENF TALCA & DSSM</span>
             </div>
             <p className="text-sm text-muted-foreground font-medium">
-              &copy; 2024 Centro de Control Organizacional. Todos los derechos reservados.
+              &copy; {new Date().getFullYear()} Centro de Control Organizacional. Todos los derechos reservados.
             </p>
           </div>
         </div>
