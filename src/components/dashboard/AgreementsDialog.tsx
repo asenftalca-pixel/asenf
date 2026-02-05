@@ -2,7 +2,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info, Ticket, MapPin, Phone, Mail } from "lucide-react"
+import { Tag, Info, Ticket, MapPin, Phone, Mail, ShoppingBag } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -20,6 +20,14 @@ interface Agreement {
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '9',
+    company: "Pizza Papa John's",
+    discount: '20% de Descuento',
+    summary: 'Disfruta de las mejores pizzas con un descuento exclusivo. Solo para compras presenciales. Promociones no acumulables.',
+    howToUse: 'Presentar certificado de afiliación vigente al momento de la compra.',
+    imageId: 'conv-pizza'
+  },
   {
     id: '8',
     company: 'ABSOLUT WELLNESS SPA',
@@ -112,9 +120,9 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                 <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">
                   Nuestros Convenios
                 </DialogTitle>
-                <DialogDescription className="text-primary-foreground/60 font-medium">
+                <DialogHeader className="text-primary-foreground/60 font-medium">
                   Conoce todos nuestros beneficios exclusivos para socios vigentes.
-                </DialogDescription>
+                </DialogHeader>
               </div>
             </div>
           </DialogHeader>
