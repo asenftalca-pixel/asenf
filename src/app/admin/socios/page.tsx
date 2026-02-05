@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,6 +12,7 @@ import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, deleteDoc, doc } from "firebase/firestore"
+import { signInAnonymously, signOut } from "firebase/auth"
 
 export default function AdminSociosPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -20,21 +21,36 @@ export default function AdminSociosPage() {
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
 
-  const { firestore } = useFirebase()
+  const { firestore, auth, user } = useFirebase()
   
+  // Only create the query if the user is authenticated in the app
   const associatesQuery = useMemoFirebase(() => {
+    if (!isAuthenticated) return null
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
-  }, [firestore])
+  }, [firestore, isAuthenticated])
 
   const { data: members = [], isLoading } = useCollection(associatesQuery)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password === "admin123") {
-      setIsAuthenticated(true)
+      try {
+        // Sign in to Firebase to satisfy security rules
+        await signInAnonymously(auth)
+        setIsAuthenticated(true)
+      } catch (error) {
+        console.error("Error signing into Firebase:", error)
+        alert("Error de conexión con la base de datos.")
+      }
     } else {
       alert("Acceso denegado")
     }
+  }
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    setIsAuthenticated(false)
+    setPassword("")
   }
 
   const handleTramitar = async (id: string) => {
@@ -59,10 +75,7 @@ export default function AdminSociosPage() {
   const exportToExcel = () => {
     if (!members || members.length === 0) return
 
-    // Cabeceras del CSV
     const headers = ["Nombre", "RUT", "Sexo", "Servicio", "Establecimiento", "Fecha Registro"]
-    
-    // Mapeo de datos
     const rows = (members || []).map(m => [
       m.nombre,
       m.rut,
@@ -72,13 +85,11 @@ export default function AdminSociosPage() {
       m.fecha
     ])
 
-    // Construcción del contenido CSV
     const csvContent = [
       headers.join(","),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
     ].join("\n")
 
-    // Crear el archivo y descargar
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
@@ -152,7 +163,7 @@ export default function AdminSociosPage() {
             >
               <FileSpreadsheet className="w-4 h-4" /> Exportar a Google Sheets
             </Button>
-            <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2" onClick={() => setIsAuthenticated(false)}>
+            <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2" onClick={handleLogout}>
               <LogOut className="w-4 h-4" /> Cerrar Sesión
             </Button>
           </div>

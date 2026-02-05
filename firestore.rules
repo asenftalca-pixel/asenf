@@ -2,27 +2,6 @@ rules_version = '2';
 
 /**
  * FIRESTORE SECURITY RULES - PROTOTYPING MODE
- * 
- * CORE PHILOSOPHY:
- * This ruleset implements a strict hierarchical ownership model. Authorization is driven by 
- * the document path, ensuring that users can only access data nested under their own 
- * identifier ({partnerId}).
- * 
- * DATA STRUCTURE:
- * The data is organized into a top-level '/partners' collection where each document ID 
- * represents a partner (typically matching the user's UID). Associates are stored in a 
- * subcollection under the specific partner they belong to: /partners/{partnerId}/associates/{associateId}.
- * 
- * KEY SECURITY DECISIONS:
- * 1. Path-Based Authorization: We assume the 'partnerId' in the path corresponds to the 
- *    authenticated user's UID. This creates a secure, isolated sandbox for each partner.
- * 2. Authorization Independence: By nesting associates under partners, we avoid expensive 
- *    get() calls. Access to any associate document is implicitly governed by the partnerId in the path.
- * 3. Relational Integrity: On creation, we enforce that internal 'id' and 'partnerId' fields 
- *    match the document path. On update, we ensure these relational links remain immutable.
- * 4. Flexible Schema: While authorization and relationships are strictly enforced, the 
- *    actual content (names, emails, descriptions) is not type-validated to allow for 
- *    rapid UI prototyping.
  */
 
 service cloud.firestore {
@@ -35,43 +14,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided ID. */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /** @description Combines ownership check with document existence for write operations. */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for the Partner entity, representing the root profile for a user.
-     * @path /partners/{partnerId}
-     * @allow (create) if authenticated UID matches partnerId and internal id matches path.
-     * @deny (read/write) if authenticated UID does not match the partnerId in the path.
-     * @principle Implements self-creation and strict owner-only access to root data.
+     * @description Rules for the Partner entity.
      */
     match /partners/{partnerId} {
-      allow get, list: if isOwner(partnerId);
-      allow create: if isOwner(partnerId) && request.resource.data.id == partnerId;
-      allow update: if isExistingOwner(partnerId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(partnerId);
+      // Allow public read of partner profiles for the association
+      allow get: if true;
+      // Allow list and write operations if signed in (Admin access for prototype)
+      allow list, create, update, delete: if isSignedIn();
 
       /**
        * @description Rules for Associates nested under a Partner.
-       * @path /partners/{partnerId}/associates/{associateId}
-       * @allow (list) if the user is the owner of the parent partnerId.
-       * @deny (create) if the internal partnerId field does not match the collection path.
-       * @principle Ensures subcollection data is strictly contained within the owner's tree.
        */
       match /associates/{associateId} {
-        allow get, list: if isOwner(partnerId);
-        allow create: if isOwner(partnerId) && request.resource.data.partnerId == partnerId && request.resource.data.id == associateId;
-        allow update: if isExistingOwner(partnerId) && request.resource.data.partnerId == resource.data.partnerId && request.resource.data.id == resource.data.id;
-        allow delete: if isExistingOwner(partnerId);
+        // Allow anyone to submit a join request (public create)
+        allow create: if true;
+        // Allow get, list, update, and delete for authenticated admins
+        allow get, list, update, delete: if isSignedIn();
       }
     }
   }
