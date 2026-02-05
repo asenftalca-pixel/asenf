@@ -32,28 +32,10 @@
       "imageHint": "medical association"
     },
     {
-      "id": "conv-farmacia",
-      "description": "Farmacia Cruz Verde",
-      "imageUrl": "https://images.unsplash.com/photo-1519161720427-f7711f9efce3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwaGFybWFjeSUyMG1lZGljYWx8ZW58MHx8fHwxNzcwMjk5MjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "pharmacy medical"
-    },
-    {
       "id": "conv-gym",
       "description": "Gimnasio Sportlife",
       "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gym fitness"
-    },
-    {
-      "id": "conv-optica",
-      "description": "Ópticas Schilling",
-      "imageUrl": "https://images.unsplash.com/photo-1546914782-96b636ea44e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBnbGFzc2VzfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "eye glasses"
-    },
-    {
-      "id": "conv-educacion",
-      "description": "Universidad Santo Tomás",
-      "imageUrl": "https://images.unsplash.com/photo-1610525840782-876a07952940?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx1bml2ZXJzaXR5JTIwZWR1Y2F0aW9ufGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "university education"
     },
     {
       "id": "conv-rosa-agustina",
@@ -72,6 +54,18 @@
       "description": "Pizza Papa John's",
       "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwaXp6YXxlbnwwfHx8fDE3NzA2NDIzMDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "pizza restaurant"
+    },
+    {
+      "id": "conv-dental",
+      "description": "Centro Médico & Dental",
+      "imageUrl": "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxkZW50YWwlMjBjbGluaWN8ZW58MHx8fHwxNzcwMjk5MjUwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dental clinic"
+    },
+    {
+      "id": "conv-wellness-spa",
+      "description": "Absolut Wellness Spa",
+      "imageUrl": "https://images.unsplash.com/photo-1544161515-4af6b1d46152?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzcGElMjBtYXNzYWdlfGVufDB8fHx8MTc3MDI5OTI1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "spa massage"
     }
   ]
 }

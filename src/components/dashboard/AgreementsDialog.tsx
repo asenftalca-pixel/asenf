@@ -65,36 +65,12 @@ const AGREEMENTS_DATA: Agreement[] = [
     imageId: 'conv-rosa-agustina'
   },
   {
-    id: '1',
-    company: 'Farmacia Cruz Verde',
-    discount: '20% de Descuento',
-    summary: 'Descuento en gran variedad de medicamentos y productos de cuidado personal.',
-    howToUse: 'Presentar RUT en caja indicando convenio institucional ASENF.',
-    imageId: 'conv-farmacia'
-  },
-  {
     id: '2',
     company: 'Gimnasio Sportlife',
     discount: '15% de Descuento',
     summary: 'Tarifa preferencial en planes semestrales y anuales en todas las sedes.',
     howToUse: 'Presentar certificado de afiliación vigente en la recepción.',
     imageId: 'conv-gym'
-  },
-  {
-    id: '3',
-    company: 'Ópticas Schilling',
-    discount: '25% de Descuento',
-    summary: 'Descuento en marcos de marcas seleccionadas y cristales graduados.',
-    howToUse: 'Agendar hora mencionando convenio institucional vigente.',
-    imageId: 'conv-optica'
-  },
-  {
-    id: '4',
-    company: 'Universidad Santo Tomás',
-    discount: '10% de Descuento',
-    summary: 'Beneficio aplicable en aranceles de postgrados, diplomados y educación continua.',
-    howToUse: 'Cupón exclusivo disponible solicitándolo al correo oficial de la asociación.',
-    imageId: 'conv-educacion'
   }
 ]
 
@@ -120,9 +96,9 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                 <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">
                   Nuestros Convenios
                 </DialogTitle>
-                <DialogHeader className="text-primary-foreground/60 font-medium">
+                <DialogDescription className="text-primary-foreground/60 font-medium">
                   Conoce todos nuestros beneficios exclusivos para socios vigentes.
-                </DialogHeader>
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
