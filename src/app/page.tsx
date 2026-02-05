@@ -7,13 +7,14 @@ import { AppCard } from '@/components/dashboard/AppCard'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { CertificateRequestDialog } from '@/components/dashboard/CertificateRequestDialog'
 import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDialog'
-import { AppWindow, ShieldCheck } from 'lucide-react'
-import Link from 'next/link'
+import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
+import { AppWindow } from 'lucide-react'
 
 export default function Home() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isCertificateOpen, setIsCertificateOpen] = useState(false)
   const [isJoinOpen, setIsJoinOpen] = useState(false)
+  const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
@@ -22,6 +23,8 @@ export default function Home() {
       setIsCertificateOpen(true)
     } else if (app.id === 'app-join') {
       setIsJoinOpen(true)
+    } else if (app.id === 'app-agreements') {
+      setIsAgreementsOpen(true)
     } else if (app.id === 'app-admin-list') {
       window.location.href = '/admin/socios'
     } else if (app.url) {
@@ -100,6 +103,11 @@ export default function Home() {
       <JoinAssociationDialog
         isOpen={isJoinOpen}
         onClose={() => setIsJoinOpen(false)}
+      />
+
+      <AgreementsDialog
+        isOpen={isAgreementsOpen}
+        onClose={() => setIsAgreementsOpen(false)}
       />
     </div>
   )

@@ -1,4 +1,5 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List } from 'lucide-react'
+
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -20,37 +21,36 @@ export const APPS: Application[] = [
     variant: 'gold'
   },
   { 
+    id: 'app-agreements', 
+    name: 'Convenios', 
+    description: 'Conoce todos nuestros beneficios y descuentos exclusivos.', 
+    icon: 'Tag', 
+    category: 'Beneficios'
+  },
+  { 
     id: 'app-certificate', 
     name: 'Certificado de Afiliación', 
-    description: 'Solicitud y generación automática de certificado de socio vigente para trámites internos y externos.', 
+    description: 'Solicitud y generación automática de certificado de socio vigente.', 
     icon: 'FileCheck', 
     category: 'Administración'
   },
   { 
     id: 'app-report', 
     name: 'Reporte Financiero', 
-    description: 'Acceso a la generación de reportes y balances desde el sistema PresupuestoInteligente.', 
+    description: 'Acceso a la generación de reportes y balances desde PresupuestoInteligente.', 
     icon: 'BarChart3', 
-    category: 'Análisis',
-    url: 'https://studio--studio-9591229870-f53cc.us-central1.hosted.app/'
+    category: 'Análisis'
   },
   { 
     id: 'app-admin-list', 
     name: 'Listado de Socios', 
-    description: 'Acceso exclusivo para directiva. Visualización de nuevas afiliaciones y registros.', 
+    description: 'Acceso exclusivo para directiva. Visualización de nuevas afiliaciones.', 
     icon: 'List', 
     category: 'Gestión',
     variant: 'admin'
-  },
-  { 
-    id: 'app2', 
-    name: 'Nube Central', 
-    description: 'Sistema compartido de archivos y almacenamiento.', 
-    icon: 'Cloud', 
-    category: 'Almacenamiento' 
   }
 ]
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag
 }

@@ -30,6 +30,30 @@
       "description": "Logo oficial ASENF Talca",
       "imageUrl": "https://picsum.photos/seed/asenf-logo-circle/400/400",
       "imageHint": "medical association"
+    },
+    {
+      "id": "conv-farmacia",
+      "description": "Farmacia Cruz Verde",
+      "imageUrl": "https://picsum.photos/seed/pharmacy/200/200",
+      "imageHint": "pharmacy medical"
+    },
+    {
+      "id": "conv-gym",
+      "description": "Gimnasio Sportlife",
+      "imageUrl": "https://picsum.photos/seed/fitness/200/200",
+      "imageHint": "gym fitness"
+    },
+    {
+      "id": "conv-optica",
+      "description": "Ópticas Schilling",
+      "imageUrl": "https://picsum.photos/seed/glasses/200/200",
+      "imageHint": "eye glasses"
+    },
+    {
+      "id": "conv-educacion",
+      "description": "Universidad Santo Tomás",
+      "imageUrl": "https://picsum.photos/seed/education/200/200",
+      "imageHint": "university education"
     }
   ]
 }
