@@ -24,6 +24,12 @@
       "description": "Finance Tool Icon",
       "imageUrl": "https://picsum.photos/seed/app4/100/100",
       "imageHint": "finance chart"
+    },
+    {
+      "id": "asenf-logo",
+      "description": "Logo oficial ASENF Talca",
+      "imageUrl": "https://picsum.photos/seed/asenf-logo-circle/400/400",
+      "imageHint": "medical association"
     }
   ]
 }

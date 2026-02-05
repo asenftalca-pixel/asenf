@@ -1,13 +1,15 @@
+
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { FileCheck, Printer, Download, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { FileCheck, Printer, ArrowLeft, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
+import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 interface CertificateRequestDialogProps {
   isOpen: boolean
@@ -16,6 +18,9 @@ interface CertificateRequestDialogProps {
 
 export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequestDialogProps) {
   const [step, setStep] = useState<'form' | 'preview'>('form')
+  const [databaseUpdateDate, setDatabaseUpdateDate] = useState('')
+  const [currentDate, setCurrentDate] = useState('')
+  
   const [formData, setFormData] = useState({
     nombre: '',
     rut: '',
@@ -23,6 +28,25 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     establecimiento: '',
     motivo: ''
   })
+
+  useEffect(() => {
+    // Cálculo de la fecha de base de datos (mes anterior)
+    const lastMonth = new Date()
+    lastMonth.setMonth(lastMonth.getMonth() - 1)
+    const dbDateStr = lastMonth.toLocaleDateString('es-ES', {
+      month: 'long',
+      year: 'numeric'
+    })
+    setDatabaseUpdateDate(dbDateStr.charAt(0).toUpperCase() + dbDateStr.slice(1))
+
+    // Fecha actual para la firma
+    const todayStr = new Date().toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+    setCurrentDate(todayStr)
+  }, [step])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -43,13 +67,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     onClose()
   }
 
-  const currentDate = new Date().toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
-
-  const databaseUpdateDate = "Marzo 2024" // Ejemplo de fecha de base de datos
+  const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
 
   return (
     <Dialog open={isOpen} onOpenChange={resetForm}>
@@ -94,7 +112,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="establecimiento" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Establecimiento</Label>
-                    <Input id="establecimiento" name="establecimiento" placeholder="Ej: HRT" required className="rounded-xl border-2 h-12" value={formData.establecimiento} onChange={handleInputChange} />
+                    <Input id="establecimiento" name="establecimiento" placeholder="Ej: Hospital Regional de Talca" required className="rounded-xl border-2 h-12" value={formData.establecimiento} onChange={handleInputChange} />
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -111,7 +129,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
           </>
         ) : (
           <div className="p-0">
-            <div className="bg-muted/30 p-4 border-b flex items-center justify-between sticky top-0 bg-white z-20">
+            <div className="bg-muted/30 p-4 border-b flex items-center justify-between sticky top-0 bg-white z-20 print:hidden">
               <Button variant="ghost" className="gap-2 font-bold text-muted-foreground" onClick={() => setStep('form')}>
                 <ArrowLeft className="w-4 h-4" /> Volver a editar
               </Button>
@@ -123,18 +141,20 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
             </div>
 
             {/* Area de Impresión */}
-            <div id="certificate-content" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
+            <div id="certificate-content" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10 print:shadow-none">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
-                <div className="mb-6 relative w-32 h-32">
-                  {/* Logo Placeholder - Referenciando a la imagen provista */}
-                  <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-muted/20">
-                    <Image 
-                      src="https://picsum.photos/seed/asenf/200/200" 
-                      alt="ASENF Logo" 
-                      width={128} 
-                      height={128}
-                      className="rounded-full"
-                    />
+                <div className="mb-6 relative">
+                  <div className="w-40 h-40 flex items-center justify-center">
+                    {logoImage && (
+                      <Image 
+                        src={logoImage.imageUrl} 
+                        alt="Logo ASENF" 
+                        width={160} 
+                        height={160}
+                        className="object-contain"
+                        data-ai-hint={logoImage.imageHint}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -145,12 +165,12 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               </div>
 
               <div className="flex-grow space-y-10 py-10">
-                <h1 className="text-3xl font-black text-center text-primary uppercase tracking-[0.3em] mb-16">CERTIFICADO</h1>
+                <h1 className="text-3xl font-black text-center text-primary uppercase tracking-[0.3em] mb-16 underline decoration-secondary decoration-4 underline-offset-8">CERTIFICADO</h1>
                 
-                <div className="text-lg leading-[1.8] text-justify space-y-8 font-medium text-slate-700">
+                <div className="text-lg leading-[2] text-justify space-y-8 font-medium text-slate-800">
                   <p>
                     Certifico, mediante nuestra base de datos actualizada en <span className="font-bold text-primary">{databaseUpdateDate}</span> que 
-                    <span className="font-black text-primary mx-1 uppercase">{formData.nombre}</span>, 
+                    <span className="font-black text-primary mx-1 uppercase"> {formData.nombre}</span>, 
                     Rut: <span className="font-bold">{formData.rut}</span>, se desempeña como enfermero/a en el servicio de: 
                     <span className="font-bold italic"> {formData.servicio}</span> en <span className="font-bold">{formData.establecimiento}</span>, 
                     y figura como asociada vigente en ASENF Talca.
@@ -171,7 +191,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               </div>
             </div>
             
-            <div className="p-8 bg-emerald-50 border-t flex items-center gap-4">
+            <div className="p-8 bg-emerald-50 border-t flex items-center gap-4 print:hidden">
               <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               <div>
                 <p className="text-sm font-bold text-emerald-900">Certificado generado correctamente</p>
