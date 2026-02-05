@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2, Loader2, List, Printer, ArrowLeft, FileText } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2, Loader2, Printer, ArrowLeft, FileText } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,7 +14,6 @@ import { useFirebase } from "@/firebase"
 import { doc, setDoc } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
-import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 
@@ -241,12 +240,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                     </>
                   ) : "Enviar Solicitud de Afiliación"}
                 </Button>
-                
-                <Link href="/admin/socios" className="w-full" onClick={onClose}>
-                  <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-2 gap-2 text-primary font-bold">
-                    <List className="w-4 h-4" /> Ver Listado de Socios
-                  </Button>
-                </Link>
               </div>
             </form>
           </>
@@ -349,11 +342,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
               <Button onClick={() => setShowDoc(true)} className="w-full h-14 rounded-xl font-bold gap-3 shadow-lg bg-primary hover:scale-[1.02] transition-transform">
                 <FileText className="w-5 h-5" /> Ver / Descargar Solicitud en PDF
               </Button>
-              <Link href="/admin/socios" className="w-full" onClick={resetAndClose}>
-                <Button variant="outline" className="w-full h-12 rounded-xl font-bold gap-2">
-                  <List className="w-4 h-4" /> Ver Socios Registrados
-                </Button>
-              </Link>
               <Button onClick={resetAndClose} variant="ghost" className="w-full h-12 rounded-xl font-bold">
                 Volver al Panel
               </Button>

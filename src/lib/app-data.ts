@@ -51,8 +51,8 @@ export const APPS: Application[] = [
   },
   { 
     id: 'app-admin-list', 
-    name: 'Listado de Socios', 
-    description: 'Visualización de todas las afiliaciones registradas en el sistema.', 
+    name: 'Gestión de Inscripciones', 
+    description: 'Herramienta para la directiva ASENF', 
     icon: 'List', 
     category: 'Gestión',
     variant: 'default'

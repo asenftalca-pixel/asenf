@@ -68,7 +68,7 @@ export default function AdminSociosPage() {
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-    link.setAttribute("download", `Socios_ASENF_Talca_${new Date().toLocaleDateString()}.csv`)
+    link.setAttribute("download", `Inscripciones_ASENF_Talca_${new Date().toLocaleDateString()}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -93,9 +93,9 @@ export default function AdminSociosPage() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Listado de Socios</h1>
+              <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Gestión de Inscripciones</h1>
             </div>
-            <p className="text-muted-foreground font-medium ml-14">Gestión pública de solicitudes de afiliación.</p>
+            <p className="text-muted-foreground font-medium ml-14">Herramienta para la directiva ASENF</p>
           </div>
           <div className="flex gap-3">
             <Button 
