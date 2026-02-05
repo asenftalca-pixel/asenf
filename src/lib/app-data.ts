@@ -1,4 +1,3 @@
-
 import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List } from 'lucide-react'
 
 export interface Application {
@@ -15,7 +14,7 @@ export const APPS: Application[] = [
   { 
     id: 'app-join', 
     name: 'Asóciate', 
-    description: 'Únete a nuestra asociación. Completa el formulario de afiliación digital y sé parte de ASENF Talca.', 
+    description: 'Únete a ASENF Talca y DSSM y sé parte de nuestra comunidad', 
     icon: 'UserPlus', 
     category: 'Afiliación',
     variant: 'gold'

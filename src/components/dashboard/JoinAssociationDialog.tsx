@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -6,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2, Image as ImageIcon } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface JoinAssociationDialogProps {
   isOpen: boolean
@@ -21,6 +21,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
   const [formData, setFormData] = useState({
     nombre: '',
     rut: '',
+    sexo: '',
     servicio: '',
     establecimiento: '',
     firma: null as string | null,
@@ -30,6 +31,10 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, sexo: value }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +59,14 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       })
       return
     }
+    if (!formData.sexo) {
+      toast({
+        variant: "destructive",
+        title: "Campo requerido",
+        description: "Por favor, seleccione su sexo."
+      })
+      return
+    }
 
     setIsSubmitting(true)
     // Simulación de guardado en base de datos
@@ -68,6 +81,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     setFormData({
       nombre: '',
       rut: '',
+      sexo: '',
       servicio: '',
       establecimiento: '',
       firma: null,
@@ -91,11 +105,11 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                     <UserPlus className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">
+                    <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase text-white">
                       Formulario de Afiliación
                     </DialogTitle>
                     <DialogDescription className="text-white/80 font-medium">
-                      Únete a ASENF Talca y disfruta de todos los beneficios.
+                      Únete a ASENF Talca y DSSM y sé parte de nuestra comunidad
                     </DialogDescription>
                   </div>
                 </div>
@@ -108,9 +122,24 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                   <Label htmlFor="nombre" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nombre Completo</Label>
                   <Input id="nombre" name="nombre" required className="rounded-xl border-2 h-12" value={formData.nombre} onChange={handleInputChange} />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="rut" className="text-xs font-black uppercase tracking-widest text-muted-foreground">RUT</Label>
-                  <Input id="rut" name="rut" required className="rounded-xl border-2 h-12" value={formData.rut} onChange={handleInputChange} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="rut" className="text-xs font-black uppercase tracking-widest text-muted-foreground">RUT</Label>
+                    <Input id="rut" name="rut" required className="rounded-xl border-2 h-12" value={formData.rut} onChange={handleInputChange} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="sexo" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Sexo</Label>
+                    <Select onValueChange={handleSelectChange} value={formData.sexo}>
+                      <SelectTrigger className="rounded-xl border-2 h-12">
+                        <SelectValue placeholder="Seleccione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Masculino">Masculino</SelectItem>
+                        <SelectItem value="Femenino">Femenino</SelectItem>
+                        <SelectItem value="Otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">

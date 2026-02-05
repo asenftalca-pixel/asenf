@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Member": {
@@ -8,12 +7,13 @@
       "properties": {
         "nombre": { "type": "string", "description": "Nombre completo del socio" },
         "rut": { "type": "string", "description": "RUT del socio" },
+        "sexo": { "type": "string", "enum": ["Masculino", "Femenino", "Otro"], "description": "Sexo del socio" },
         "servicio": { "type": "string", "description": "Servicio o unidad de trabajo" },
         "establecimiento": { "type": "string", "description": "Establecimiento de salud" },
         "firmaUrl": { "type": "string", "description": "URL o dataURI de la foto de la firma" },
         "fechaRegistro": { "type": "string", "format": "date-time", "description": "Fecha de envío de la solicitud" }
       },
-      "required": ["nombre", "rut", "servicio", "establecimiento", "firmaUrl"]
+      "required": ["nombre", "rut", "sexo", "servicio", "establecimiento", "firmaUrl"]
     }
   },
   "auth": {

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -6,17 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ShieldCheck, ArrowLeft, LogOut, FileText, Search, Printer, CheckCircle2 } from "lucide-react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { ShieldCheck, ArrowLeft, LogOut, FileText, Search, Printer } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 // Datos mock para demostración
 const INITIAL_MEMBERS = [
-  { id: '1', nombre: 'Andrea Soto', rut: '15.678.910-1', servicio: 'Urgencia Adulto', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-20', firmaUrl: 'https://picsum.photos/seed/sig1/200/100' },
-  { id: '2', nombre: 'Ricardo Vera', rut: '12.344.555-k', servicio: 'Pabellón Central', establecimiento: 'DSSM', fecha: '2024-03-21', firmaUrl: 'https://picsum.photos/seed/sig2/200/100' },
-  { id: '3', nombre: 'Carla Mendez', rut: '18.990.112-9', servicio: 'Pediatría', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-22', firmaUrl: 'https://picsum.photos/seed/sig3/200/100' },
+  { id: '1', nombre: 'Andrea Soto', rut: '15.678.910-1', sexo: 'Femenino', servicio: 'Urgencia Adulto', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-20', firmaUrl: 'https://picsum.photos/seed/sig1/200/100' },
+  { id: '2', nombre: 'Ricardo Vera', rut: '12.344.555-k', sexo: 'Masculino', servicio: 'Pabellón Central', establecimiento: 'DSSM', fecha: '2024-03-21', firmaUrl: 'https://picsum.photos/seed/sig2/200/100' },
+  { id: '3', nombre: 'Carla Mendez', rut: '18.990.112-9', sexo: 'Femenino', servicio: 'Pediatría', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-22', firmaUrl: 'https://picsum.photos/seed/sig3/200/100' },
 ]
 
 export default function AdminSociosPage() {
@@ -37,7 +36,6 @@ export default function AdminSociosPage() {
   }
 
   const handleTramitar = (id: string) => {
-    // Al marcar como tramitada, el socio desaparece del listado visual
     setMembers(prev => prev.filter(m => m.id !== id))
   }
 
@@ -130,6 +128,7 @@ export default function AdminSociosPage() {
                 <TableHead className="font-black text-xs uppercase tracking-widest p-6 w-16">Tramitada</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Socio</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">RUT</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-widest">Sexo</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Servicio</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest text-right">Documento</TableHead>
               </TableRow>
@@ -145,6 +144,7 @@ export default function AdminSociosPage() {
                   </TableCell>
                   <TableCell className="font-bold text-primary">{member.nombre}</TableCell>
                   <TableCell className="font-medium">{member.rut}</TableCell>
+                  <TableCell className="font-medium text-xs uppercase">{member.sexo}</TableCell>
                   <TableCell className="font-medium text-muted-foreground italic">{member.servicio} en {member.establecimiento}</TableCell>
                   <TableCell className="text-right">
                     <Button 
@@ -160,7 +160,7 @@ export default function AdminSociosPage() {
               ))}
               {filteredMembers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-muted-foreground font-medium">
+                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">
                     No hay solicitudes pendientes para mostrar.
                   </TableCell>
                 </TableRow>
@@ -170,7 +170,6 @@ export default function AdminSociosPage() {
         </div>
       </div>
 
-      {/* Dialogo de Documento de Afiliación */}
       <Dialog open={isDocOpen} onOpenChange={setIsDocOpen}>
         <DialogContent className="sm:max-w-[800px] rounded-[2rem] p-0 overflow-hidden bg-white max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <div className="bg-muted/30 p-4 border-b flex items-center justify-between sticky top-0 bg-white z-20 print:hidden">
@@ -211,7 +210,7 @@ export default function AdminSociosPage() {
               <div className="text-lg leading-[2] text-justify space-y-8 font-medium text-slate-800">
                 <p>
                   Yo, <span className="font-black text-primary mx-1 uppercase">{selectedMember?.nombre}</span>, 
-                  Rut: <span className="font-bold">{selectedMember?.rut}</span>, desempeñándome como profesional de enfermería en el servicio de 
+                  Rut: <span className="font-bold">{selectedMember?.rut}</span>, Sexo: <span className="font-bold">{selectedMember?.sexo}</span>, desempeñándome como profesional de enfermería en el servicio de 
                   <span className="font-bold italic"> {selectedMember?.servicio}</span> de <span className="font-bold">{selectedMember?.establecimiento}</span>, 
                   solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.
                 </p>
