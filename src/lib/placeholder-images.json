@@ -39,7 +39,7 @@
     {
       "id": "conv-gym",
       "description": "Gimnasio Sportlife",
-      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gym fitness"
     },
     {
@@ -65,6 +65,42 @@
       "description": "CALPER Uniformes Clínicos",
       "imageUrl": "https://images.unsplash.com/photo-1676286529851-4555b4d2def0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtZWRpY2FsJTIwc2NydWJzfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "medical scrubs"
+    },
+    {
+      "id": "conv-forsa",
+      "description": "FORSA Maule Capacitación",
+      "imageUrl": "https://images.unsplash.com/photo-1731357266501-fc8594f84707?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtZWRpY2FsJTIwdHJhaW5pbmd8ZW58MHx8fHwxNzcwMzAwNTgwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "medical training"
+    },
+    {
+      "id": "conv-pizza",
+      "description": "Pizza Papa John's",
+      "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwaXp6YXxlbnwwfHx8fDE3NzA2NDIzMDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pizza restaurant"
+    },
+    {
+      "id": "conv-dental",
+      "description": "Centro Médico & Dental",
+      "imageUrl": "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxkZW50YWwlMjBjbGluaWN8ZW58MHx8fHwxNzcwMjk5MjVwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dental clinic"
+    },
+    {
+      "id": "conv-wellness-spa",
+      "description": "Absolut Wellness Spa",
+      "imageUrl": "https://images.unsplash.com/photo-1544161515-4af6b1d46152?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzcGElMjBtYXNzYWdlfGVufDB8fHx8MTc3MDI5OTI1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "spa massage"
+    },
+    {
+      "id": "conv-oftalmologico",
+      "description": "Instituto Oftalmológico Integral",
+      "imageUrl": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBleGFtfGVufDB8fHx8MTc3MTExMTIzNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "eye exam"
+    },
+    {
+      "id": "conv-abogado",
+      "description": "Abogado Daniel Flores Bruna",
+      "imageUrl": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsYXd5ZXJ8ZW58MHx8fHwxNzc1MjA0ODAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "lawyer legal"
     }
   ]
 }

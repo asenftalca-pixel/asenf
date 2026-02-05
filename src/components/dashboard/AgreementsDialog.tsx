@@ -2,7 +2,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info, Ticket, MapPin, Phone, Mail, Gavel } from "lucide-react"
+import { Tag, Info, Ticket, MapPin, Phone, Mail, Instagram, ExternalLink, ArrowUpRight } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -17,9 +17,20 @@ interface Agreement {
   contact?: string
   code?: string
   email?: string
+  url?: string
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '12',
+    company: "FORSA Maule",
+    discount: 'Precios Especiales',
+    summary: 'Capacitación en salud con valores diferenciados para socios. Cursos especializados para mejorar tus competencias profesionales.',
+    howToUse: 'Presentar certificado de afiliación vigente al momento de la inscripción.',
+    imageId: 'conv-forsa',
+    email: 'forsamaule@gmail.com',
+    url: 'https://www.instagram.com/forsa_maule/?hl=es'
+  },
   {
     id: '11',
     company: "Abogado DANIEL FLORES BRUNA",
@@ -194,6 +205,27 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                         <div className="space-y-1">
                           <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">Email</span>
                           <span className="text-[11px] font-black text-primary truncate block w-full">{agreement.email}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {agreement.url && (
+                      <div className="flex items-start gap-2 pt-1">
+                        {agreement.url.includes('instagram') ? (
+                          <Instagram className="w-4 h-4 text-pink-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        )}
+                        <div className="space-y-1">
+                          <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">Redes / Web</span>
+                          <a 
+                            href={agreement.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-black text-primary hover:underline flex items-center gap-1"
+                          >
+                            Ver más información <ArrowUpRight className="w-3 h-3" />
+                          </a>
                         </div>
                       </div>
                     )}
