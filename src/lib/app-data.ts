@@ -21,9 +21,10 @@ export const APPS: Application[] = [
   { 
     id: 'app-report', 
     name: 'Reporte Financiero', 
-    description: 'Generación automática de balances y estados financieros del panel central.', 
+    description: 'Acceso a la generación de reportes y balances desde el sistema PresupuestoInteligente.', 
     icon: 'BarChart3', 
-    category: 'Análisis' 
+    category: 'Análisis',
+    url: 'https://studio--studio-9591229870-f53cc.us-central1.hosted.app/'
   },
   { 
     id: 'app2', 
