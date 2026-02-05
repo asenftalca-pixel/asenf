@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Download, Loader2, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { BarChart3, Download, Loader2, TrendingUp, ArrowUpRight, ArrowDownRight, ExternalLink } from "lucide-react"
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 const data = [
@@ -27,24 +27,33 @@ export function FinanceReportDialog({ isOpen, onClose }: FinanceReportDialogProp
   useEffect(() => {
     if (isOpen) {
       setIsGenerating(true)
-      const timer = setTimeout(() => setIsGenerating(false), 1500)
+      const timer = setTimeout(() => setIsGenerating(false), 1200)
       return () => clearTimeout(timer)
     }
   }, [isOpen])
 
+  const openFullSystem = () => {
+    window.open('https://studio--studio-9591229870-f53cc.us-central1.hosted.app/', '_blank')
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-        <div className="bg-primary p-8 text-primary-foreground">
-          <DialogHeader>
+      <DialogContent className="sm:max-w-[750px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
+        <div className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <BarChart3 className="w-32 h-32" />
+          </div>
+          <DialogHeader className="relative z-10">
             <div className="flex items-center gap-5">
-              <div className="p-3 bg-white/10 rounded-2xl">
+              <div className="p-3 bg-secondary/20 rounded-2xl backdrop-blur-sm border border-secondary/30">
                 <BarChart3 className="w-8 h-8 text-secondary" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">Reporte Financiero</DialogTitle>
+                <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">
+                  Balance Consolidado
+                </DialogTitle>
                 <DialogDescription className="text-primary-foreground/60 font-medium">
-                  Resumen consolidado basado en FinanzasASENF
+                  Información extraída de PresupuestoInteligente
                 </DialogDescription>
               </div>
             </div>
@@ -53,69 +62,94 @@ export function FinanceReportDialog({ isOpen, onClose }: FinanceReportDialogProp
 
         <div className="p-8">
           {isGenerating ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <p className="text-muted-foreground font-bold animate-pulse">Generando balance financiero...</p>
+            <div className="flex flex-col items-center justify-center py-24 gap-6">
+              <div className="relative">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-secondary rounded-full animate-ping" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-primary font-bold text-lg mb-1">Sincronizando datos...</p>
+                <p className="text-muted-foreground text-sm">Conectando con la base de datos de FENASENF</p>
+              </div>
             </div>
           ) : (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-muted/30 rounded-2xl border">
-                  <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Ingresos Totales</div>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="p-5 bg-muted/30 rounded-[1.5rem] border transition-all hover:border-primary/20">
+                  <div className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.2em] mb-2">Ingresos Totales</div>
                   <div className="text-2xl font-black text-primary flex items-center gap-2">
                     $32.8M
-                    <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                    <div className="bg-emerald-100 p-1 rounded-full">
+                      <ArrowUpRight className="w-3 h-3 text-emerald-600" />
+                    </div>
                   </div>
                 </div>
-                <div className="p-4 bg-muted/30 rounded-2xl border">
-                  <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Gastos Operativos</div>
+                <div className="p-5 bg-muted/30 rounded-[1.5rem] border transition-all hover:border-primary/20">
+                  <div className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.2em] mb-2">Gastos Operativos</div>
                   <div className="text-2xl font-black text-primary flex items-center gap-2">
                     $21.6M
-                    <ArrowDownRight className="w-4 h-4 text-rose-500" />
+                    <div className="bg-rose-100 p-1 rounded-full">
+                      <ArrowDownRight className="w-3 h-3 text-rose-600" />
+                    </div>
                   </div>
                 </div>
-                <div className="p-4 bg-secondary/10 rounded-2xl border-secondary/20 border">
-                  <div className="text-[10px] uppercase font-bold text-secondary-foreground tracking-widest mb-1">Balance Neto</div>
+                <div className="p-5 bg-secondary/10 rounded-[1.5rem] border-secondary/20 border-2 transition-all hover:bg-secondary/20">
+                  <div className="text-[10px] uppercase font-black text-secondary-foreground tracking-[0.2em] mb-2">Balance Neto</div>
                   <div className="text-2xl font-black text-secondary-foreground flex items-center gap-2">
                     +$11.2M
-                    <TrendingUp className="w-4 h-4" />
+                    <TrendingUp className="w-4 h-4 text-secondary-foreground" />
                   </div>
                 </div>
               </div>
 
-              <div className="h-[300px] w-full">
-                <ChartContainer config={{
-                  ingresos: { label: "Ingresos", color: "hsl(var(--primary))" },
-                  gastos: { label: "Gastos", color: "hsl(var(--secondary))" }
-                }}>
-                  <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} hide />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="ingresos" fill="var(--color-ingresos)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="gastos" fill="var(--color-gastos)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+              <div className="h-[320px] w-full p-4 bg-muted/10 rounded-[2rem] border border-dashed">
+                <ChartContainer 
+                  className="h-full w-full"
+                  config={{
+                    ingresos: { label: "Ingresos", color: "hsl(var(--primary))" },
+                    gastos: { label: "Gastos", color: "hsl(var(--secondary))" }
+                  }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis 
+                        dataKey="month" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 600 }}
+                      />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="ingresos" fill="var(--color-ingresos)" radius={[6, 6, 0, 0]} barSize={24} />
+                      <Bar dataKey="gastos" fill="var(--color-gastos)" radius={[6, 6, 0, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </ChartContainer>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                <span>Periodo: Enero - Junio 2024</span>
-                <span className="text-primary">Datos actualizados en tiempo real</span>
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 border-t pt-6">
+                <span className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Actualizado: Hoy, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-primary">Enero - Junio 2024</span>
               </div>
             </div>
           )}
         </div>
         
         <DialogFooter className="px-8 pb-8 pt-0">
-          <div className="flex gap-3 w-full">
-            <Button variant="outline" className="flex-1 h-12 rounded-xl border-2 font-bold" onClick={onClose}>
-              Cerrar
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <Button variant="outline" className="flex-1 h-14 rounded-2xl border-2 font-bold text-primary hover:bg-muted" onClick={onClose}>
+              Cerrar Vista
             </Button>
             {!isGenerating && (
-              <Button className="flex-1 h-12 gap-2 text-sm font-bold shadow-lg">
-                <Download className="w-4 h-4" />
-                Descargar PDF
+              <Button className="flex-1 h-14 gap-3 text-sm font-bold shadow-xl rounded-2xl hover:scale-[1.02] transition-transform" onClick={openFullSystem}>
+                <ExternalLink className="w-4 h-4" />
+                Ir a PresupuestoInteligente
               </Button>
             )}
           </div>

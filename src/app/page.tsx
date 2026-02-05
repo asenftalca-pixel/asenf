@@ -1,12 +1,18 @@
 "use client"
 
+import { useState } from 'react'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
+import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { AppWindow } from 'lucide-react'
 
 export default function Home() {
+  const [isReportOpen, setIsReportOpen] = useState(false)
+
   const handleAppClick = (app: Application) => {
-    if (app.url) {
+    if (app.id === 'app-report') {
+      setIsReportOpen(true)
+    } else if (app.url) {
       window.open(app.url, '_blank')
     }
   }
@@ -68,6 +74,11 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <FinanceReportDialog 
+        isOpen={isReportOpen} 
+        onClose={() => setIsReportOpen(false)} 
+      />
     </div>
   )
 }
