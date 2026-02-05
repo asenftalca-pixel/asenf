@@ -107,14 +107,6 @@ const AGREEMENTS_DATA: Agreement[] = [
     summary: 'Tarifa preferencial en alojamiento y servicios de Spa en sus sedes de Olmué.',
     howToUse: 'Presentando certificado de afiliación vigente al momento de reservar.',
     imageId: 'conv-rosa-agustina'
-  },
-  {
-    id: '2',
-    company: 'Gimnasio Sportlife',
-    discount: '15% de Descuento',
-    summary: 'Tarifa preferencial en planes semestrales y anuales en todas las sedes.',
-    howToUse: 'Presentar certificado de afiliación vigente en la recepción.',
-    imageId: 'conv-gym'
   }
 ]
 
