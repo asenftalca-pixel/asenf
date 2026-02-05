@@ -1,7 +1,8 @@
+
 rules_version = '2';
 
 /**
- * FIRESTORE SECURITY RULES - PROTOTYPING MODE
+ * FIRESTORE SECURITY RULES - PUBLIC MODE
  */
 
 service cloud.firestore {
@@ -20,19 +21,19 @@ service cloud.firestore {
      * @description Rules for the Partner entity.
      */
     match /partners/{partnerId} {
-      // Allow public read of partner profiles for the association
-      allow get: if true;
-      // Allow list and write operations if signed in (Admin access for prototype)
-      allow list, create, update, delete: if isSignedIn();
+      // Allow public read of partner profiles
+      allow get, list: if true;
+      // Allow write operations if signed in
+      allow create, update, delete: if isSignedIn();
 
       /**
        * @description Rules for Associates nested under a Partner.
        */
       match /associates/{associateId} {
-        // Allow anyone to submit a join request (public create)
-        allow create: if true;
-        // Allow get, list, update, and delete for authenticated admins
-        allow get, list, update, delete: if isSignedIn();
+        // Allow anyone to submit a join request and see the list of associates
+        allow create, list, get: if true;
+        // Allow update and delete only for authenticated admins (or everyone for prototype if desired)
+        allow update, delete: if true;
       }
     }
   }

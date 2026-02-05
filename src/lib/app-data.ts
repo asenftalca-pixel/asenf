@@ -52,10 +52,10 @@ export const APPS: Application[] = [
   { 
     id: 'app-admin-list', 
     name: 'Listado de Socios', 
-    description: 'Acceso exclusivo para directiva. Visualización de nuevas afiliaciones.', 
+    description: 'Visualización de todas las afiliaciones registradas en el sistema.', 
     icon: 'List', 
     category: 'Gestión',
-    variant: 'admin'
+    variant: 'default'
   }
 ]
 

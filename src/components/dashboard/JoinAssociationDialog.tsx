@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -5,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2, Loader2 } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2, Loader2, List } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,6 +14,7 @@ import { useFirebase } from "@/firebase"
 import { doc, setDoc } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import Link from "next/link"
 
 interface JoinAssociationDialogProps {
   isOpen: boolean
@@ -78,7 +80,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     
     try {
       const associateId = crypto.randomUUID()
-      const partnerId = 'asenf-talca' // ID fijo para la asociación central
+      const partnerId = 'asenf-talca' 
       const docRef = doc(firestore, 'partners', partnerId, 'associates', associateId)
       
       const dataToSave = {
@@ -90,7 +92,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         servicio: formData.servicio,
         establecimiento: formData.establecimiento,
         firmaUrl: formData.firma,
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: new Date().toLocaleDateString('es-ES'),
         createdAt: new Date().toISOString()
       }
 
@@ -212,7 +214,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                 </div>
               </div>
 
-              <DialogFooter>
+              <div className="flex flex-col gap-3">
                 <Button 
                   type="submit" 
                   disabled={!formData.aceptaCuota || isSubmitting}
@@ -225,7 +227,13 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                     </>
                   ) : "Enviar Solicitud de Afiliación"}
                 </Button>
-              </DialogFooter>
+                
+                <Link href="/admin/socios" className="w-full" onClick={onClose}>
+                  <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-2 gap-2 text-primary font-bold">
+                    <List className="w-4 h-4" /> Ver Listado de Socios
+                  </Button>
+                </Link>
+              </div>
             </form>
           </>
         ) : (
@@ -240,9 +248,16 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
             <div className="p-6 bg-muted/30 rounded-2xl border border-dashed">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Su solicitud ha sido registrada correctamente en el sistema central de ASENF Talca.</p>
             </div>
-            <Button onClick={resetAndClose} className="w-full h-12 rounded-xl font-bold">
-              Volver al Panel
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Link href="/admin/socios" className="w-full" onClick={resetAndClose}>
+                <Button className="w-full h-12 rounded-xl font-bold gap-2">
+                  <List className="w-4 h-4" /> Ver Socios Registrados
+                </Button>
+              </Link>
+              <Button onClick={resetAndClose} variant="ghost" className="w-full h-12 rounded-xl font-bold">
+                Volver al Panel
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

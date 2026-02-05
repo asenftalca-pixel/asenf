@@ -1,57 +1,31 @@
+
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ArrowLeft, LogOut, FileText, Search, Printer, Lock, Download, FileSpreadsheet } from "lucide-react"
+import { ArrowLeft, FileText, Search, Printer, Download, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, deleteDoc, doc } from "firebase/firestore"
-import { signInAnonymously, signOut } from "firebase/auth"
 
 export default function AdminSociosPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
 
-  const { firestore, auth, user } = useFirebase()
+  const { firestore } = useFirebase()
   
-  // Only create the query if the user is authenticated in the app
   const associatesQuery = useMemoFirebase(() => {
-    if (!isAuthenticated) return null
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
-  }, [firestore, isAuthenticated])
+  }, [firestore])
 
   const { data: members = [], isLoading } = useCollection(associatesQuery)
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password === "admin123") {
-      try {
-        // Sign in to Firebase to satisfy security rules
-        await signInAnonymously(auth)
-        setIsAuthenticated(true)
-      } catch (error) {
-        console.error("Error signing into Firebase:", error)
-        alert("Error de conexión con la base de datos.")
-      }
-    } else {
-      alert("Acceso denegado")
-    }
-  }
-
-  const handleLogout = async () => {
-    await signOut(auth)
-    setIsAuthenticated(false)
-    setPassword("")
-  }
 
   const handleTramitar = async (id: string) => {
     if (confirm("¿Marcar esta solicitud como tramitada? Se eliminará de la lista de pendientes.")) {
@@ -108,37 +82,6 @@ export default function AdminSociosPage() {
 
   const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-10 space-y-8 border">
-          <div className="text-center space-y-4">
-            <div className="w-20 h-20 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto">
-              <Lock className="w-10 h-10" />
-            </div>
-            <h1 className="text-2xl font-black text-primary tracking-tight uppercase">Panel de Control</h1>
-            <p className="text-muted-foreground font-medium text-sm">Ingrese la clave maestra para gestionar las nuevas afiliaciones.</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Input 
-              type="password" 
-              placeholder="Contraseña de administrador" 
-              className="h-14 rounded-xl border-2 px-6"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button type="submit" className="w-full h-14 rounded-xl font-bold text-lg shadow-lg">
-              Verificar Acceso
-            </Button>
-            <Link href="/" className="block text-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors">
-              Volver al inicio
-            </Link>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background p-6 md:p-12">
       <div className="container mx-auto space-y-10">
@@ -150,9 +93,9 @@ export default function AdminSociosPage() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Listado de Nuevos Socios</h1>
+              <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Listado de Socios</h1>
             </div>
-            <p className="text-muted-foreground font-medium ml-14">Gestión de solicitudes de afiliación digital.</p>
+            <p className="text-muted-foreground font-medium ml-14">Gestión pública de solicitudes de afiliación.</p>
           </div>
           <div className="flex gap-3">
             <Button 
@@ -161,10 +104,7 @@ export default function AdminSociosPage() {
               onClick={exportToExcel}
               disabled={filteredMembers.length === 0}
             >
-              <FileSpreadsheet className="w-4 h-4" /> Exportar a Google Sheets
-            </Button>
-            <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" /> Cerrar Sesión
+              <FileSpreadsheet className="w-4 h-4" /> Exportar a CSV
             </Button>
           </div>
         </header>
@@ -181,7 +121,7 @@ export default function AdminSociosPage() {
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
-              {isLoading ? "Cargando..." : `${filteredMembers.length} solicitudes pendientes`}
+              {isLoading ? "Cargando..." : `${filteredMembers.length} registros encontrados`}
             </div>
           </div>
           
@@ -222,7 +162,7 @@ export default function AdminSociosPage() {
                       className="font-bold text-xs text-primary underline gap-2"
                       onClick={() => openDocument(member)}
                     >
-                      <FileText className="w-4 h-4" /> Generar PDF
+                      <FileText className="w-4 h-4" /> Ver PDF
                     </Button>
                   </TableCell>
                 </TableRow>
