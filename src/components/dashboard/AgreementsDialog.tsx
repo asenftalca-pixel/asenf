@@ -22,6 +22,15 @@ interface Agreement {
 
 const AGREEMENTS_DATA: Agreement[] = [
   {
+    id: '14',
+    company: "U de Chile - MEDICHI",
+    discount: '30% de Descuento',
+    summary: 'Beneficio exclusivo en programas: Vigilancia Epidemiológica, Liderazgo en Gestión del Cuidado, Eficiencia Hospitalaria (GRD) y Cuidados Prehospitalarios.',
+    howToUse: 'Presentar certificado de afiliación vigente al momento de la postulación.',
+    imageId: 'conv-medichi',
+    url: 'https://www.medichi.cl/'
+  },
+  {
     id: '13',
     company: "Universidad Andrés Bello",
     discount: 'Precios Especiales',
