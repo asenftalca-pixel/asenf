@@ -1,5 +1,5 @@
 
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag } from 'lucide-react'
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -19,6 +19,14 @@ export const APPS: Application[] = [
     icon: 'UserPlus', 
     category: 'Afiliación',
     variant: 'gold'
+  },
+  { 
+    id: 'app-gas', 
+    name: 'Vales de Gas', 
+    description: 'Solicita tus vales de gas con descuento a través del formulario oficial.', 
+    icon: 'Flame', 
+    category: 'Beneficios',
+    url: 'https://forms.gle/ifwkMcVfmVxuHcG97'
   },
   { 
     id: 'app-agreements', 
@@ -52,5 +60,5 @@ export const APPS: Application[] = [
 ]
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame
 }
