@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ShieldCheck, ArrowLeft, LogOut, FileText, Search, Printer } from "lucide-react"
+import { ArrowLeft, LogOut, FileText, Search, Printer, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
@@ -61,10 +61,10 @@ export default function AdminSociosPage() {
         <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-10 space-y-8 border">
           <div className="text-center space-y-4">
             <div className="w-20 h-20 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto">
-              <ShieldCheck className="w-10 h-10" />
+              <Lock className="w-10 h-10" />
             </div>
-            <h1 className="text-2xl font-black text-primary tracking-tight">ACCESO ADMINISTRATIVO</h1>
-            <p className="text-muted-foreground font-medium text-sm">Ingrese su clave de autorización para visualizar el listado de socios.</p>
+            <h1 className="text-2xl font-black text-primary tracking-tight uppercase">Panel de Control</h1>
+            <p className="text-muted-foreground font-medium text-sm">Ingrese la clave maestra para gestionar las nuevas afiliaciones.</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <Input 

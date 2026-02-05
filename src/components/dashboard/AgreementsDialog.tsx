@@ -1,8 +1,7 @@
-
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, ExternalLink, Info } from "lucide-react"
+import { Tag, Info } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -16,6 +15,14 @@ interface Agreement {
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '5',
+    company: 'Rosa Agustina Resort y Spa',
+    discount: '10% de Descuento',
+    summary: 'Tarifa preferencial en alojamiento y servicios de Spa en sus sedes.',
+    howToUse: 'Presentando certificado de afiliación vigente al momento de reservar.',
+    imageId: 'conv-rosa-agustina'
+  },
   {
     id: '1',
     company: 'Farmacia Cruz Verde',

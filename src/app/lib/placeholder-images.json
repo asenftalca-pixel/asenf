@@ -1,4 +1,3 @@
-
 {
   "placeholderImages": [
     {
@@ -54,6 +53,12 @@
       "description": "Universidad Santo Tomás",
       "imageUrl": "https://picsum.photos/seed/education/200/200",
       "imageHint": "university education"
+    },
+    {
+      "id": "conv-rosa-agustina",
+      "description": "Rosa Agustina Resort y Spa",
+      "imageUrl": "https://picsum.photos/seed/resort-spa/200/200",
+      "imageHint": "resort pool"
     }
   ]
 }
