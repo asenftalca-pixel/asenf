@@ -1,7 +1,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info } from "lucide-react"
+import { Tag, Info, Ticket } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -12,14 +12,24 @@ interface Agreement {
   summary: string
   howToUse: string
   imageId: string
+  code?: string
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
   {
+    id: '6',
+    company: 'CALPER',
+    discount: '15% de Descuento',
+    summary: 'Especialistas en uniformes clínicos y calzado profesional de alta gama para personal de salud.',
+    howToUse: 'Utilizando el código de descuento FENASENF2026 en el sitio web oficial.',
+    imageId: 'conv-calper',
+    code: 'FENASENF2026'
+  },
+  {
     id: '5',
     company: 'Rosa Agustina Resort y Spa',
     discount: '10% de Descuento',
-    summary: 'Tarifa preferencial en alojamiento y servicios de Spa en sus sedes.',
+    summary: 'Tarifa preferencial en alojamiento y servicios de Spa en sus sedes de Olmué.',
     howToUse: 'Presentando certificado de afiliación vigente al momento de reservar.',
     imageId: 'conv-rosa-agustina'
   },
@@ -27,32 +37,32 @@ const AGREEMENTS_DATA: Agreement[] = [
     id: '1',
     company: 'Farmacia Cruz Verde',
     discount: '20% de Descuento',
-    summary: 'Descuento en medicamentos y productos de cuidado personal.',
-    howToUse: 'Presentar RUT en caja indicando convenio ASENF.',
+    summary: 'Descuento en gran variedad de medicamentos y productos de cuidado personal.',
+    howToUse: 'Presentar RUT en caja indicando convenio institucional ASENF.',
     imageId: 'conv-farmacia'
   },
   {
     id: '2',
     company: 'Gimnasio Sportlife',
     discount: '15% de Descuento',
-    summary: 'Tarifa preferencial en planes semestrales y anuales.',
-    howToUse: 'Presentar certificado de afiliación vigente en recepción.',
+    summary: 'Tarifa preferencial en planes semestrales y anuales en todas las sedes.',
+    howToUse: 'Presentar certificado de afiliación vigente en la recepción.',
     imageId: 'conv-gym'
   },
   {
     id: '3',
     company: 'Ópticas Schilling',
     discount: '25% de Descuento',
-    summary: 'Descuento en marcos de marca propia y cristales graduados.',
-    howToUse: 'Agendar hora mencionando convenio institucional.',
+    summary: 'Descuento en marcos de marcas seleccionadas y cristales graduados.',
+    howToUse: 'Agendar hora mencionando convenio institucional vigente.',
     imageId: 'conv-optica'
   },
   {
     id: '4',
     company: 'Universidad Santo Tomás',
     discount: '10% de Descuento',
-    summary: 'Beneficio aplicable en aranceles de postgrados y diplomados.',
-    howToUse: 'Cupón exclusivo disponible solicitándolo al correo oficial.',
+    summary: 'Beneficio aplicable en aranceles de postgrados, diplomados y educación continua.',
+    howToUse: 'Cupón exclusivo disponible solicitándolo al correo oficial de la asociación.',
     imageId: 'conv-educacion'
   }
 ]
@@ -80,7 +90,7 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                   Nuestros Convenios
                 </DialogTitle>
                 <DialogDescription className="text-primary-foreground/60 font-medium">
-                  Conoce todos nuestros beneficios exclusivos para socios.
+                  Conoce todos nuestros beneficios exclusivos para socios vigentes.
                 </DialogDescription>
               </div>
             </div>
@@ -119,6 +129,14 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                   </p>
                   
                   <div className="pt-3 border-t flex flex-col gap-2">
+                    {agreement.code && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                          Código: {agreement.code}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
                       <p className="text-[11px] font-bold text-slate-600 leading-snug">

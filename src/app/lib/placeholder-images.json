@@ -59,6 +59,12 @@
       "description": "Rosa Agustina Resort y Spa",
       "imageUrl": "https://picsum.photos/seed/resort-spa/200/200",
       "imageHint": "resort pool"
+    },
+    {
+      "id": "conv-calper",
+      "description": "CALPER Uniformes Clínicos",
+      "imageUrl": "https://picsum.photos/seed/uniforms/400/300",
+      "imageHint": "medical scrubs"
     }
   ]
 }
