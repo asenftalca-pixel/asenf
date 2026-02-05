@@ -3,68 +3,74 @@
     {
       "id": "app-email",
       "description": "Email Service Icon",
-      "imageUrl": "https://picsum.photos/seed/app1/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1581438395625-215c5c2c6f2e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxlbWFpbCUyMGVudmVsb3BlfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "email envelope"
     },
     {
       "id": "app-cloud",
       "description": "Cloud Storage Icon",
-      "imageUrl": "https://picsum.photos/seed/app2/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1488229297570-58520851e868?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjbG91ZCUyMHN0b3JhZ2V8ZW58MHx8fHwxNzcwMjk5MjQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cloud storage"
     },
     {
       "id": "app-crm",
       "description": "CRM System Icon",
-      "imageUrl": "https://picsum.photos/seed/app3/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMGRhc2hib2FyZHxlbnwwfHx8fDE3NzAxOTMyNTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "business dashboard"
     },
     {
       "id": "app-finance",
       "description": "Finance Tool Icon",
-      "imageUrl": "https://picsum.photos/seed/app4/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1504607798333-52a30db54a5d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmaW5hbmNlJTIwY2hhcnR8ZW58MHx8fHwxNzcwMjQ2Njg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "finance chart"
     },
     {
       "id": "asenf-logo",
       "description": "Logo oficial ASENF Talca",
-      "imageUrl": "https://picsum.photos/seed/asenf-logo-circle/400/400",
+      "imageUrl": "https://images.unsplash.com/photo-1619070284836-e850273d69ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bWVkaWNhbCUyMGFzc29jaWF0aW9ufGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "medical association"
     },
     {
       "id": "conv-farmacia",
       "description": "Farmacia Cruz Verde",
-      "imageUrl": "https://picsum.photos/seed/pharmacy/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1519161720427-f7711f9efce3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwaGFybWFjeSUyMG1lZGljYWx8ZW58MHx8fHwxNzcwMjk5MjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "pharmacy medical"
     },
     {
       "id": "conv-gym",
       "description": "Gimnasio Sportlife",
-      "imageUrl": "https://picsum.photos/seed/fitness/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gym fitness"
     },
     {
       "id": "conv-optica",
       "description": "Ópticas Schilling",
-      "imageUrl": "https://picsum.photos/seed/glasses/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1546914782-96b636ea44e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBnbGFzc2VzfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "eye glasses"
     },
     {
       "id": "conv-educacion",
       "description": "Universidad Santo Tomás",
-      "imageUrl": "https://picsum.photos/seed/education/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1610525840782-876a07952940?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx1bml2ZXJzaXR5JTIwZWR1Y2F0aW9ufGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "university education"
     },
     {
       "id": "conv-rosa-agustina",
       "description": "Rosa Agustina Resort y Spa",
-      "imageUrl": "https://picsum.photos/seed/resort-spa/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1695124566076-9e510f268acf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxyZXNvcnQlMjBwb29sfGVufDB8fHx8MTc3MDIxNTY4Nnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "resort pool"
     },
     {
       "id": "conv-calper",
       "description": "CALPER Uniformes Clínicos",
-      "imageUrl": "https://picsum.photos/seed/uniforms/400/300",
+      "imageUrl": "https://images.unsplash.com/photo-1676286529851-4555b4d2def0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtZWRpY2FsJTIwc2NydWJzfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "medical scrubs"
+    },
+    {
+      "id": "conv-dental",
+      "description": "Centro Médico & Dental",
+      "imageUrl": "https://images.unsplash.com/photo-1629909608135-79b76e44535e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkZW50YWwlMjBjbGluaWN8ZW58MHx8fHwxNzc1OTk5MjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dental clinic"
     }
   ]
 }

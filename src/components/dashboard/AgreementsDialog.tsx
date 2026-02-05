@@ -1,7 +1,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info, Ticket } from "lucide-react"
+import { Tag, Info, Ticket, MapPin, Phone } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -12,10 +12,22 @@ interface Agreement {
   summary: string
   howToUse: string
   imageId: string
+  address?: string
+  contact?: string
   code?: string
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '7',
+    company: 'Centro Médico & Dental de Los Trabajadores',
+    discount: 'Beneficios Especiales',
+    summary: 'Diagnóstico y presupuesto dental gratuitos. 2 controles de cortesía post-tratamiento. Valores diferenciados en Psicología, Podología, Kinesiología y más.',
+    howToUse: 'Presentar certificado de afiliación vigente.',
+    imageId: 'conv-dental',
+    address: 'Román Diaz 2097, Ñuñoa',
+    contact: 'Gisselle Tarifeño: +569 4029 4993'
+  },
   {
     id: '6',
     company: 'CALPER',
@@ -103,7 +115,7 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
             return (
               <div 
                 key={agreement.id} 
-                className="group relative bg-slate-50 rounded-[1.5rem] border hover:border-primary/20 transition-all duration-300 overflow-hidden hover:shadow-lg"
+                className="group relative bg-slate-50 rounded-[1.5rem] border hover:border-primary/20 transition-all duration-300 overflow-hidden hover:shadow-lg flex flex-col"
               >
                 <div className="aspect-video relative overflow-hidden bg-white">
                   {img && (
@@ -122,28 +134,48 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                   </div>
                 </div>
                 
-                <div className="p-5 space-y-3">
+                <div className="p-5 space-y-3 flex-grow">
                   <h4 className="text-lg font-black text-primary tracking-tight">{agreement.company}</h4>
-                  <p className="text-sm text-muted-foreground font-medium line-clamp-2">
+                  <p className="text-sm text-muted-foreground font-medium">
                     {agreement.summary}
                   </p>
                   
-                  <div className="pt-3 border-t flex flex-col gap-2">
+                  <div className="pt-3 border-t space-y-2">
+                    {agreement.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <span className="text-[11px] font-bold text-slate-600">{agreement.address}</span>
+                      </div>
+                    )}
+                    
                     {agreement.code && (
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2">
                         <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                           Código: {agreement.code}
                         </span>
                       </div>
                     )}
+
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
-                      <p className="text-[11px] font-bold text-slate-600 leading-snug">
-                        <span className="uppercase text-[9px] block text-muted-foreground mb-0.5 tracking-tighter">¿Cómo utilizar?</span>
-                        {agreement.howToUse}
-                      </p>
+                      <div className="space-y-1">
+                        <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">¿Cómo utilizar?</span>
+                        <p className="text-[11px] font-bold text-slate-600 leading-snug">
+                          {agreement.howToUse}
+                        </p>
+                      </div>
                     </div>
+
+                    {agreement.contact && (
+                      <div className="flex items-start gap-2 pt-1">
+                        <Phone className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">Contacto</span>
+                          <span className="text-[11px] font-black text-primary">{agreement.contact}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
