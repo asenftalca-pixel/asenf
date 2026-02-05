@@ -1,28 +1,127 @@
 {
   "entities": {
-    "Member": {
-      "title": "Member",
-      "description": "Información de un nuevo socio afiliado.",
+    "Partner": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Partner",
       "type": "object",
+      "description": "Represents a partner application.",
       "properties": {
-        "nombre": { "type": "string", "description": "Nombre completo del socio" },
-        "rut": { "type": "string", "description": "RUT del socio" },
-        "sexo": { "type": "string", "enum": ["Masculino", "Femenino", "Otro"], "description": "Sexo del socio" },
-        "servicio": { "type": "string", "description": "Servicio o unidad de trabajo" },
-        "establecimiento": { "type": "string", "description": "Establecimiento de salud" },
-        "firmaUrl": { "type": "string", "description": "URL o dataURI de la foto de la firma" },
-        "fechaRegistro": { "type": "string", "format": "date-time", "description": "Fecha de envío de la solicitud" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Partner entity."
+        },
+        "appName": {
+          "type": "string",
+          "description": "Name of the partner application."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the partner application."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL of the partner application's logo."
+        },
+        "websiteUrl": {
+          "type": "string",
+          "description": "URL of the partner application's website."
+        }
       },
-      "required": ["nombre", "rut", "sexo", "servicio", "establecimiento", "firmaUrl"]
+      "required": [
+        "id",
+        "appName",
+        "description",
+        "logoUrl",
+        "websiteUrl"
+      ]
+    },
+    "Associate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Associate",
+      "type": "object",
+      "description": "Represents an associate linked to a partner application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Associate entity."
+        },
+        "partnerId": {
+          "type": "string",
+          "description": "Reference to Partner. (Relationship: Partner 1:N Associate)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the associate."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the associate.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the associate."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the associate within the partner application."
+        }
+      },
+      "required": [
+        "id",
+        "partnerId",
+        "name",
+        "email",
+        "phoneNumber",
+        "role"
+      ]
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/members/{memberId}": {
-      "schema": "Member",
-      "description": "Colección de solicitudes de nuevos socios."
-    }
+    "structure": [
+      {
+        "path": "/partners/{partnerId}",
+        "definition": {
+          "entityName": "Partner",
+          "schema": {
+            "$ref": "#/backend/entities/Partner"
+          },
+          "description": "Stores partner application data.",
+          "params": [
+            {
+              "name": "partnerId",
+              "description": "Unique identifier for the Partner entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/partners/{partnerId}/associates/{associateId}",
+        "definition": {
+          "entityName": "Associate",
+          "schema": {
+            "$ref": "#/backend/entities/Associate"
+          },
+          "description": "Stores associate data associated with a partner. Includes `partnerId` in the path for authorization independence.",
+          "params": [
+            {
+              "name": "partnerId",
+              "description": "Unique identifier for the Partner entity."
+            },
+            {
+              "name": "associateId",
+              "description": "Unique identifier for the Associate entity."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The data structure is designed to store partner applications and their associated associates.  It leverages path-based ownership for associates, nesting them under the respective partner document to ensure clear ownership and simplifies security rules. This design promotes authorization independence by avoiding `get()` calls in security rules. Because associates are nested within the partner, the `partnerId` is already available from the document path, so the field in the associate data becomes informational only (still required by the schema).  This structure enables secure `list` operations (QAPs) by allowing listing associates only within a specific partner context. Partners are stored in the `/partners` collection, and associates are stored in `/partners/{partnerId}/associates` subcollection."
   }
 }
