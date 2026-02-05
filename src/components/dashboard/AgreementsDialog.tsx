@@ -2,7 +2,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info, Ticket, MapPin, Phone, Mail, ShoppingBag } from "lucide-react"
+import { Tag, Info, Ticket, MapPin, Phone, Mail, Gavel } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -20,6 +20,14 @@ interface Agreement {
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '11',
+    company: "Abogado DANIEL FLORES BRUNA",
+    discount: 'Desde 25% de Descuento',
+    summary: 'Asesoría legal especializada para personal de salud. Descuentos exclusivos en causas administrativas y precios preferenciales en diversas materias jurídicas.',
+    howToUse: 'Presentar certificado de afiliación vigente.',
+    imageId: 'conv-abogado'
+  },
   {
     id: '10',
     company: "Instituto Oftalmológico Integral",
