@@ -1,7 +1,8 @@
+
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tag, Info, Ticket, MapPin, Phone } from "lucide-react"
+import { Tag, Info, Ticket, MapPin, Phone, Mail } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import Image from "next/image"
 
@@ -15,9 +16,19 @@ interface Agreement {
   address?: string
   contact?: string
   code?: string
+  email?: string
 }
 
 const AGREEMENTS_DATA: Agreement[] = [
+  {
+    id: '8',
+    company: 'ABSOLUT WELLNESS SPA',
+    discount: 'Precios Preferenciales',
+    summary: 'Servicios integrales de bienestar, relajación y cuidado personal con tarifas exclusivas para nuestros socios.',
+    howToUse: 'Presentar certificado de afiliación vigente.',
+    imageId: 'conv-wellness-spa',
+    email: 'absolutwellness.contacto@gmail.com'
+  },
   {
     id: '7',
     company: 'Centro Médico & Dental de Los Trabajadores',
@@ -173,6 +184,16 @@ export function AgreementsDialog({ isOpen, onClose }: AgreementsDialogProps) {
                         <div className="space-y-1">
                           <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">Contacto</span>
                           <span className="text-[11px] font-black text-primary">{agreement.contact}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {agreement.email && (
+                      <div className="flex items-start gap-2 pt-1">
+                        <Mail className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <span className="uppercase text-[9px] block text-muted-foreground tracking-tighter">Email</span>
+                          <span className="text-[11px] font-black text-primary truncate block w-full">{agreement.email}</span>
                         </div>
                       </div>
                     )}
