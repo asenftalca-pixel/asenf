@@ -48,13 +48,6 @@ export const APPS: Application[] = [
     description: 'Sistema compartido de archivos y almacenamiento.', 
     icon: 'Cloud', 
     category: 'Almacenamiento' 
-  },
-  { 
-    id: 'app4', 
-    name: 'Escudo de Autenticación', 
-    description: 'Gestión de identidad y accesos de red.', 
-    icon: 'Shield', 
-    category: 'Seguridad' 
   }
 ]
 
