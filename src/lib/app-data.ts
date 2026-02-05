@@ -11,14 +11,6 @@ export interface Application {
 
 export const APPS: Application[] = [
   { 
-    id: 'app1', 
-    name: 'FinanzasASENF', 
-    description: 'Gestión presupuestaria y control financiero de la asociación.', 
-    icon: 'Coins', 
-    category: 'Finanzas',
-    url: 'https://studio--studio-9591229870-f53cc.us-central1.hosted.app/'
-  },
-  { 
     id: 'app-report', 
     name: 'Reporte Financiero', 
     description: 'Acceso a la generación de reportes y balances desde el sistema PresupuestoInteligente.', 
