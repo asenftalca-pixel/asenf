@@ -4,14 +4,18 @@ import { useState } from 'react'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
+import { CertificateRequestDialog } from '@/components/dashboard/CertificateRequestDialog'
 import { AppWindow } from 'lucide-react'
 
 export default function Home() {
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isCertificateOpen, setIsCertificateOpen] = useState(false)
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') {
       setIsReportOpen(true)
+    } else if (app.id === 'app-certificate') {
+      setIsCertificateOpen(true)
     } else if (app.url) {
       window.open(app.url, '_blank')
     }
@@ -78,6 +82,11 @@ export default function Home() {
       <FinanceReportDialog 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
+      />
+
+      <CertificateRequestDialog
+        isOpen={isCertificateOpen}
+        onClose={() => setIsCertificateOpen(false)}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3 } from 'lucide-react'
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -10,6 +10,13 @@ export interface Application {
 }
 
 export const APPS: Application[] = [
+  { 
+    id: 'app-certificate', 
+    name: 'Certificado de Afiliación', 
+    description: 'Solicitud y generación automática de certificado de socio vigente para trámites internos y externos.', 
+    icon: 'FileCheck', 
+    category: 'Administración'
+  },
   { 
     id: 'app-report', 
     name: 'Reporte Financiero', 
@@ -49,5 +56,5 @@ export const APPS: Application[] = [
 ]
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck
 }
