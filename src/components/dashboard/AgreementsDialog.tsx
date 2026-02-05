@@ -21,6 +21,14 @@ interface Agreement {
 
 const AGREEMENTS_DATA: Agreement[] = [
   {
+    id: '10',
+    company: "Instituto Oftalmológico Integral",
+    discount: '20% en Óptica',
+    summary: 'Evaluaciones y derivaciones sin costo. Beneficios exclusivos en salud visual para nuestros socios.',
+    howToUse: 'Presentar certificado de afiliación vigente al momento de la atención.',
+    imageId: 'conv-oftalmologico'
+  },
+  {
     id: '9',
     company: "Pizza Papa John's",
     discount: '20% de Descuento',
