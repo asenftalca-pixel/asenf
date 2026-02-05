@@ -22,6 +22,14 @@ interface Agreement {
 
 const AGREEMENTS_DATA: Agreement[] = [
   {
+    id: '13',
+    company: "Universidad Andrés Bello",
+    discount: 'Precios Especiales',
+    summary: 'Convenio de colaboración académica con beneficios exclusivos en aranceles para programas de pregrado y postgrado.',
+    howToUse: 'Presentar certificado de afiliación vigente al momento de la matrícula.',
+    imageId: 'conv-unab'
+  },
+  {
     id: '12',
     company: "FORSA Maule",
     discount: 'Precios Especiales',

@@ -31,28 +31,10 @@
       "imageHint": "medical association"
     },
     {
-      "id": "conv-farmacia",
-      "description": "Farmacia Cruz Verde",
-      "imageUrl": "https://images.unsplash.com/photo-1519161720427-f7711f9efce3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwaGFybWFjeSUyMG1lZGljYWx8ZW58MHx8fHwxNzcwMjk5MjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "pharmacy medical"
-    },
-    {
       "id": "conv-gym",
       "description": "Gimnasio Sportlife",
-      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gym fitness"
-    },
-    {
-      "id": "conv-optica",
-      "description": "Ópticas Schilling",
-      "imageUrl": "https://images.unsplash.com/photo-1546914782-96b636ea44e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBnbGFzc2VzfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "eye glasses"
-    },
-    {
-      "id": "conv-educacion",
-      "description": "Universidad Santo Tomás",
-      "imageUrl": "https://images.unsplash.com/photo-1610525840782-876a07952940?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx1bml2ZXJzaXR5JTIwZWR1Y2F0aW9ufGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "university education"
     },
     {
       "id": "conv-rosa-agustina",
@@ -93,7 +75,7 @@
     {
       "id": "conv-oftalmologico",
       "description": "Instituto Oftalmológico Integral",
-      "imageUrl": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBleGFtfGVufDB8fHx8MTc3MTExMTIzNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxleWUlMjBleGFtfGVufDB8fHx8MTc3MExMTEIzNXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "eye exam"
     },
     {
@@ -101,6 +83,12 @@
       "description": "Abogado Daniel Flores Bruna",
       "imageUrl": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsYXd5ZXJ8ZW58MHx8fHwxNzc1MjA0ODAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "lawyer legal"
+    },
+    {
+      "id": "conv-unab",
+      "description": "Universidad Andrés Bello",
+      "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc3MTAwMDAwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "university campus"
     }
   ]
 }
