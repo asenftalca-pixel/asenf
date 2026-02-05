@@ -1,0 +1,28 @@
+
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "Información de un nuevo socio afiliado.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string", "description": "Nombre completo del socio" },
+        "rut": { "type": "string", "description": "RUT del socio" },
+        "servicio": { "type": "string", "description": "Servicio o unidad de trabajo" },
+        "establecimiento": { "type": "string", "description": "Establecimiento de salud" },
+        "firmaUrl": { "type": "string", "description": "URL o dataURI de la foto de la firma" },
+        "fechaRegistro": { "type": "string", "format": "date-time", "description": "Fecha de envío de la solicitud" }
+      },
+      "required": ["nombre", "rut", "servicio", "establecimiento", "firmaUrl"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Colección de solicitudes de nuevos socios."
+    }
+  }
+}

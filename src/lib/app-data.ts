@@ -1,4 +1,5 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck } from 'lucide-react'
+
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -7,9 +8,18 @@ export interface Application {
   icon: string
   category: string
   url?: string
+  variant?: 'default' | 'gold' | 'admin'
 }
 
 export const APPS: Application[] = [
+  { 
+    id: 'app-join', 
+    name: 'Asóciate', 
+    description: 'Únete a nuestra asociación. Completa el formulario de afiliación digital y sé parte de ASENF Talca.', 
+    icon: 'UserPlus', 
+    category: 'Afiliación',
+    variant: 'gold'
+  },
   { 
     id: 'app-certificate', 
     name: 'Certificado de Afiliación', 
@@ -26,6 +36,14 @@ export const APPS: Application[] = [
     url: 'https://studio--studio-9591229870-f53cc.us-central1.hosted.app/'
   },
   { 
+    id: 'app-admin-list', 
+    name: 'Listado de Socios', 
+    description: 'Acceso exclusivo para directiva. Visualización de nuevas afiliaciones y registros.', 
+    icon: 'List', 
+    category: 'Gestión',
+    variant: 'admin'
+  },
+  { 
     id: 'app2', 
     name: 'Nube Central', 
     description: 'Sistema compartido de archivos y almacenamiento.', 
@@ -33,28 +51,14 @@ export const APPS: Application[] = [
     category: 'Almacenamiento' 
   },
   { 
-    id: 'app3', 
-    name: 'Gestor de Clientes', 
-    description: 'CRM e información estratégica de clientes.', 
-    icon: 'Users', 
-    category: 'Negocios' 
-  },
-  { 
     id: 'app4', 
     name: 'Escudo de Autenticación', 
     description: 'Gestión de identidad y accesos de red.', 
     icon: 'Shield', 
     category: 'Seguridad' 
-  },
-  { 
-    id: 'app5', 
-    name: 'Hub de Proyectos', 
-    description: 'Seguimiento de tareas y proyectos colaborativos.', 
-    icon: 'LayoutGrid', 
-    category: 'Productividad' 
-  },
+  }
 ]
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List
 }
