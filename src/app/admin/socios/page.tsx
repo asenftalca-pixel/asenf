@@ -6,25 +6,27 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ArrowLeft, LogOut, FileText, Search, Printer, Lock } from "lucide-react"
+import { ArrowLeft, LogOut, FileText, Search, Printer, Lock, Download, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
-
-// Datos mock para demostración
-const INITIAL_MEMBERS = [
-  { id: '1', nombre: 'Andrea Soto', rut: '15.678.910-1', sexo: 'Femenino', servicio: 'Urgencia Adulto', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-20', firmaUrl: 'https://picsum.photos/seed/sig1/200/100' },
-  { id: '2', nombre: 'Ricardo Vera', rut: '12.344.555-k', sexo: 'Masculino', servicio: 'Pabellón Central', establecimiento: 'DSSM', fecha: '2024-03-21', firmaUrl: 'https://picsum.photos/seed/sig2/200/100' },
-  { id: '3', nombre: 'Carla Mendez', rut: '18.990.112-9', sexo: 'Femenino', servicio: 'Pediatría', establecimiento: 'Hospital Regional de Talca', fecha: '2024-03-22', firmaUrl: 'https://picsum.photos/seed/sig3/200/100' },
-]
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, deleteDoc, doc } from "firebase/firestore"
 
 export default function AdminSociosPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
-  const [members, setMembers] = useState(INITIAL_MEMBERS)
-  const [selectedMember, setSelectedMember] = useState<typeof INITIAL_MEMBERS[0] | null>(null)
+  const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
+
+  const { firestore } = useFirebase()
+  
+  const associatesQuery = useMemoFirebase(() => {
+    return collection(firestore, 'partners', 'asenf-talca', 'associates')
+  }, [firestore])
+
+  const { data: members = [], isLoading } = useCollection(associatesQuery)
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,11 +37,17 @@ export default function AdminSociosPage() {
     }
   }
 
-  const handleTramitar = (id: string) => {
-    setMembers(prev => prev.filter(m => m.id !== id))
+  const handleTramitar = async (id: string) => {
+    if (confirm("¿Marcar esta solicitud como tramitada? Se eliminará de la lista de pendientes.")) {
+      try {
+        await deleteDoc(doc(firestore, 'partners', 'asenf-talca', 'associates', id))
+      } catch (error) {
+        console.error("Error al tramitar:", error)
+      }
+    }
   }
 
-  const openDocument = (member: typeof INITIAL_MEMBERS[0]) => {
+  const openDocument = (member: any) => {
     setSelectedMember(member)
     setIsDocOpen(true)
   }
@@ -48,9 +56,43 @@ export default function AdminSociosPage() {
     window.print()
   }
 
-  const filteredMembers = members.filter(m => 
-    m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.rut.includes(searchTerm)
+  const exportToExcel = () => {
+    if (!members || members.length === 0) return
+
+    // Cabeceras del CSV
+    const headers = ["Nombre", "RUT", "Sexo", "Servicio", "Establecimiento", "Fecha Registro"]
+    
+    // Mapeo de datos
+    const rows = (members || []).map(m => [
+      m.nombre,
+      m.rut,
+      m.sexo,
+      m.servicio,
+      m.establecimiento,
+      m.fecha
+    ])
+
+    // Construcción del contenido CSV
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n")
+
+    // Crear el archivo y descargar
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Socios_ASENF_Talca_${new Date().toLocaleDateString()}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const filteredMembers = (members || []).filter(m => 
+    m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    m.rut?.includes(searchTerm)
   )
 
   const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
@@ -101,9 +143,19 @@ export default function AdminSociosPage() {
             </div>
             <p className="text-muted-foreground font-medium ml-14">Gestión de solicitudes de afiliación digital.</p>
           </div>
-          <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2" onClick={() => setIsAuthenticated(false)}>
-            <LogOut className="w-4 h-4" /> Cerrar Sesión
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="h-12 rounded-xl font-bold border-2 gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200" 
+              onClick={exportToExcel}
+              disabled={filteredMembers.length === 0}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Exportar a Google Sheets
+            </Button>
+            <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2" onClick={() => setIsAuthenticated(false)}>
+              <LogOut className="w-4 h-4" /> Cerrar Sesión
+            </Button>
+          </div>
         </header>
 
         <div className="bg-white rounded-[2rem] shadow-sm border overflow-hidden">
@@ -118,7 +170,7 @@ export default function AdminSociosPage() {
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
-              {filteredMembers.length} solicitudes pendientes
+              {isLoading ? "Cargando..." : `${filteredMembers.length} solicitudes pendientes`}
             </div>
           </div>
           
@@ -134,7 +186,13 @@ export default function AdminSociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMembers.map((member) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium italic">
+                    Consultando base de datos...
+                  </TableCell>
+                </TableRow>
+              ) : filteredMembers.map((member) => (
                 <TableRow key={member.id} className="hover:bg-slate-50 transition-colors">
                   <TableCell className="p-6 text-center">
                     <Checkbox 
@@ -158,10 +216,10 @@ export default function AdminSociosPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredMembers.length === 0 && (
+              {!isLoading && filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">
-                    No hay solicitudes pendientes para mostrar.
+                    No hay solicitudes pendientes en la base de datos.
                   </TableCell>
                 </TableRow>
               )}

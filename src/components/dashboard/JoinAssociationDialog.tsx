@@ -5,10 +5,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2 } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2, Loader2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useFirebase } from "@/firebase"
+import { doc, setDoc } from "firebase/firestore"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 interface JoinAssociationDialogProps {
   isOpen: boolean
@@ -18,6 +22,8 @@ interface JoinAssociationDialogProps {
 export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const { firestore } = useFirebase()
+  
   const [formData, setFormData] = useState({
     nombre: '',
     rut: '',
@@ -69,11 +75,37 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     }
 
     setIsSubmitting(true)
-    // Simulación de guardado en base de datos
-    setTimeout(() => {
-      setIsSubmitting(false)
+    
+    try {
+      const associateId = crypto.randomUUID()
+      const partnerId = 'asenf-talca' // ID fijo para la asociación central
+      const docRef = doc(firestore, 'partners', partnerId, 'associates', associateId)
+      
+      const dataToSave = {
+        id: associateId,
+        partnerId: partnerId,
+        nombre: formData.nombre,
+        rut: formData.rut,
+        sexo: formData.sexo,
+        servicio: formData.servicio,
+        establecimiento: formData.establecimiento,
+        firmaUrl: formData.firma,
+        fecha: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      }
+
+      await setDoc(docRef, dataToSave)
       setIsSuccess(true)
-    }, 1500)
+    } catch (error: any) {
+      const permissionError = new FirestorePermissionError({
+        path: `partners/asenf-talca/associates/new`,
+        operation: 'create',
+        requestResourceData: formData
+      })
+      errorEmitter.emit('permission-error', permissionError)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const resetAndClose = () => {
@@ -186,7 +218,12 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                   disabled={!formData.aceptaCuota || isSubmitting}
                   className="w-full h-14 text-sm font-bold shadow-xl rounded-2xl bg-[#d4af37] hover:bg-[#b8962e] text-white hover:scale-[1.02] transition-all"
                 >
-                  {isSubmitting ? "Procesando..." : "Enviar Solicitud de Afiliación"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : "Enviar Solicitud de Afiliación"}
                 </Button>
               </DialogFooter>
             </form>
