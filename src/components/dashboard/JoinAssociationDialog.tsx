@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2, Loader2, Printer, ArrowLeft, FileText } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2, Loader2, FileDown, ArrowLeft, FileText } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -16,6 +16,8 @@ import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
+import jsPDF from "jspdf"
+import html2canvas from "html2canvas"
 
 interface JoinAssociationDialogProps {
   isOpen: boolean
@@ -26,6 +28,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [showDoc, setShowDoc] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const { firestore } = useFirebase()
   
   const [formData, setFormData] = useState({
@@ -136,8 +139,41 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     onClose()
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handleExportPDF = async () => {
+    const input = document.getElementById('affiliate-document-user');
+    if (!input) return;
+
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(input, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`Solicitud_Afiliacion_${savedData?.nombre || 'Socio'}.pdf`);
+      
+      toast({
+        title: "PDF Generado",
+        description: "Su solicitud se ha descargado correctamente."
+      });
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo generar el PDF. Intente de nuevo."
+      });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
@@ -254,12 +290,18 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
               <Button variant="ghost" className="gap-2 font-bold text-muted-foreground" onClick={() => setShowDoc(false)}>
                 <ArrowLeft className="w-4 h-4" /> Volver
               </Button>
-              <Button variant="outline" className="gap-2 font-bold border-2 rounded-xl" onClick={handlePrint}>
-                <Printer className="w-4 h-4" /> Imprimir / Guardar PDF
+              <Button 
+                variant="outline" 
+                className="gap-2 font-bold border-2 rounded-xl" 
+                onClick={handleExportPDF}
+                disabled={isExporting}
+              >
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                {isExporting ? "Generando..." : "Exportar a PDF"}
               </Button>
             </div>
 
-            <div className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
+            <div id="affiliate-document-user" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
                   <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">
@@ -345,7 +387,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
             </div>
             <div className="flex flex-col gap-3">
               <Button onClick={() => setShowDoc(true)} className="w-full h-14 rounded-xl font-bold gap-3 shadow-lg bg-primary hover:scale-[1.02] transition-transform">
-                <FileText className="w-5 h-5" /> Ver / Descargar Solicitud en PDF
+                <FileText className="w-5 h-5" /> Ver Solicitud para Exportar
               </Button>
               <Button onClick={resetAndClose} variant="ghost" className="w-full h-12 rounded-xl font-bold">
                 Volver al Panel

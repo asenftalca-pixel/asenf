@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { FileCheck, Printer, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { FileCheck, FileDown, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
+import jsPDF from "jspdf"
+import html2canvas from "html2canvas"
+import { toast } from "@/hooks/use-toast"
 
 interface CertificateRequestDialogProps {
   isOpen: boolean
@@ -20,6 +23,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
   const [step, setStep] = useState<'form' | 'preview'>('form')
   const [databaseUpdateDate, setDatabaseUpdateDate] = useState('')
   const [currentDate, setCurrentDate] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -56,8 +60,41 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     setStep('preview')
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handleExportPDF = async () => {
+    const input = document.getElementById('certificate-content');
+    if (!input) return;
+
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(input, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`Certificado_Afiliacion_${formData.nombre || 'Socio'}.pdf`);
+      
+      toast({
+        title: "Certificado Generado",
+        description: "El documento se ha descargado correctamente."
+      });
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo generar el PDF. Intente de nuevo."
+      });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   const resetForm = () => {
@@ -132,8 +169,14 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
                 <ArrowLeft className="w-4 h-4" /> Volver a editar
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" className="gap-2 font-bold border-2 rounded-xl" onClick={handlePrint}>
-                  <Printer className="w-4 h-4" /> Imprimir / PDF
+                <Button 
+                  variant="outline" 
+                  className="gap-2 font-bold border-2 rounded-xl" 
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                  {isExporting ? "Generando..." : "Exportar a PDF"}
                 </Button>
               </div>
             </div>
@@ -192,7 +235,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               <div>
                 <p className="text-sm font-bold text-emerald-900">Certificado generado correctamente</p>
-                <p className="text-xs text-emerald-700">Puede imprimir este documento o guardarlo como PDF usando las opciones de su navegador.</p>
+                <p className="text-xs text-emerald-700">Puede exportar este documento como PDF usando el botón superior.</p>
               </div>
             </div>
           </div>

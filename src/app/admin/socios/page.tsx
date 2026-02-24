@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, FileText, Search, Printer, FileSpreadsheet, Loader2, Lock, ShieldCheck } from "lucide-react"
+import { ArrowLeft, FileText, Search, FileDown, FileSpreadsheet, Loader2, Lock, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
@@ -18,6 +18,8 @@ import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import jsPDF from "jspdf"
+import html2canvas from "html2canvas"
 
 export default function AdminSociosPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -25,6 +27,7 @@ export default function AdminSociosPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const { firestore, auth } = useFirebase()
   
@@ -79,8 +82,41 @@ export default function AdminSociosPage() {
     setIsDocOpen(true)
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handleExportPDF = async () => {
+    const input = document.getElementById('affiliate-document');
+    if (!input) return;
+
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(input, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`Solicitud_Afiliacion_${selectedMember?.nombre || 'Socio'}.pdf`);
+      
+      toast({
+        title: "PDF Generado",
+        description: "El documento se ha descargado correctamente."
+      });
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo generar el PDF. Intente de nuevo."
+      });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   const exportToExcel = () => {
@@ -203,7 +239,7 @@ export default function AdminSociosPage() {
                 placeholder="Buscar socio en la base de datos..." 
                 className="pl-12 h-12 rounded-xl bg-white"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => searchTerm(e.target.value)}
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
@@ -287,8 +323,14 @@ export default function AdminSociosPage() {
             <Button variant="ghost" className="gap-2 font-bold text-muted-foreground" onClick={() => setIsDocOpen(false)}>
               Cerrar
             </Button>
-            <Button variant="outline" className="gap-2 font-bold border-2 rounded-xl" onClick={handlePrint}>
-              <Printer className="w-4 h-4" /> Imprimir / Guardar PDF
+            <Button 
+              variant="outline" 
+              className="gap-2 font-bold border-2 rounded-xl" 
+              onClick={handleExportPDF}
+              disabled={isExporting}
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              {isExporting ? "Generando..." : "Exportar a PDF"}
             </Button>
           </div>
 
