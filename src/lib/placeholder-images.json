@@ -3,7 +3,7 @@
     {
       "id": "app-email",
       "description": "Email Service Icon",
-      "imageUrl": "https://images.unsplash.com/photo-1581438395625-215c5c2c6f2e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxlbWFpbCUyMGVudmVsb3BlfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1581438395625-215c5c2c6f2e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw7fHxlbWFpbCUyMGVudmVsb3BlfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "email envelope"
     },
     {
@@ -26,15 +26,9 @@
     },
     {
       "id": "asenf-logo",
-      "description": "Logo oficial ASENF Talca",
-      "imageUrl": "https://images.unsplash.com/photo-1619070284836-e850273d69ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bWVkaWNhbCUyMGFzc29jaWF0aW9ufGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "medical association"
-    },
-    {
-      "id": "conv-gym",
-      "description": "Gimnasio Sportlife",
-      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "gym fitness"
+      "description": "Logo Oficial ASENF Talca",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf",
+      "imageHint": "logo institucional"
     },
     {
       "id": "conv-rosa-agustina",
