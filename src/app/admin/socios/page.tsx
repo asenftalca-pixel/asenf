@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -84,7 +83,7 @@ export default function AdminSociosPage() {
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new (window.Image)();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = 'anonymous'; // Crucial para CORS
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -107,9 +106,15 @@ export default function AdminSociosPage() {
 
     setIsExporting(true);
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 25;
+      const margin = 25; // Margen de 25mm
+      const contentWidth = pageWidth - (margin * 2);
       let y = 20;
 
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
@@ -141,32 +146,39 @@ export default function AdminSociosPage() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.setTextColor(40, 40, 40);
+      
       const mainText = `Yo, ${selectedMember.nombre}, Rut: ${selectedMember.rut}, Sexo: ${selectedMember.sexo}, desempeñándome como profesional de enfermería en el servicio de ${selectedMember.servicio} de ${selectedMember.establecimiento}, solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.`;
-      const splitText = doc.splitTextToSize(mainText, pageWidth - (margin * 2));
+      
+      // Ajuste automático del texto a los bordes
+      const splitText = doc.splitTextToSize(mainText, contentWidth);
       doc.text(splitText, margin, y, { align: 'justify' });
-      y += (splitText.length * 8) + 10;
+      y += (splitText.length * 7) + 15;
 
+      // Cuadro de compromiso de cuota
       doc.setDrawColor(212, 175, 55);
       doc.setFillColor(252, 250, 240);
-      doc.rect(margin, y, pageWidth - (margin * 2), 25, 'FD');
+      doc.rect(margin, y, contentWidth, 20, 'FD');
       doc.setFont("helvetica", "bolditalic");
-      doc.text('"Acepto que se me descuente mensualmente 8572 de mis remuneraciones por concepto de cuota social de la Asociación."', pageWidth / 2, y + 14, { align: 'center' });
-      y += 40;
+      doc.setFontSize(11);
+      doc.text('"Acepto que se me descuente mensualmente 8572 de mis remuneraciones por concepto de cuota social de la Asociación."', pageWidth / 2, y + 12, { align: 'center' });
+      y += 35;
 
       doc.setFont("helvetica", "normal");
-      doc.text("Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.", margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
-      y += 30;
+      doc.setFontSize(12);
+      const footerText = "Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.";
+      const splitFooter = doc.splitTextToSize(footerText, contentWidth);
+      doc.text(splitFooter, margin, y, { align: 'justify' });
+      y += 40;
 
       if (selectedMember.firmaUrl) {
         try {
           const firmaBase64 = await imageUrlToBase64(selectedMember.firmaUrl);
-          doc.addImage(firmaBase64, 'PNG', (pageWidth - 60) / 2, y, 60, 30);
-          y += 32;
+          doc.addImage(firmaBase64, 'PNG', (pageWidth - 60) / 2, y - 30, 60, 30);
         } catch (err) {
           console.error("Error cargando firma:", err);
-          y += 10;
         }
       }
+      
       doc.setDrawColor(200, 200, 200);
       doc.line((pageWidth - 70) / 2, y, (pageWidth + 70) / 2, y);
       y += 5;
@@ -186,14 +198,14 @@ export default function AdminSociosPage() {
       
       toast({
         title: "PDF Generado",
-        description: "El documento vectorial se ha descargado correctamente."
+        description: "El documento ha sido generado exitosamente."
       });
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo generar el PDF vectorial. Intente de nuevo."
+        description: "No se pudo generar el PDF institucional."
       });
     } finally {
       setIsExporting(false);
@@ -240,7 +252,7 @@ export default function AdminSociosPage() {
       return a.processed ? 1 : -1
     })
 
-  const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
   if (!isAuthenticated) {
     return (
@@ -419,16 +431,14 @@ export default function AdminSociosPage() {
             <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
               <div className="mb-6 relative">
                 <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">
-                  {logoImage && (
-                    <Image 
-                      src={logoImage.imageUrl} 
-                      alt="Logo ASENF" 
-                      width={128} 
-                      height={128}
-                      className="object-cover"
-                      data-ai-hint={logoImage.imageHint}
-                    />
-                  )}
+                  <Image 
+                    src={logoUrl} 
+                    alt="Logo ASENF" 
+                    width={128} 
+                    height={128}
+                    className="object-cover"
+                    data-ai-hint="logo institucional"
+                  />
                 </div>
               </div>
               <div className="space-y-1">

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -164,9 +163,15 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
 
     setIsExporting(true);
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 25;
+      const margin = 25; // Margen de 25mm para cumplimiento estético y técnico
+      const contentWidth = pageWidth - (margin * 2);
       let y = 20;
 
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
@@ -197,20 +202,25 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.setTextColor(40, 40, 40);
+      
       const mainText = `Yo, ${savedData.nombre}, Rut: ${savedData.rut}, Sexo: ${savedData.sexo}, desempeñándome como profesional de enfermería en el servicio de ${savedData.servicio} de ${savedData.establecimiento}, solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.`;
-      const splitText = doc.splitTextToSize(mainText, pageWidth - (margin * 2));
+      
+      // Dividir texto para asegurar que se mantenga dentro de los bordes (márgenes)
+      const splitText = doc.splitTextToSize(mainText, contentWidth);
       doc.text(splitText, margin, y, { align: 'justify' });
       y += (splitText.length * 8) + 10;
 
       doc.setDrawColor(212, 175, 55);
       doc.setFillColor(252, 250, 240);
-      doc.rect(margin, y, pageWidth - (margin * 2), 25, 'FD');
+      doc.rect(margin, y, contentWidth, 25, 'FD');
       doc.setFont("helvetica", "bolditalic");
       doc.text('"Acepto que se me descuente mensualmente 8572 de mis remuneraciones por concepto de cuota social de la Asociación."', pageWidth / 2, y + 14, { align: 'center' });
       y += 40;
 
       doc.setFont("helvetica", "normal");
-      doc.text("Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.", margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
+      const footerText = "Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.";
+      const splitFooter = doc.splitTextToSize(footerText, contentWidth);
+      doc.text(splitFooter, margin, y, { align: 'justify' });
       y += 30;
 
       if (savedData.firmaUrl) {
@@ -253,7 +263,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     }
   }
 
-  const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
   return (
     <Dialog open={isOpen} onOpenChange={resetAndClose}>
@@ -382,16 +392,14 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
                   <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">
-                    {logoImage && (
-                      <Image 
-                        src={logoImage.imageUrl} 
-                        alt="Logo ASENF" 
-                        width={128} 
-                        height={128}
-                        className="object-cover"
-                        data-ai-hint={logoImage.imageHint}
-                      />
-                    )}
+                    <Image 
+                      src={logoUrl} 
+                      alt="Logo ASENF" 
+                      width={128} 
+                      height={128}
+                      className="object-cover"
+                      data-ai-hint="logo institucional"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1">

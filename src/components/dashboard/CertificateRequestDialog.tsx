@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -83,9 +82,15 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 30;
+      const margin = 25; // Margen institucional 25mm
+      const contentWidth = pageWidth - (margin * 2);
       let y = 30;
 
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
@@ -119,12 +124,17 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
       doc.setFont("helvetica", "normal");
       doc.setFontSize(13);
       doc.setTextColor(40, 40, 40);
+      
       const content = `Certifico, mediante nuestra base de datos actualizada en ${databaseUpdateDate} que ${formData.nombre.toUpperCase()}, Rut: ${formData.rut}, se desempeña como enfermero/a en el servicio de: ${formData.servicio} en ${formData.establecimiento}, y figura como asociada vigente en ASENF Talca.`;
-      const splitContent = doc.splitTextToSize(content, pageWidth - (margin * 2));
+      
+      // Ajuste automático del texto a los bordes
+      const splitContent = doc.splitTextToSize(content, contentWidth);
       doc.text(splitContent, margin, y, { align: 'justify', lineHeightFactor: 1.8 });
       y += (splitContent.length * 10) + 15;
 
-      doc.text(`Se extiende el presente certificado, a petición de la persona que lo solicita, el día ${currentDate} para los fines que estime conveniente.`, margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
+      const footerText = `Se extiende el presente certificado, a petición de la persona que lo solicita, el día ${currentDate} para los fines que estime conveniente.`;
+      const splitFooter = doc.splitTextToSize(footerText, contentWidth);
+      doc.text(splitFooter, margin, y, { align: 'justify' });
 
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
@@ -134,14 +144,14 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
       
       toast({
         title: "Certificado Generado",
-        description: "El documento vectorial se ha descargado correctamente."
+        description: "El documento vectorial ha sido descargado."
       });
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo generar el PDF. Intente de nuevo."
+        description: "No se pudo generar el PDF."
       });
     } finally {
       setIsExporting(false);
@@ -153,7 +163,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     onClose()
   }
 
-  const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
   return (
     <Dialog open={isOpen} onOpenChange={resetForm}>
@@ -236,16 +246,14 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
                   <div className="w-40 h-40 flex items-center justify-center overflow-hidden rounded-full border-8 border-primary/10 shadow-xl">
-                    {logoImage && (
-                      <Image 
-                        src={logoImage.imageUrl} 
-                        alt="Logo ASENF" 
-                        width={160} 
-                        height={160}
-                        className="object-cover"
-                        data-ai-hint={logoImage.imageHint}
-                      />
-                    )}
+                    <Image 
+                      src={logoUrl} 
+                      alt="Logo ASENF" 
+                      width={160} 
+                      height={160}
+                      className="object-cover"
+                      data-ai-hint="logo institucional"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1">
