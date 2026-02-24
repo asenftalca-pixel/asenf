@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ArrowLeft, FileText, Search, Printer, Download, FileSpreadsheet, Loader2 } from "lucide-react"
+import { ArrowLeft, FileText, Search, Printer, FileSpreadsheet, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
@@ -22,7 +22,6 @@ export default function AdminSociosPage() {
 
   const { firestore } = useFirebase()
   
-  // Consulta a la base de datos de socios inscritos
   const associatesQuery = useMemoFirebase(() => {
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
   }, [firestore])
@@ -60,7 +59,7 @@ export default function AdminSociosPage() {
   const exportToExcel = () => {
     if (!members || members.length === 0) return
 
-    const headers = ["Nombre", "RUT", "Sexo", "Servicio", "Establecimiento", "Fecha Registro"]
+    const headers = ["Nombre", "RUT", "Sexo", "Servicio", "Establecimiento", "Fecha Solicitud"]
     const rows = (members || []).map(m => [
       m.nombre,
       m.rut,
@@ -142,7 +141,7 @@ export default function AdminSociosPage() {
                 <TableHead className="font-black text-xs uppercase tracking-widest p-6 w-16">Tramitar</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Socio</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">RUT</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-widest">Sexo</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-widest">Fecha Recibida</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Servicio / Unidad</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest text-right">Documento</TableHead>
               </TableRow>
@@ -165,7 +164,7 @@ export default function AdminSociosPage() {
                   </TableCell>
                   <TableCell className="font-bold text-primary">{member.nombre}</TableCell>
                   <TableCell className="font-medium">{member.rut}</TableCell>
-                  <TableCell className="font-medium text-xs uppercase">{member.sexo}</TableCell>
+                  <TableCell className="font-bold text-primary">{member.fecha}</TableCell>
                   <TableCell className="font-medium text-muted-foreground italic">{member.servicio} — {member.establecimiento}</TableCell>
                   <TableCell className="text-right">
                     <Button 
@@ -262,7 +261,7 @@ export default function AdminSociosPage() {
               </div>
 
               <div className="mt-12 text-right">
-                <p className="text-sm font-bold text-muted-foreground">Fecha de Registro en Base de Datos: {selectedMember?.fecha}</p>
+                <p className="text-sm font-bold text-muted-foreground">Fecha de Recepción: {selectedMember?.fecha}</p>
               </div>
             </div>
 
