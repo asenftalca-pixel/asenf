@@ -97,7 +97,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         establecimiento: formData.establecimiento,
         firmaUrl: formData.firma,
         fecha: new Date().toLocaleDateString('es-ES'),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        processed: false // Nueva solicitud entra como pendiente
       }
 
       // Guardar en Firestore

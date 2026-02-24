@@ -12,8 +12,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, deleteDoc, doc } from "firebase/firestore"
+import { collection, doc, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function AdminSociosPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -28,22 +29,23 @@ export default function AdminSociosPage() {
 
   const { data: members = [], isLoading } = useCollection(associatesQuery)
 
-  const handleTramitar = async (id: string) => {
-    if (confirm("¿Marcar esta solicitud como tramitada? Se eliminará de la base de datos central.")) {
-      try {
-        await deleteDoc(doc(firestore, 'partners', 'asenf-talca', 'associates', id))
-        toast({
-          title: "Inscripción tramitada",
-          description: "El registro ha sido procesado y eliminado de la lista."
-        })
-      } catch (error) {
-        console.error("Error al tramitar:", error)
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudo procesar la solicitud."
-        })
-      }
+  const handleTramitar = async (id: string, currentlyProcessed: boolean) => {
+    try {
+      const docRef = doc(firestore, 'partners', 'asenf-talca', 'associates', id)
+      await updateDoc(docRef, {
+        processed: !currentlyProcessed
+      })
+      toast({
+        title: !currentlyProcessed ? "Inscripción tramitada" : "Inscripción pendiente",
+        description: !currentlyProcessed ? "El registro ha sido marcado como procesado." : "El registro ha vuelto a estado pendiente."
+      })
+    } catch (error) {
+      console.error("Error al actualizar estado:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el estado de la solicitud."
+      })
     }
   }
 
@@ -59,10 +61,11 @@ export default function AdminSociosPage() {
   const exportToExcel = () => {
     if (!members || members.length === 0) return
 
-    const headers = ["Nombre", "RUT", "Sexo", "Servicio", "Establecimiento", "Fecha Solicitud"]
+    const headers = ["Nombre", "RUT", "Estado", "Sexo", "Servicio", "Establecimiento", "Fecha Solicitud"]
     const rows = (members || []).map(m => [
       m.nombre,
       m.rut,
+      m.processed ? "Tramitado" : "Pendiente",
       m.sexo,
       m.servicio,
       m.establecimiento,
@@ -85,10 +88,16 @@ export default function AdminSociosPage() {
     document.body.removeChild(link)
   }
 
-  const filteredMembers = (members || []).filter(m => 
-    m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.rut?.includes(searchTerm)
-  )
+  // Filtrar y ordenar: pendientes arriba, tramitados abajo
+  const filteredAndSortedMembers = (members || [])
+    .filter(m => 
+      m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      m.rut?.includes(searchTerm)
+    )
+    .sort((a, b) => {
+      if (a.processed === b.processed) return 0
+      return a.processed ? 1 : -1
+    })
 
   const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
 
@@ -112,7 +121,7 @@ export default function AdminSociosPage() {
               variant="outline" 
               className="h-12 rounded-xl font-bold border-2 gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200" 
               onClick={exportToExcel}
-              disabled={filteredMembers.length === 0}
+              disabled={filteredAndSortedMembers.length === 0}
             >
               <FileSpreadsheet className="w-4 h-4" /> Exportar a CSV
             </Button>
@@ -131,7 +140,7 @@ export default function AdminSociosPage() {
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
-              {isLoading ? "Consultando Base de Datos..." : `${filteredMembers.length} inscripciones encontradas`}
+              {isLoading ? "Consultando Base de Datos..." : `${filteredAndSortedMembers.length} inscripciones registradas`}
             </div>
           </div>
           
@@ -154,18 +163,33 @@ export default function AdminSociosPage() {
                     Cargando datos desde Firestore...
                   </TableCell>
                 </TableRow>
-              ) : filteredMembers.map((member) => (
-                <TableRow key={member.id} className="hover:bg-slate-50 transition-colors">
+              ) : filteredAndSortedMembers.map((member) => (
+                <TableRow 
+                  key={member.id} 
+                  className={cn(
+                    "transition-colors",
+                    member.processed ? "opacity-50 bg-slate-50/50 hover:bg-slate-100" : "hover:bg-slate-50"
+                  )}
+                >
                   <TableCell className="p-6 text-center">
                     <Checkbox 
-                      onCheckedChange={() => handleTramitar(member.id)}
+                      checked={!!member.processed}
+                      onCheckedChange={() => handleTramitar(member.id, !!member.processed)}
                       className="w-5 h-5"
                     />
                   </TableCell>
-                  <TableCell className="font-bold text-primary">{member.nombre}</TableCell>
-                  <TableCell className="font-medium">{member.rut}</TableCell>
-                  <TableCell className="font-bold text-primary">{member.fecha}</TableCell>
-                  <TableCell className="font-medium text-muted-foreground italic">{member.servicio} — {member.establecimiento}</TableCell>
+                  <TableCell className={cn("font-bold text-primary", member.processed && "line-through")}>
+                    {member.nombre}
+                  </TableCell>
+                  <TableCell className={cn("font-medium", member.processed && "line-through")}>
+                    {member.rut}
+                  </TableCell>
+                  <TableCell className={cn("font-bold text-primary", member.processed && "line-through")}>
+                    {member.fecha}
+                  </TableCell>
+                  <TableCell className={cn("font-medium text-muted-foreground italic", member.processed && "line-through text-slate-400")}>
+                    {member.servicio} — {member.establecimiento}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button 
                       variant="ghost" 
@@ -178,10 +202,10 @@ export default function AdminSociosPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && filteredMembers.length === 0 && (
+              {!isLoading && filteredAndSortedMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">
-                    No hay inscripciones pendientes en la base de datos.
+                    No hay inscripciones registradas en la base de datos.
                   </TableCell>
                 </TableRow>
               )}
@@ -262,6 +286,9 @@ export default function AdminSociosPage() {
 
               <div className="mt-12 text-right">
                 <p className="text-sm font-bold text-muted-foreground">Fecha de Recepción: {selectedMember?.fecha}</p>
+                {selectedMember?.processed && (
+                  <p className="text-xs font-black text-emerald-600 uppercase mt-2">✓ Solicitud Tramitada</p>
+                )}
               </div>
             </div>
 
