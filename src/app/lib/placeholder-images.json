@@ -22,19 +22,19 @@
     {
       "id": "app-finance",
       "description": "Finance Tool Icon",
-      "imageUrl": "https://images.unsplash.com/photo-1504607798333-52a30db54a5d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxmaW5hbmNlJTIwY2hhcnR8ZW58MHx8fHwxNzcwMjQ2Njg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1504607798333-52a30db54a5d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmaW5hbmNlJTIwY2hhcnR8ZW58MHx8fHwxNzcwMjQ2Njg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "finance chart"
     },
     {
       "id": "asenf-logo",
-      "description": "Logo Oficial ASENF Talca - Lámpara de Enfermería",
-      "imageUrl": "https://images.unsplash.com/photo-1516549655169-df83a0774514?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxudXJzaW5nJTIwbGFtcHxlbnwwfHx8fDE3NzA2NDIzMDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "nursing lamp"
+      "description": "Logo Oficial ASENF Talca - Lámpara de Enfermería Circular",
+      "imageUrl": "https://picsum.photos/seed/asenf-logo-v2/600/600",
+      "imageHint": "nursing logo"
     },
     {
       "id": "conv-gym",
       "description": "Gimnasio Sportlife",
-      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1549476464-37392f717541?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxneW0lMjBmaXRuZXNzfGVufDB8fHx8MTc3MDI1ODEwMXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gym fitness"
     },
     {
