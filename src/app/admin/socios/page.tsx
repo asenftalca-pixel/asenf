@@ -83,9 +83,8 @@ export default function AdminSociosPage() {
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.src = url;
+      const img = new (window.Image)();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -99,6 +98,7 @@ export default function AdminSociosPage() {
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
       img.onerror = () => reject(new Error('No se pudo cargar la imagen: ' + url));
+      img.src = url;
     });
   };
 
@@ -112,7 +112,6 @@ export default function AdminSociosPage() {
       const margin = 25;
       let y = 20;
 
-      // 1. Cargar y añadir Logo institucional
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
       try {
         const logoBase64 = await imageUrlToBase64(logoUrl);
@@ -123,7 +122,6 @@ export default function AdminSociosPage() {
         y += 10;
       }
 
-      // 2. Encabezado
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(27, 43, 66);
@@ -136,12 +134,10 @@ export default function AdminSociosPage() {
       doc.text("ASENF TALCA", pageWidth / 2, y, { align: 'center' });
       y += 20;
 
-      // 3. Título del Documento
       doc.setFontSize(22);
       doc.text("SOLICITUD DE AFILIACIÓN", pageWidth / 2, y, { align: 'center' });
       y += 20;
 
-      // 4. Cuerpo del texto
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.setTextColor(40, 40, 40);
@@ -150,7 +146,6 @@ export default function AdminSociosPage() {
       doc.text(splitText, margin, y, { align: 'justify' });
       y += (splitText.length * 8) + 10;
 
-      // 5. Cuadro de Cuota
       doc.setDrawColor(212, 175, 55);
       doc.setFillColor(252, 250, 240);
       doc.rect(margin, y, pageWidth - (margin * 2), 25, 'FD');
@@ -162,7 +157,6 @@ export default function AdminSociosPage() {
       doc.text("Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.", margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
       y += 30;
 
-      // 6. Firma
       if (selectedMember.firmaUrl) {
         try {
           const firmaBase64 = await imageUrlToBase64(selectedMember.firmaUrl);
@@ -184,7 +178,6 @@ export default function AdminSociosPage() {
       doc.setFont("helvetica", "normal");
       doc.text("FIRMA DEL SOLICITANTE", pageWidth / 2, y, { align: 'center' });
 
-      // 7. Pie de página
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
       doc.text(`Fecha de Recepción: ${selectedMember.fecha}`, pageWidth - margin, 280, { align: 'right' });

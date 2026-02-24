@@ -61,9 +61,8 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.src = url;
+      const img = new (window.Image)();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -76,7 +75,8 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
         ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
-      img.onerror = () => reject(new Error('Image load error'));
+      img.onerror = (e) => reject(new Error('Image load error: ' + e));
+      img.src = url;
     });
   };
 
@@ -88,7 +88,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
       const margin = 30;
       let y = 30;
 
-      // 1. Logo
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
       try {
         const logoBase64 = await imageUrlToBase64(logoUrl);
@@ -98,7 +97,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
         y += 10;
       }
 
-      // 2. Encabezado
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(27, 43, 66);
@@ -111,7 +109,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
       doc.text("ASENF TALCA", pageWidth / 2, y, { align: 'center' });
       y += 30;
 
-      // 3. Título CERTIFICADO
       doc.setFontSize(26);
       doc.text("CERTIFICADO", pageWidth / 2, y, { align: 'center' });
       doc.setDrawColor(212, 175, 55);
@@ -119,7 +116,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
       doc.line((pageWidth / 2) - 30, y + 3, (pageWidth / 2) + 30, y + 3);
       y += 35;
 
-      // 4. Cuerpo
       doc.setFont("helvetica", "normal");
       doc.setFontSize(13);
       doc.setTextColor(40, 40, 40);
@@ -130,7 +126,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
 
       doc.text(`Se extiende el presente certificado, a petición de la persona que lo solicita, el día ${currentDate} para los fines que estime conveniente.`, margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
 
-      // 5. Pie
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
       doc.text("El método de verificación de este certificado es enviando correo a asenf.talca@gmail.com", pageWidth / 2, 275, { align: 'center' });

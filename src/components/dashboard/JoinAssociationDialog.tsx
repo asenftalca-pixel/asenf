@@ -140,9 +140,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.src = url;
+      const img = new (window.Image)();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -155,7 +154,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
-      img.onerror = () => reject(new Error('Image error'));
+      img.onerror = (e) => reject(new Error('Image error: ' + e));
+      img.src = url;
     });
   };
 
@@ -169,7 +169,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       const margin = 25;
       let y = 20;
 
-      // 1. Logo
       const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
       try {
         const logoBase64 = await imageUrlToBase64(logoUrl);
@@ -179,7 +178,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         y += 10;
       }
 
-      // 2. Encabezado
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(27, 43, 66);
@@ -192,12 +190,10 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       doc.text("ASENF TALCA", pageWidth / 2, y, { align: 'center' });
       y += 20;
 
-      // 3. Título
       doc.setFontSize(22);
       doc.text("SOLICITUD DE AFILIACIÓN", pageWidth / 2, y, { align: 'center' });
       y += 20;
 
-      // 4. Contenido
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.setTextColor(40, 40, 40);
@@ -206,7 +202,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       doc.text(splitText, margin, y, { align: 'justify' });
       y += (splitText.length * 8) + 10;
 
-      // 5. Cuota
       doc.setDrawColor(212, 175, 55);
       doc.setFillColor(252, 250, 240);
       doc.rect(margin, y, pageWidth - (margin * 2), 25, 'FD');
@@ -218,7 +213,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       doc.text("Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.", margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
       y += 30;
 
-      // 6. Firma
       if (savedData.firmaUrl) {
         try {
           const firmaBase64 = await imageUrlToBase64(savedData.firmaUrl);
@@ -237,7 +231,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       doc.setFont("helvetica", "normal");
       doc.text("FIRMA DEL SOLICITANTE", pageWidth / 2, y, { align: 'center' });
 
-      // 7. Pie
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
       doc.text(`Fecha de Registro: ${savedData.fecha}`, pageWidth - margin, 280, { align: 'right' });
