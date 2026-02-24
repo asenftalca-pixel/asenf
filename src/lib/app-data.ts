@@ -1,4 +1,3 @@
-
 import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame } from 'lucide-react'
 
 export interface Application {
@@ -41,13 +40,6 @@ export const APPS: Application[] = [
     description: 'Solicitud y generación automática de certificado de socio vigente.', 
     icon: 'FileCheck', 
     category: 'Administración'
-  },
-  { 
-    id: 'app-report', 
-    name: 'Reporte Financiero', 
-    description: 'Acceso a la generación de reportes y balances desde PresupuestoInteligente.', 
-    icon: 'BarChart3', 
-    category: 'Análisis'
   },
   { 
     id: 'app-admin-list', 

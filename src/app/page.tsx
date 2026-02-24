@@ -1,25 +1,30 @@
-
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
-import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { CertificateRequestDialog } from '@/components/dashboard/CertificateRequestDialog'
 import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDialog'
 import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
+import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnouncementDialog'
 import { AppWindow } from 'lucide-react'
 
 export default function Home() {
-  const [isReportOpen, setIsReportOpen] = useState(false)
   const [isCertificateOpen, setIsCertificateOpen] = useState(false)
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
+  const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
+
+  // Mostrar el anuncio de asamblea al abrir la app
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAssemblyOpen(true)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleAppClick = (app: Application) => {
-    if (app.id === 'app-report') {
-      setIsReportOpen(true)
-    } else if (app.id === 'app-certificate') {
+    if (app.id === 'app-certificate') {
       setIsCertificateOpen(true)
     } else if (app.id === 'app-join') {
       setIsJoinOpen(true)
@@ -90,9 +95,9 @@ export default function Home() {
         </div>
       </footer>
 
-      <FinanceReportDialog 
-        isOpen={isReportOpen} 
-        onClose={() => setIsReportOpen(false)} 
+      <AssemblyAnnouncementDialog
+        isOpen={isAssemblyOpen}
+        onClose={() => setIsAssemblyOpen(false)}
       />
 
       <CertificateRequestDialog
