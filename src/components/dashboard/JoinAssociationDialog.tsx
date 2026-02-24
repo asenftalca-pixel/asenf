@@ -98,10 +98,9 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         firmaUrl: formData.firma,
         fecha: new Date().toLocaleDateString('es-ES'),
         createdAt: new Date().toISOString(),
-        processed: false // Nueva solicitud entra como pendiente
+        processed: false
       }
 
-      // Guardar en Firestore
       await setDoc(docRef, dataToSave)
       setSavedData(dataToSave)
       setIsSuccess(true)
@@ -263,14 +262,14 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
             <div className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
-                  <div className="w-32 h-32 flex items-center justify-center">
+                  <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">
                     {logoImage && (
                       <Image 
                         src={logoImage.imageUrl} 
                         alt="Logo ASENF" 
-                        width={120} 
-                        height={120}
-                        className="object-contain"
+                        width={128} 
+                        height={128}
+                        className="object-cover"
                         data-ai-hint={logoImage.imageHint}
                       />
                     )}

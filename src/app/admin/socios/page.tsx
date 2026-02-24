@@ -26,11 +26,9 @@ export default function AdminSociosPage() {
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
 
-  const { firestore, auth, user } = useFirebase()
+  const { firestore, auth } = useFirebase()
   
-  // Consulta a la colección de asociados
   const associatesQuery = useMemoFirebase(() => {
-    // Solo cargamos la referencia si está autenticado
     if (!isAuthenticated) return null
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
   }, [firestore, isAuthenticated])
@@ -39,10 +37,8 @@ export default function AdminSociosPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // Contraseña de acceso para el prototipo
     if (password === "admin123") {
       setIsAuthenticated(true)
-      // Realizamos login anónimo en Firebase para cumplir con reglas de seguridad si existieran
       initiateAnonymousSignIn(auth)
       toast({
         title: "Acceso concedido",
@@ -116,7 +112,6 @@ export default function AdminSociosPage() {
     document.body.removeChild(link)
   }
 
-  // Filtrar y ordenar: pendientes arriba, tramitados abajo
   const filteredAndSortedMembers = (members || [])
     .filter(m => 
       m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -299,14 +294,14 @@ export default function AdminSociosPage() {
           <div id="affiliate-document" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
             <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
               <div className="mb-6 relative">
-                <div className="w-32 h-32 flex items-center justify-center">
+                <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">
                   {logoImage && (
                     <Image 
                       src={logoImage.imageUrl} 
                       alt="Logo ASENF" 
-                      width={120} 
-                      height={120}
-                      className="object-contain"
+                      width={128} 
+                      height={128}
+                      className="object-cover"
                       data-ai-hint={logoImage.imageHint}
                     />
                   )}

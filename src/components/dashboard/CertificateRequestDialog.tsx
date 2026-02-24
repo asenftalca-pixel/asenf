@@ -30,7 +30,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
   })
 
   useEffect(() => {
-    // Cálculo de la fecha de base de datos (mes anterior)
     const lastMonth = new Date()
     lastMonth.setMonth(lastMonth.getMonth() - 1)
     const dbDateStr = lastMonth.toLocaleDateString('es-ES', {
@@ -39,7 +38,6 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     })
     setDatabaseUpdateDate(dbDateStr.charAt(0).toUpperCase() + dbDateStr.slice(1))
 
-    // Fecha actual para la firma
     const todayStr = new Date().toLocaleDateString('es-ES', {
       day: 'numeric',
       month: 'long',
@@ -140,18 +138,17 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               </div>
             </div>
 
-            {/* Area de Impresión */}
             <div id="certificate-content" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10 print:shadow-none">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
-                  <div className="w-40 h-40 flex items-center justify-center">
+                  <div className="w-40 h-40 flex items-center justify-center overflow-hidden rounded-full border-8 border-primary/10 shadow-xl">
                     {logoImage && (
                       <Image 
                         src={logoImage.imageUrl} 
                         alt="Logo ASENF" 
                         width={160} 
                         height={160}
-                        className="object-contain"
+                        className="object-cover"
                         data-ai-hint={logoImage.imageHint}
                       />
                     )}
