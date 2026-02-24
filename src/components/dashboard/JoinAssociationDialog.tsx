@@ -17,7 +17,6 @@ import { FirestorePermissionError } from "@/firebase/errors"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import jsPDF from "jspdf"
-import html2canvas from "html2canvas"
 
 interface JoinAssociationDialogProps {
   isOpen: boolean
@@ -139,30 +138,115 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     onClose()
   }
 
+  const imageUrlToBase64 = async (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = url;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context failure'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => reject(new Error('Image error'));
+    });
+  };
+
   const handleExportPDF = async () => {
-    const input = document.getElementById('affiliate-document-user');
-    if (!input) return;
+    if (!savedData) return;
 
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(input, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`Solicitud_Afiliacion_${savedData?.nombre || 'Socio'}.pdf`);
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 25;
+      let y = 20;
+
+      // 1. Logo
+      const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
+      try {
+        const logoBase64 = await imageUrlToBase64(logoUrl);
+        doc.addImage(logoBase64, 'JPEG', (pageWidth - 35) / 2, y, 35, 35);
+        y += 40;
+      } catch (err) {
+        y += 10;
+      }
+
+      // 2. Encabezado
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(27, 43, 66);
+      doc.text("ASOCIACIÓN DE ENFERMERAS Y ENFERMEROS", pageWidth / 2, y, { align: 'center' });
+      y += 5;
+      doc.setFontSize(9);
+      doc.text("HOSPITAL REGIONAL DE TALCA Y DSSM", pageWidth / 2, y, { align: 'center' });
+      y += 5;
+      doc.setFontSize(12);
+      doc.text("ASENF TALCA", pageWidth / 2, y, { align: 'center' });
+      y += 20;
+
+      // 3. Título
+      doc.setFontSize(22);
+      doc.text("SOLICITUD DE AFILIACIÓN", pageWidth / 2, y, { align: 'center' });
+      y += 20;
+
+      // 4. Contenido
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(40, 40, 40);
+      const mainText = `Yo, ${savedData.nombre}, Rut: ${savedData.rut}, Sexo: ${savedData.sexo}, desempeñándome como profesional de enfermería en el servicio de ${savedData.servicio} de ${savedData.establecimiento}, solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.`;
+      const splitText = doc.splitTextToSize(mainText, pageWidth - (margin * 2));
+      doc.text(splitText, margin, y, { align: 'justify' });
+      y += (splitText.length * 8) + 10;
+
+      // 5. Cuota
+      doc.setDrawColor(212, 175, 55);
+      doc.setFillColor(252, 250, 240);
+      doc.rect(margin, y, pageWidth - (margin * 2), 25, 'FD');
+      doc.setFont("helvetica", "bolditalic");
+      doc.text('"Acepto que se me descuente mensualmente 8572 de mis remuneraciones por concepto de cuota social de la Asociación."', pageWidth / 2, y + 14, { align: 'center' });
+      y += 40;
+
+      doc.setFont("helvetica", "normal");
+      doc.text("Acepto los estatutos y reglamentos de la organización, comprometiéndome a participar activamente en el fortalecimiento de nuestra profesión.", margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
+      y += 30;
+
+      // 6. Firma
+      if (savedData.firmaUrl) {
+        try {
+          const firmaBase64 = await imageUrlToBase64(savedData.firmaUrl);
+          doc.addImage(firmaBase64, 'PNG', (pageWidth - 60) / 2, y, 60, 30);
+          y += 32;
+        } catch (err) {}
+      }
+      doc.setDrawColor(200, 200, 200);
+      doc.line((pageWidth - 70) / 2, y, (pageWidth + 70) / 2, y);
+      y += 5;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(savedData.nombre.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text("FIRMA DEL SOLICITANTE", pageWidth / 2, y, { align: 'center' });
+
+      // 7. Pie
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Fecha de Registro: ${savedData.fecha}`, pageWidth - margin, 280, { align: 'right' });
+
+      doc.save(`Solicitud_Afiliacion_${savedData.nombre.replace(/\s+/g, '_')}.pdf`);
       
       toast({
         title: "PDF Generado",
-        description: "Su solicitud se ha descargado correctamente."
+        description: "Su solicitud se ha descargado correctamente en formato vectorial."
       });
     } catch (error) {
       console.error('Error al exportar PDF:', error);
@@ -301,7 +385,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
               </Button>
             </div>
 
-            <div id="affiliate-document-user" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10">
+            <div className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
                   <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 shadow-lg">

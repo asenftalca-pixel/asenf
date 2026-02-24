@@ -11,7 +11,6 @@ import { FileCheck, FileDown, ArrowLeft, CheckCircle2, Loader2 } from "lucide-re
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import jsPDF from "jspdf"
-import html2canvas from "html2canvas"
 import { toast } from "@/hooks/use-toast"
 
 interface CertificateRequestDialogProps {
@@ -60,30 +59,87 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
     setStep('preview')
   }
 
-  const handleExportPDF = async () => {
-    const input = document.getElementById('certificate-content');
-    if (!input) return;
+  const imageUrlToBase64 = async (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = url;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context error'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => reject(new Error('Image load error'));
+    });
+  };
 
+  const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(input, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`Certificado_Afiliacion_${formData.nombre || 'Socio'}.pdf`);
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 30;
+      let y = 30;
+
+      // 1. Logo
+      const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
+      try {
+        const logoBase64 = await imageUrlToBase64(logoUrl);
+        doc.addImage(logoBase64, 'JPEG', (pageWidth - 40) / 2, y, 40, 40);
+        y += 45;
+      } catch (err) {
+        y += 10;
+      }
+
+      // 2. Encabezado
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(27, 43, 66);
+      doc.text("ASOCIACIÓN DE ENFERMERAS Y ENFERMEROS", pageWidth / 2, y, { align: 'center' });
+      y += 6;
+      doc.setFontSize(10);
+      doc.text("HOSPITAL REGIONAL DE TALCA Y DSSM", pageWidth / 2, y, { align: 'center' });
+      y += 6;
+      doc.setFontSize(14);
+      doc.text("ASENF TALCA", pageWidth / 2, y, { align: 'center' });
+      y += 30;
+
+      // 3. Título CERTIFICADO
+      doc.setFontSize(26);
+      doc.text("CERTIFICADO", pageWidth / 2, y, { align: 'center' });
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(1);
+      doc.line((pageWidth / 2) - 30, y + 3, (pageWidth / 2) + 30, y + 3);
+      y += 35;
+
+      // 4. Cuerpo
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(13);
+      doc.setTextColor(40, 40, 40);
+      const content = `Certifico, mediante nuestra base de datos actualizada en ${databaseUpdateDate} que ${formData.nombre.toUpperCase()}, Rut: ${formData.rut}, se desempeña como enfermero/a en el servicio de: ${formData.servicio} en ${formData.establecimiento}, y figura como asociada vigente en ASENF Talca.`;
+      const splitContent = doc.splitTextToSize(content, pageWidth - (margin * 2));
+      doc.text(splitContent, margin, y, { align: 'justify', lineHeightFactor: 1.8 });
+      y += (splitContent.length * 10) + 15;
+
+      doc.text(`Se extiende el presente certificado, a petición de la persona que lo solicita, el día ${currentDate} para los fines que estime conveniente.`, margin, y, { align: 'justify', maxWidth: pageWidth - (margin * 2) });
+
+      // 5. Pie
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text("El método de verificación de este certificado es enviando correo a asenf.talca@gmail.com", pageWidth / 2, 275, { align: 'center' });
+
+      doc.save(`Certificado_Afiliacion_${formData.nombre.replace(/\s+/g, '_')}.pdf`);
       
       toast({
         title: "Certificado Generado",
-        description: "El documento se ha descargado correctamente."
+        description: "El documento vectorial se ha descargado correctamente."
       });
     } catch (error) {
       console.error('Error al exportar PDF:', error);
@@ -181,7 +237,7 @@ export function CertificateRequestDialog({ isOpen, onClose }: CertificateRequest
               </div>
             </div>
 
-            <div id="certificate-content" className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col print:p-10 print:shadow-none">
+            <div className="p-12 md:p-20 bg-white min-h-[800px] flex flex-col">
               <div className="flex flex-col items-center mb-12 text-center border-b-2 border-primary/10 pb-10">
                 <div className="mb-6 relative">
                   <div className="w-40 h-40 flex items-center justify-center overflow-hidden rounded-full border-8 border-primary/10 shadow-xl">
