@@ -1,33 +1,61 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ArrowLeft, FileText, Search, Printer, FileSpreadsheet, Loader2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ArrowLeft, FileText, Search, Printer, FileSpreadsheet, Loader2, Lock, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, doc, updateDoc } from "firebase/firestore"
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 export default function AdminSociosPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
 
-  const { firestore } = useFirebase()
+  const { firestore, auth, user } = useFirebase()
   
+  // Consulta a la colección de asociados
   const associatesQuery = useMemoFirebase(() => {
+    // Solo cargamos la referencia si está autenticado
+    if (!isAuthenticated) return null
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
-  }, [firestore])
+  }, [firestore, isAuthenticated])
 
   const { data: members = [], isLoading } = useCollection(associatesQuery)
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Contraseña de acceso para el prototipo
+    if (password === "admin123") {
+      setIsAuthenticated(true)
+      // Realizamos login anónimo en Firebase para cumplir con reglas de seguridad si existieran
+      initiateAnonymousSignIn(auth)
+      toast({
+        title: "Acceso concedido",
+        description: "Bienvenido al panel de gestión institucional."
+      })
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Acceso denegado",
+        description: "Contraseña incorrecta. Intente de nuevo."
+      })
+    }
+  }
 
   const handleTramitar = async (id: string, currentlyProcessed: boolean) => {
     try {
@@ -101,8 +129,48 @@ export default function AdminSociosPage() {
 
   const logoImage = PlaceHolderImages.find(img => img.id === 'asenf-logo')
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
+          <div className="bg-primary p-10 text-primary-foreground text-center space-y-4">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/20">
+              <Lock className="w-8 h-8 text-secondary" />
+            </div>
+            <CardTitle className="text-2xl font-black uppercase tracking-tight">Acceso Restringido</CardTitle>
+            <CardDescription className="text-primary-foreground/60 font-medium">
+              Ingrese la contraseña de la directiva ASENF para gestionar las inscripciones.
+            </CardDescription>
+          </div>
+          <CardContent className="p-10">
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="pass" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Contraseña de Seguridad</Label>
+                <Input 
+                  id="pass"
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="h-14 rounded-2xl border-2 text-center text-lg tracking-widest"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-base shadow-xl hover:scale-[1.02] transition-transform">
+                Verificar Identidad
+              </Button>
+              <Link href="/" className="block text-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors mt-4">
+                <ArrowLeft className="w-4 h-4 inline mr-2" /> Volver al Inicio
+              </Link>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-background p-6 md:p-12">
+    <div className="min-h-screen bg-background p-6 md:p-12 animate-in fade-in duration-700">
       <div className="container mx-auto space-y-10">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -114,7 +182,10 @@ export default function AdminSociosPage() {
               </Link>
               <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Gestión de Inscripciones</h1>
             </div>
-            <p className="text-muted-foreground font-medium ml-14">Herramienta para la directiva ASENF</p>
+            <p className="text-muted-foreground font-medium ml-14 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Herramienta para la directiva ASENF
+            </p>
           </div>
           <div className="flex gap-3">
             <Button 
