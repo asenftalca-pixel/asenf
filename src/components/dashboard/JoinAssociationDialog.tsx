@@ -100,9 +100,14 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         createdAt: new Date().toISOString()
       }
 
+      // Guardar en Firestore
       await setDoc(docRef, dataToSave)
       setSavedData(dataToSave)
       setIsSuccess(true)
+      toast({
+        title: "Registro exitoso",
+        description: "Sus datos han sido guardados correctamente en la base de datos."
+      })
     } catch (error: any) {
       const permissionError = new FirestorePermissionError({
         path: `partners/asenf-talca/associates/new`,
@@ -236,7 +241,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Procesando...
+                      Guardando en Base de Datos...
                     </>
                   ) : "Enviar Solicitud de Afiliación"}
                 </Button>
@@ -333,10 +338,10 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
             </div>
             <div className="space-y-4">
               <h2 className="text-3xl font-black text-primary tracking-tight">¡BIENVENIDO/A!</h2>
-              <p className="text-xl font-bold text-muted-foreground leading-tight">Ya eres parte de nuestra asociación</p>
+              <p className="text-xl font-bold text-muted-foreground leading-tight">Su solicitud ha sido guardada en la base de datos</p>
             </div>
             <div className="p-6 bg-muted/30 rounded-2xl border border-dashed">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Su solicitud ha sido registrada correctamente en el sistema central de ASENF Talca.</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Ya eres parte de nuestra asociación. La directiva revisará su inscripción en el panel de Gestión.</p>
             </div>
             <div className="flex flex-col gap-3">
               <Button onClick={() => setShowDoc(true)} className="w-full h-14 rounded-xl font-bold gap-3 shadow-lg bg-primary hover:scale-[1.02] transition-transform">

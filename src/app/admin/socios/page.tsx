@@ -13,6 +13,7 @@ import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, deleteDoc, doc } from "firebase/firestore"
+import { toast } from "@/hooks/use-toast"
 
 export default function AdminSociosPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -21,6 +22,7 @@ export default function AdminSociosPage() {
 
   const { firestore } = useFirebase()
   
+  // Consulta a la base de datos de socios inscritos
   const associatesQuery = useMemoFirebase(() => {
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
   }, [firestore])
@@ -28,11 +30,20 @@ export default function AdminSociosPage() {
   const { data: members = [], isLoading } = useCollection(associatesQuery)
 
   const handleTramitar = async (id: string) => {
-    if (confirm("¿Marcar esta solicitud como tramitada? Se eliminará de la lista de pendientes.")) {
+    if (confirm("¿Marcar esta solicitud como tramitada? Se eliminará de la base de datos central.")) {
       try {
         await deleteDoc(doc(firestore, 'partners', 'asenf-talca', 'associates', id))
+        toast({
+          title: "Inscripción tramitada",
+          description: "El registro ha sido procesado y eliminado de la lista."
+        })
       } catch (error) {
         console.error("Error al tramitar:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo procesar la solicitud."
+        })
       }
     }
   }
@@ -68,7 +79,7 @@ export default function AdminSociosPage() {
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-    link.setAttribute("download", `Inscripciones_ASENF_Talca_${new Date().toLocaleDateString()}.csv`)
+    link.setAttribute("download", `Gestion_Inscripciones_ASENF_${new Date().toLocaleDateString()}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -114,25 +125,25 @@ export default function AdminSociosPage() {
             <div className="relative w-full md:max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
-                placeholder="Buscar por nombre o RUT..." 
+                placeholder="Buscar socio en la base de datos..." 
                 className="pl-12 h-12 rounded-xl bg-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
-              {isLoading ? "Cargando..." : `${filteredMembers.length} registros encontrados`}
+              {isLoading ? "Consultando Base de Datos..." : `${filteredMembers.length} inscripciones encontradas`}
             </div>
           </div>
           
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="font-black text-xs uppercase tracking-widest p-6 w-16">Tramitada</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-widest p-6 w-16">Tramitar</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Socio</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">RUT</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Sexo</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-widest">Servicio</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-widest">Servicio / Unidad</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest text-right">Documento</TableHead>
               </TableRow>
             </TableHeader>
@@ -140,7 +151,8 @@ export default function AdminSociosPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium italic">
-                    Consultando base de datos...
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 opacity-20" />
+                    Cargando datos desde Firestore...
                   </TableCell>
                 </TableRow>
               ) : filteredMembers.map((member) => (
@@ -154,7 +166,7 @@ export default function AdminSociosPage() {
                   <TableCell className="font-bold text-primary">{member.nombre}</TableCell>
                   <TableCell className="font-medium">{member.rut}</TableCell>
                   <TableCell className="font-medium text-xs uppercase">{member.sexo}</TableCell>
-                  <TableCell className="font-medium text-muted-foreground italic">{member.servicio} en {member.establecimiento}</TableCell>
+                  <TableCell className="font-medium text-muted-foreground italic">{member.servicio} — {member.establecimiento}</TableCell>
                   <TableCell className="text-right">
                     <Button 
                       variant="ghost" 
@@ -162,7 +174,7 @@ export default function AdminSociosPage() {
                       className="font-bold text-xs text-primary underline gap-2"
                       onClick={() => openDocument(member)}
                     >
-                      <FileText className="w-4 h-4" /> Ver PDF
+                      <FileText className="w-4 h-4" /> Ver Solicitud
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -170,7 +182,7 @@ export default function AdminSociosPage() {
               {!isLoading && filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">
-                    No hay solicitudes pendientes en la base de datos.
+                    No hay inscripciones pendientes en la base de datos.
                   </TableCell>
                 </TableRow>
               )}
@@ -250,14 +262,14 @@ export default function AdminSociosPage() {
               </div>
 
               <div className="mt-12 text-right">
-                <p className="text-sm font-bold text-muted-foreground">Fecha de Registro: {selectedMember?.fecha}</p>
+                <p className="text-sm font-bold text-muted-foreground">Fecha de Registro en Base de Datos: {selectedMember?.fecha}</p>
               </div>
             </div>
 
             <div className="mt-20 pt-10 border-t flex flex-col items-center">
               <div className="w-48 h-1 bg-primary/20 mb-4" />
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground text-center max-w-sm">
-                El método de verificación de este certificado es enviando correo a asenf.talca@gmail.com
+                Documento generado desde el sistema central de gestión ASENF Talca.
               </p>
             </div>
           </div>
