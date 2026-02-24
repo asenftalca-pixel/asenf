@@ -13,7 +13,7 @@ import { ArrowLeft, FileText, Search, Printer, FileSpreadsheet, Loader2, Lock, S
 import Link from "next/link"
 import Image from "next/image"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
+import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
@@ -53,24 +53,25 @@ export default function AdminSociosPage() {
     }
   }
 
-  const handleTramitar = async (id: string, currentlyProcessed: boolean) => {
-    try {
-      const docRef = doc(firestore, 'partners', 'asenf-talca', 'associates', id)
-      await updateDoc(docRef, {
-        processed: !currentlyProcessed
+  const handleTramitar = (id: string, currentlyProcessed: boolean) => {
+    const docRef = doc(firestore, 'partners', 'asenf-talca', 'associates', id)
+    const nextStatus = !currentlyProcessed
+    
+    updateDoc(docRef, {
+      processed: nextStatus
+    }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: { processed: nextStatus }
       })
-      toast({
-        title: !currentlyProcessed ? "Inscripción tramitada" : "Inscripción pendiente",
-        description: !currentlyProcessed ? "El registro ha sido marcado como procesado." : "El registro ha vuelto a estado pendiente."
-      })
-    } catch (error) {
-      console.error("Error al actualizar estado:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo actualizar el estado de la solicitud."
-      })
-    }
+      errorEmitter.emit('permission-error', permissionError)
+    })
+
+    toast({
+      title: nextStatus ? "Inscripción tramitada" : "Inscripción pendiente",
+      description: nextStatus ? "El registro ha sido marcado como procesado." : "El registro ha vuelto a estado pendiente."
+    })
   }
 
   const openDocument = (member: any) => {

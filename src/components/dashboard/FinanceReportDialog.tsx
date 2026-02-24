@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -23,10 +24,12 @@ interface FinanceReportDialogProps {
 
 export function FinanceReportDialog({ isOpen, onClose }: FinanceReportDialogProps) {
   const [isGenerating, setIsGenerating] = useState(true)
+  const [currentTime, setCurrentTime] = useState<string>('')
 
   useEffect(() => {
     if (isOpen) {
       setIsGenerating(true)
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
       const timer = setTimeout(() => setIsGenerating(false), 1200)
       return () => clearTimeout(timer)
     }
@@ -133,7 +136,7 @@ export function FinanceReportDialog({ isOpen, onClose }: FinanceReportDialogProp
               <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 border-t pt-6">
                 <span className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Actualizado: Hoy, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Actualizado: Hoy, {currentTime}
                 </span>
                 <span className="text-primary">Enero - Junio 2024</span>
               </div>
