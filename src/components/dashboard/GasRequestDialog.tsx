@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -6,9 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Hash } from "lucide-react"
+import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Hash, Receipt } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
+import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
@@ -20,7 +19,7 @@ interface GasRequestDialogProps {
 export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const [step, setStep] = useState<'brand' | 'weight' | 'quantity' | 'confirm' | 'success'>('brand')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
-  const [selectedWeight, setSelectedWeight] = useState<string>('')
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null)
   const [quantity, setQuantity] = useState<number>(1)
   const [socioName, setSocioName] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -33,11 +32,13 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
   const { data: productos = [], isLoading: loadingProducts } = useCollection(productosQuery)
 
+  // Extraer marcas únicas
   const brands = Array.from(new Set(productos?.map(p => p.marca) || []))
-  const filteredWeights = productos
-    ?.filter(p => p.marca === selectedBrand)
-    ?.map(p => p.peso)
-    ?.sort((a, b) => parseInt(a) - parseInt(b)) || []
+  
+  // Extraer pesos únicos para la marca seleccionada
+  const filteredProductsByBrand = productos?.filter(p => p.marca === selectedBrand) || []
+  const availableWeights = Array.from(new Set(filteredProductsByBrand.map(p => p.peso)))
+    .sort((a, b) => parseInt(a) - parseInt(b))
 
   const handleBrandSelect = (brand: string) => {
     setSelectedBrand(brand)
@@ -45,8 +46,11 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   }
 
   const handleWeightSelect = (weight: string) => {
-    setSelectedWeight(weight)
-    setStep('quantity')
+    const product = filteredProductsByBrand.find(p => p.peso === weight)
+    if (product) {
+      setSelectedProduct(product)
+      setStep('quantity')
+    }
   }
 
   const handleQuantityConfirm = () => {
@@ -54,40 +58,48 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setStep('confirm')
   }
 
-  const handleSubmitOrder = async () => {
+  const handleSubmitOrder = () => {
     if (!socioName) {
       toast({ variant: "destructive", title: "Nombre requerido", description: "Por favor, ingrese su nombre para registrar el pedido." })
       return
     }
 
     setIsSubmitting(true)
-    try {
-      const orderData = {
-        socioNombre: socioName,
-        productoNombre: `${selectedBrand} ${selectedWeight}kg`,
-        marca: selectedBrand,
-        peso: selectedWeight,
-        cantidad: quantity,
-        fecha: serverTimestamp(),
-        createdAt: new Date().toISOString(),
-        status: 'pendent'
-      }
-
-      await addDoc(collection(firestore, 'pedidos_socios'), orderData)
-      setStep('success')
-      toast({ title: "Pedido Registrado", description: "Su solicitud de vales ha sido enviada exitosamente." })
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "No se pudo guardar su pedido. Intente nuevamente." })
-    } finally {
-      setIsSubmitting(false)
+    const orderData = {
+      socioNombre: socioName,
+      productoNombre: `${selectedBrand} ${selectedProduct.peso}kg`,
+      marca: selectedBrand,
+      peso: selectedProduct.peso,
+      cantidad: quantity,
+      precioUnitario: selectedProduct.precio || 0,
+      total: (selectedProduct.precio || 0) * quantity,
+      fecha: serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      status: 'pendent'
     }
+
+    // Mutación no bloqueante según guías
+    addDoc(collection(firestore, 'pedidos_socios'), orderData)
+      .then(() => {
+        setStep('success')
+        setIsSubmitting(false)
+        toast({ title: "Pedido Registrado", description: "Su solicitud de vales ha sido enviada exitosamente." })
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'pedidos_socios',
+          operation: 'create',
+          requestResourceData: orderData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+        setIsSubmitting(false)
+      })
   }
 
   const resetDialog = () => {
     setStep('brand')
     setSelectedBrand('')
-    setSelectedWeight('')
+    setSelectedProduct(null)
     setQuantity(1)
     setSocioName('')
     onClose()
@@ -100,6 +112,10 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       <circle cx="12" cy="16" r="2" />
     </svg>
   )
+
+  const formatCLP = (value: number) => {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value)
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={resetDialog}>
@@ -118,7 +134,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   Vales de Gas
                 </DialogTitle>
                 <DialogDescription className="text-primary-foreground/60 font-medium">
-                  Selección y reserva de productos con descuento
+                  Catálogo institucional actualizado
                 </DialogDescription>
               </div>
             </div>
@@ -129,7 +145,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
           {loadingProducts && step !== 'success' ? (
             <div className="flex flex-col items-center justify-center py-12 gap-4">
               <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
-              <p className="text-sm font-bold text-muted-foreground animate-pulse">Cargando catálogo institucional...</p>
+              <p className="text-sm font-bold text-muted-foreground animate-pulse">Consultando precios vigentes...</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -137,7 +153,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-4">
                     <ShoppingBag className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Paso 1: Seleccione Marca</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Seleccione Marca</span>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {brands.length > 0 ? brands.map((brand) => (
@@ -148,7 +164,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         onClick={() => handleBrandSelect(brand)}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-primary/10">
+                          <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-primary/10 text-primary">
                             <GasIcon />
                           </div>
                           <span className="text-xl font-black text-primary tracking-tight">{brand}</span>
@@ -156,7 +172,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         <ArrowLeft className="w-5 h-5 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Button>
                     )) : (
-                      <p className="text-center py-8 text-muted-foreground font-medium italic">No hay marcas disponibles en este momento.</p>
+                      <p className="text-center py-8 text-muted-foreground font-medium italic">No hay marcas disponibles en el catálogo.</p>
                     )}
                   </div>
                 </div>
@@ -169,19 +185,23 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   </Button>
                   <div className="flex items-center gap-2">
                     <Weight className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Paso 2: Peso ({selectedBrand})</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Formatos Disponibles ({selectedBrand})</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {filteredWeights.map((weight) => (
-                      <Button 
-                        key={weight}
-                        variant="outline"
-                        className="h-16 rounded-xl border-2 font-bold text-lg"
-                        onClick={() => handleWeightSelect(weight)}
-                      >
-                        {weight} Kg
-                      </Button>
-                    ))}
+                    {availableWeights.map((weight) => {
+                      const prod = filteredProductsByBrand.find(p => p.peso === weight);
+                      return (
+                        <Button 
+                          key={weight}
+                          variant="outline"
+                          className="h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 group"
+                          onClick={() => handleWeightSelect(weight)}
+                        >
+                          <span className="font-black text-lg">{weight} Kg</span>
+                          {prod?.precio && <span className="text-[10px] font-bold text-emerald-600">{formatCLP(prod.precio)}</span>}
+                        </Button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -193,21 +213,28 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   </Button>
                   <div className="flex items-center gap-2">
                     <Hash className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Paso 3: Cantidad</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Cantidad de Vales</span>
                   </div>
                   <div className="flex flex-col items-center gap-6 py-4">
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-muted-foreground uppercase mb-2">Producto Seleccionado</p>
-                      <p className="text-2xl font-black text-primary">{selectedBrand} — {selectedWeight}Kg</p>
+                    <div className="text-center space-y-1">
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Seleccionado</p>
+                      <p className="text-2xl font-black text-primary">{selectedBrand} — {selectedProduct?.peso}Kg</p>
+                      <p className="text-sm font-bold text-emerald-600">Precio unitario: {formatCLP(selectedProduct?.precio || 0)}</p>
                     </div>
                     <div className="flex items-center gap-6">
                       <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
                       <span className="text-4xl font-black w-12 text-center">{quantity}</span>
                       <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => setQuantity(quantity + 1)}>+</Button>
                     </div>
-                    <Button className="w-full h-14 rounded-2xl font-bold text-base shadow-xl mt-4" onClick={handleQuantityConfirm}>
-                      Confirmar Cantidad
-                    </Button>
+                    <div className="w-full pt-4 border-t border-dashed">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs font-black uppercase text-muted-foreground">Total Estimado</span>
+                        <span className="text-xl font-black text-primary">{formatCLP((selectedProduct?.precio || 0) * quantity)}</span>
+                      </div>
+                      <Button className="w-full h-14 rounded-2xl font-bold text-base shadow-xl" onClick={handleQuantityConfirm}>
+                        Confirmar Selección
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -220,16 +247,16 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   <div className="space-y-4">
                     <div className="p-6 bg-slate-50 rounded-[1.5rem] border-2 border-dashed space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-muted-foreground uppercase">Marca:</span>
-                        <span className="font-black text-primary">{selectedBrand}</span>
+                        <span className="text-[10px] font-black text-muted-foreground uppercase">Producto:</span>
+                        <span className="font-black text-primary">{selectedBrand} {selectedProduct?.peso}Kg</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-muted-foreground uppercase">Peso:</span>
-                        <span className="font-black text-primary">{selectedWeight} Kg</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-muted-foreground uppercase">Unidades:</span>
+                        <span className="text-[10px] font-black text-muted-foreground uppercase">Cantidad:</span>
                         <span className="font-black text-primary">x {quantity}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-[10px] font-black text-muted-foreground uppercase">Total Pedido:</span>
+                        <span className="font-black text-emerald-600 text-lg">{formatCLP((selectedProduct?.precio || 0) * quantity)}</span>
                       </div>
                     </div>
 
@@ -250,8 +277,8 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     disabled={isSubmitting || !socioName}
                     onClick={handleSubmitOrder}
                   >
-                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
-                    Confirmar Selección
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : null}
+                    Confirmar Pedido Institucional
                   </Button>
                 </div>
               )}
@@ -265,11 +292,12 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     <h3 className="text-2xl font-black text-primary uppercase">¡Pedido Recibido!</h3>
                     <p className="text-muted-foreground font-medium">Hemos registrado su solicitud de vales de gas exitosamente.</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border italic text-xs font-bold text-slate-500">
-                    La directiva procesará su pedido y se contactará con usted.
+                  <div className="bg-slate-50 p-6 rounded-xl border italic text-xs font-bold text-slate-500 space-y-2">
+                    <p>La directiva procesará su pedido y se contactará con usted.</p>
+                    <p className="text-primary">Total: {formatCLP((selectedProduct?.precio || 0) * quantity)}</p>
                   </div>
                   <Button className="w-full h-14 rounded-xl font-bold" variant="outline" onClick={resetDialog}>
-                    Cerrar
+                    Cerrar y Volver al Inicio
                   </Button>
                 </div>
               )}
