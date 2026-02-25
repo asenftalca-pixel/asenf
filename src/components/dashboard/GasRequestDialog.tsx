@@ -35,6 +35,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const [comprobante, setComprobante] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [finalTotal, setFinalTotal] = useState<number>(0)
 
   const { firestore } = useFirebase()
   
@@ -46,7 +47,6 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const { data: dataRaw, isLoading: loadingProducts } = useCollection(productosQuery)
   const productos = dataRaw || []
 
-  // Diagnóstico de datos en consola con mayúsculas iniciales
   useEffect(() => {
     if (isOpen && productos.length > 0) {
       console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en 'productos'`)
@@ -148,6 +148,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setIsSubmitting(true)
 
     const totalGeneral = cart.reduce((sum, item) => sum + item.total, 0)
+    setFinalTotal(totalGeneral)
     
     const orderData = {
       socioNombre: socioName,
@@ -186,6 +187,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setSocioName('')
     setComprobante(null)
     setCart([])
+    setFinalTotal(0)
     onClose()
   }
 
@@ -428,7 +430,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   <div className="bg-slate-50 p-6 rounded-xl border space-y-3">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resumen Final</p>
                     <div className="text-sm font-black text-primary">
-                      {formatCLP(totalCart)}
+                      {formatCLP(finalTotal)}
                     </div>
                     <p className="text-[10px] italic text-slate-400">La directiva validará su pago y procesará los vales.</p>
                   </div>
