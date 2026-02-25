@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,19 +27,43 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
   const { firestore } = useFirebase()
   
+  // Consulta a la colección 'productos'
   const productosQuery = useMemoFirebase(() => {
     return collection(firestore, 'productos')
   }, [firestore])
 
-  const { data: productos = [], isLoading: loadingProducts } = useCollection(productosQuery)
+  // Suscripción en tiempo real (usa onSnapshot internamente a través de useCollection)
+  const { data: productos = [], isLoading: loadingProducts, error } = useCollection(productosQuery)
+
+  // Efecto de depuración para verificar la carga de datos
+  useEffect(() => {
+    if (isOpen) {
+      if (loadingProducts) {
+        console.log("GAS_DEBUG: Cargando productos desde Firestore...");
+      } else if (error) {
+        console.error("GAS_DEBUG: Error al cargar productos:", error);
+      } else if (productos) {
+        console.log(`GAS_DEBUG: Se encontraron ${productos.length} documentos en la colección 'productos'.`);
+        if (productos.length > 0) {
+          console.table(productos.map(p => ({ marca: p.marca, peso: p.peso, precio: p.precio })));
+        } else {
+          console.warn("GAS_DEBUG: La colección 'productos' está vacía. Asegúrese de tener documentos creados.");
+        }
+      }
+    }
+  }, [isOpen, productos, loadingProducts, error])
 
   // Extraer marcas únicas
-  const brands = Array.from(new Set(productos?.map(p => p.marca) || []))
+  const brands = Array.from(new Set(productos?.map(p => p.marca).filter(Boolean) || []))
   
-  // Extraer pesos únicos para la marca seleccionada
+  // Extraer productos y pesos únicos para la marca seleccionada
   const filteredProductsByBrand = productos?.filter(p => p.marca === selectedBrand) || []
-  const availableWeights = Array.from(new Set(filteredProductsByBrand.map(p => p.peso)))
-    .sort((a, b) => parseInt(a) - parseInt(b))
+  const availableWeights = Array.from(new Set(filteredProductsByBrand.map(p => p.peso).filter(Boolean)))
+    .sort((a, b) => {
+      const numA = parseInt(String(a)) || 0;
+      const numB = parseInt(String(b)) || 0;
+      return numA - numB;
+    })
 
   const handleBrandSelect = (brand: string) => {
     setSelectedBrand(brand)
@@ -78,7 +103,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       status: 'pendent'
     }
 
-    // Mutación no bloqueante según guías
+    // Registro del pedido en 'pedidos_socios'
     addDoc(collection(firestore, 'pedidos_socios'), orderData)
       .then(() => {
         setStep('success')
@@ -172,7 +197,10 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         <ArrowLeft className="w-5 h-5 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Button>
                     )) : (
-                      <p className="text-center py-8 text-muted-foreground font-medium italic">No hay marcas disponibles en el catálogo.</p>
+                      <div className="text-center py-12 space-y-4">
+                        <p className="text-muted-foreground font-medium italic">No hay marcas disponibles en el catálogo.</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Verifique que la colección 'productos' tenga datos.</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -192,10 +220,10 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                       const prod = filteredProductsByBrand.find(p => p.peso === weight);
                       return (
                         <Button 
-                          key={weight}
+                          key={String(weight)}
                           variant="outline"
                           className="h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 group"
-                          onClick={() => handleWeightSelect(weight)}
+                          onClick={() => handleWeightSelect(String(weight))}
                         >
                           <span className="font-black text-lg">{weight} Kg</span>
                           {prod?.precio && <span className="text-[10px] font-bold text-emerald-600">{formatCLP(prod.precio)}</span>}
