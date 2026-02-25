@@ -39,7 +39,7 @@ export function AssemblyAnnouncementDialog({ isOpen, onClose }: AssemblyAnnounce
           </div>
 
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 font-black text-[10px] uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest">
               <Flag className="w-3 h-3" /> Convocatoria Oficial
             </div>
             <h2 className="text-3xl font-black text-primary leading-tight tracking-tight uppercase">
@@ -50,7 +50,7 @@ export function AssemblyAnnouncementDialog({ isOpen, onClose }: AssemblyAnnounce
                 "¡Vistamos las calles de azul! Por nuestra profesión, por nuestros pacientes y por nuestro futuro."
               </p>
               <p className="text-base font-medium text-slate-600 leading-relaxed">
-                Te invitamos este <span className="text-blue-600 font-black">3 de marzo</span> a participar de una gran marcha azul a las <span className="text-blue-600 font-black">6 am en el frontis del HRT</span>, donde un bus saldrá rumbo a La Moneda.
+                Te invitamos este <span className="text-primary font-black">3 de marzo</span> a participar de una gran marcha azul a las <span className="text-primary font-black">6 am en el frontis del HRT</span>, donde un bus saldrá rumbo a La Moneda.
               </p>
               <p className="text-sm font-black text-primary uppercase tracking-tight pt-2">
                 Más detalles con la directiva.
@@ -61,7 +61,7 @@ export function AssemblyAnnouncementDialog({ isOpen, onClose }: AssemblyAnnounce
           <div className="w-full pt-4">
             <Button 
               onClick={onClose}
-              className="w-full h-14 rounded-2xl font-bold text-base shadow-xl bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] transition-all text-white"
+              className="w-full h-14 rounded-2xl font-bold text-base shadow-xl bg-primary hover:bg-primary/90 hover:scale-[1.02] transition-all text-white"
             >
               Cerrar y Continuar
             </Button>
