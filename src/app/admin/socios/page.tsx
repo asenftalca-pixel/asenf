@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, FileText, Search, FileDown, FileSpreadsheet, Loader2, Lock, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
@@ -35,6 +34,8 @@ export default function AdminSociosPage() {
   }, [firestore, isAuthenticated])
 
   const { data: members = [], isLoading } = useCollection(associatesQuery)
+
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,21 +83,21 @@ export default function AdminSociosPage() {
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new (window.Image)();
-      img.crossOrigin = 'anonymous'; // Crucial para CORS
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          reject(new Error('No se pudo obtener el contexto del canvas'));
+          reject(new Error('Canvas context error'));
           return;
         }
         ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
-      img.onerror = () => reject(new Error('No se pudo cargar la imagen: ' + url));
+      img.onerror = () => reject(new Error('Error loading image: ' + url));
       img.src = url;
     });
   };
@@ -113,17 +114,15 @@ export default function AdminSociosPage() {
       });
 
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 25; // Margen de 25mm
+      const margin = 25; 
       const contentWidth = pageWidth - (margin * 2);
       let y = 20;
 
-      const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf";
       try {
         const logoBase64 = await imageUrlToBase64(logoUrl);
         doc.addImage(logoBase64, 'JPEG', (pageWidth - 35) / 2, y, 35, 35);
         y += 40;
       } catch (err) {
-        console.error("Error cargando logo:", err);
         y += 10;
       }
 
@@ -149,12 +148,10 @@ export default function AdminSociosPage() {
       
       const mainText = `Yo, ${selectedMember.nombre}, Rut: ${selectedMember.rut}, Sexo: ${selectedMember.sexo}, desempeñándome como profesional de enfermería en el servicio de ${selectedMember.servicio} de ${selectedMember.establecimiento}, solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.`;
       
-      // Ajuste automático del texto a los bordes
       const splitText = doc.splitTextToSize(mainText, contentWidth);
       doc.text(splitText, margin, y, { align: 'justify' });
       y += (splitText.length * 7) + 15;
 
-      // Cuadro de compromiso de cuota
       doc.setDrawColor(212, 175, 55);
       doc.setFillColor(252, 250, 240);
       doc.rect(margin, y, contentWidth, 20, 'FD');
@@ -174,9 +171,7 @@ export default function AdminSociosPage() {
         try {
           const firmaBase64 = await imageUrlToBase64(selectedMember.firmaUrl);
           doc.addImage(firmaBase64, 'PNG', (pageWidth - 60) / 2, y - 30, 60, 30);
-        } catch (err) {
-          console.error("Error cargando firma:", err);
-        }
+        } catch (err) {}
       }
       
       doc.setDrawColor(200, 200, 200);
@@ -216,7 +211,7 @@ export default function AdminSociosPage() {
     if (!members || members.length === 0) return
 
     const headers = ["Nombre", "RUT", "Estado", "Sexo", "Servicio", "Establecimiento", "Fecha Solicitud"]
-    const rows = (members || []).map(m => [
+    const rows = members.map(m => [
       m.nombre,
       m.rut,
       m.processed ? "Tramitado" : "Pendiente",
@@ -242,7 +237,7 @@ export default function AdminSociosPage() {
     document.body.removeChild(link)
   }
 
-  const filteredAndSortedMembers = (members || [])
+  const filteredAndSortedMembers = members
     .filter(m => 
       m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
       m.rut?.includes(searchTerm)
@@ -251,8 +246,6 @@ export default function AdminSociosPage() {
       if (a.processed === b.processed) return 0
       return a.processed ? 1 : -1
     })
-
-  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
   if (!isAuthenticated) {
     return (
@@ -437,7 +430,6 @@ export default function AdminSociosPage() {
                     width={128} 
                     height={128}
                     className="object-cover"
-                    data-ai-hint="logo institucional"
                   />
                 </div>
               </div>
