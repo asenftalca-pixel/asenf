@@ -33,7 +33,8 @@ export default function AdminSociosPage() {
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
   }, [firestore, isAuthenticated])
 
-  const { data: members = [], isLoading } = useCollection(associatesQuery)
+  const { data: dataRaw, isLoading } = useCollection(associatesQuery)
+  const members = dataRaw || []
 
   const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
 
