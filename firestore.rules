@@ -18,23 +18,36 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for the Partner entity.
+     * @description Rules for the Partner entity and nested associates.
      */
     match /partners/{partnerId} {
-      // Allow public read of partner profiles
       allow get, list: if true;
-      // Allow write operations if signed in
       allow create, update, delete: if isSignedIn();
 
-      /**
-       * @description Rules for Associates nested under a Partner.
-       */
       match /associates/{associateId} {
-        // Allow anyone to submit a join request and see the list of associates
         allow create, list, get: if true;
-        // Allow update and delete only for authenticated admins (or everyone for prototype if desired)
         allow update, delete: if true;
       }
+    }
+
+    /**
+     * @description Rules for the Products (Gas Vouchers) catalog.
+     */
+    match /productos/{productId} {
+      // Catalog is publicly readable
+      allow get, list: if true;
+      // Writing to catalog requires authentication (admin)
+      allow write: if isSignedIn();
+    }
+
+    /**
+     * @description Rules for Gas Orders submitted by socios.
+     */
+    match /pedidos_socios/{orderId} {
+      // Any user (even anonymous) can submit an order request
+      allow create: if true;
+      // Reading orders is allowed for management (authenticated)
+      allow get, list, update, delete: if true;
     }
   }
 }
