@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { X, Flag } from "lucide-react"
 import Image from "next/image"
@@ -17,7 +17,6 @@ export function AssemblyAnnouncementDialog({ isOpen, onClose }: AssemblyAnnounce
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
         <div className="relative p-10 flex flex-col items-center text-center space-y-8">
-          {/* Botón de cierre en la esquina superior izquierda */}
           <button 
             onClick={onClose}
             className="absolute top-6 left-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors z-30"
@@ -42,13 +41,15 @@ export function AssemblyAnnouncementDialog({ isOpen, onClose }: AssemblyAnnounce
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest">
               <Flag className="w-3 h-3" /> Convocatoria Oficial
             </div>
-            <h2 className="text-3xl font-black text-primary leading-tight tracking-tight uppercase">
+            
+            <DialogTitle className="text-3xl font-black text-primary leading-tight tracking-tight uppercase">
               ¡El momento es ahora!
-            </h2>
+            </DialogTitle>
+
             <div className="space-y-4">
-              <p className="text-lg font-bold text-slate-700 leading-relaxed italic">
+              <DialogDescription className="text-lg font-bold text-slate-700 leading-relaxed italic">
                 "¡Vistamos las calles de azul! Por nuestra profesión, por nuestros pacientes y por nuestro futuro."
-              </p>
+              </DialogDescription>
               <p className="text-base font-medium text-slate-600 leading-relaxed">
                 Te invitamos este <span className="text-primary font-black">3 de marzo</span> a participar de una gran marcha azul a las <span className="text-primary font-black">6 am en el frontis del HRT</span>, donde un bus saldrá rumbo a La Moneda.
               </p>
