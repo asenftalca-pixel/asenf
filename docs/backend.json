@@ -97,6 +97,7 @@
         "marca": { "type": "string" },
         "peso": { "type": "string" },
         "cantidad": { "type": "number" },
+        "comprobanteUrl": { "type": "string" },
         "fecha": { "type": "string", "format": "date-time" }
       }
     }

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -5,9 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send } from "lucide-react"
+import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera, FileImage } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
+import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
@@ -31,6 +32,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null)
   const [quantity, setQuantity] = useState<number>(1)
   const [socioName, setSocioName] = useState<string>('')
+  const [comprobante, setComprobante] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -44,20 +46,33 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const { data: dataRaw, isLoading: loadingProducts } = useCollection(productosQuery)
   const productos = dataRaw || []
 
-  // Extraer marcas únicas usando campos capitalizados
+  // Diagnóstico de datos en consola
+  useEffect(() => {
+    if (isOpen && productos.length > 0) {
+      console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en colección 'productos'`)
+      productos.forEach(doc => {
+        console.log('GAS_DEBUG Item:', {
+          id: doc.id,
+          Nombre: doc.Nombre,
+          Marca: doc.Marca,
+          Kilos: doc.Kilos,
+          Precio: doc.Precio
+        })
+      })
+    }
+  }, [isOpen, productos])
+
   const brands = Array.from(new Set(
     productos.map(p => p.Marca || p.Nombre).filter(Boolean)
   ))
   
-  // Filtrar productos por la marca seleccionada
   const filteredProductsByBrand = productos.filter(p => (p.Marca || p.Nombre) === selectedBrand)
   
-  // Extraer pesos únicos usando el campo 'Kilos'
   const availableWeights = Array.from(new Set(
-    filteredProductsByBrand.map(p => p.Kilos).filter(Boolean)
+    filteredProductsByBrand.map(p => String(p.Kilos)).filter(Boolean)
   )).sort((a, b) => {
-    const numA = parseInt(String(a)) || 0;
-    const numB = parseInt(String(b)) || 0;
+    const numA = parseInt(a) || 0;
+    const numB = parseInt(b) || 0;
     return numA - numB;
   })
 
@@ -71,6 +86,17 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     if (product) {
       setSelectedProduct(product)
       setStep('quantity')
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setComprobante(reader.result as string)
+      }
+      reader.readAsDataURL(file)
     }
   }
 
@@ -89,7 +115,6 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setCart(prev => [...prev, newItem])
     setStep('cart')
     
-    // Resetear selección para el próximo item si desea añadir más
     setSelectedBrand('')
     setSelectedProduct(null)
     setQuantity(1)
@@ -106,12 +131,17 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
   const handleSubmitOrder = () => {
     if (!socioName) {
-      toast({ variant: "destructive", title: "Nombre requerido", description: "Por favor, ingrese su nombre para registrar el pedido." })
+      toast({ variant: "destructive", title: "Nombre requerido", description: "Por favor, ingrese su nombre." })
       return
     }
 
     if (cart.length === 0) {
-      toast({ variant: "destructive", title: "Pedido vacío", description: "Debe añadir al menos un producto al pedido." })
+      toast({ variant: "destructive", title: "Pedido vacío", description: "Debe añadir al menos un producto." })
+      return
+    }
+
+    if (!comprobante) {
+      toast({ variant: "destructive", title: "Comprobante requerido", description: "Debe adjuntar el comprobante de pago para confirmar." })
       return
     }
 
@@ -126,6 +156,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       fecha: serverTimestamp(),
       createdAt: new Date().toISOString(),
       status: 'pendent',
+      comprobanteUrl: comprobante,
       detalleResumen: cart.map(item => `${item.cantidad}x ${item.marca} ${item.peso}Kg`).join(", ")
     }
 
@@ -134,10 +165,15 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
         setStep('success')
         setIsSubmitting(false)
         setCart([])
+        setComprobante(null)
       })
       .catch((error) => {
-        console.error("Error al guardar pedido:", error)
-        toast({ variant: "destructive", title: "Error", description: "No se pudo registrar el pedido institucional." })
+        const permissionError = new FirestorePermissionError({
+          path: 'pedidos_socios',
+          operation: 'create',
+          requestResourceData: orderData
+        })
+        errorEmitter.emit('permission-error', permissionError)
         setIsSubmitting(false)
       })
   }
@@ -148,6 +184,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setSelectedProduct(null)
     setQuantity(1)
     setSocioName('')
+    setComprobante(null)
     setCart([])
     onClose()
   }
@@ -204,7 +241,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     )}
                   </div>
                   <div className="grid grid-cols-1 gap-3">
-                    {brands.map((brand) => (
+                    {brands.length > 0 ? brands.map((brand) => (
                       <Button 
                         key={brand}
                         variant="outline"
@@ -214,7 +251,11 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         <span className="text-xl font-black text-primary tracking-tight">{brand}</span>
                         <ArrowLeft className="w-5 h-5 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Button>
-                    ))}
+                    )) : (
+                      <div className="text-center py-10 text-muted-foreground font-medium italic">
+                        No se encontraron marcas en el catálogo.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -230,14 +271,14 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {availableWeights.map((weight) => {
-                      const prod = filteredProductsByBrand.find(p => String(p.Kilos) === String(weight));
+                      const prod = filteredProductsByBrand.find(p => String(p.Kilos) === weight);
                       const price = prod?.Precio || 0;
                       return (
                         <Button 
-                          key={String(weight)}
+                          key={weight}
                           variant="outline"
                           className="h-24 rounded-xl border-2 flex flex-col items-center justify-center gap-1 group hover:border-primary transition-all"
-                          onClick={() => handleWeightSelect(String(weight))}
+                          onClick={() => handleWeightSelect(weight)}
                         >
                           <span className="font-black text-lg">{weight} Kg</span>
                           {price > 0 && <span className="text-[10px] font-bold text-emerald-600">{formatCLP(price)}</span>}
@@ -286,7 +327,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     </Button>
                   </div>
 
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
                     {cart.map((item) => (
                       <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2 border-dashed group transition-colors hover:bg-slate-100">
                         <div className="space-y-1">
@@ -317,20 +358,45 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         <span className="text-2xl font-black text-emerald-600">{formatCLP(totalCart)}</span>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="socioName" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre del Socio Solicitante</Label>
-                        <Input 
-                          id="socioName" 
-                          placeholder="Ingrese su nombre completo" 
-                          className="h-12 rounded-xl border-2"
-                          value={socioName}
-                          onChange={(e) => setSocioName(e.target.value)}
-                        />
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="socioName" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre del Socio Solicitante</Label>
+                          <Input 
+                            id="socioName" 
+                            placeholder="Ingrese su nombre completo" 
+                            className="h-12 rounded-xl border-2"
+                            value={socioName}
+                            onChange={(e) => setSocioName(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Comprobante de Pago (Foto/Archivo)</Label>
+                          <div className="relative h-28 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/30 group hover:bg-muted/50 transition-colors overflow-hidden">
+                            {comprobante ? (
+                              <div className="flex items-center gap-3 p-4 w-full">
+                                <div className="h-16 w-16 relative rounded-md overflow-hidden bg-white border">
+                                  <img src={comprobante} alt="Comprobante" className="object-cover h-full w-full" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-emerald-600">✓ Archivo cargado</p>
+                                  <p className="text-[10px] text-muted-foreground">Haga clic para cambiar</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Adjuntar Comprobante</span>
+                              </div>
+                            )}
+                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                          </div>
+                        </div>
                       </div>
 
                       <Button 
                         className="w-full h-14 rounded-2xl font-bold text-base shadow-xl bg-primary gap-3"
-                        disabled={isSubmitting || !socioName}
+                        disabled={isSubmitting || !socioName || !comprobante}
                         onClick={handleSubmitOrder}
                       >
                         {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className="w-5 h-5" />}
@@ -348,14 +414,14 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-2xl font-black text-primary uppercase">¡Pedido Recibido!</h3>
-                    <p className="text-muted-foreground font-medium">Hemos registrado su solicitud múltiple exitosamente.</p>
+                    <p className="text-muted-foreground font-medium">Hemos registrado su solicitud y comprobante exitosamente.</p>
                   </div>
                   <div className="bg-slate-50 p-6 rounded-xl border space-y-3">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resumen Final</p>
                     <div className="text-sm font-black text-primary">
                       {formatCLP(totalCart)}
                     </div>
-                    <p className="text-[10px] italic text-slate-400">La directiva procesará su pedido y se contactará con usted.</p>
+                    <p className="text-[10px] italic text-slate-400">La directiva validará su pago y procesará los vales.</p>
                   </div>
                   <Button className="w-full h-14 rounded-xl font-bold" variant="outline" onClick={resetDialog}>
                     Cerrar y Volver al Inicio
