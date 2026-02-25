@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -29,26 +28,30 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   
   // Consulta a la colección 'productos'
   const productosQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    console.log('Conexión establecida, buscando documentos...');
     return collection(firestore, 'productos')
   }, [firestore])
 
-  // Suscripción en tiempo real (usa onSnapshot internamente a través de useCollection)
+  // Suscripción en tiempo real
   const { data: productos = [], isLoading: loadingProducts, error } = useCollection(productosQuery)
 
-  // Efecto de depuración para verificar la carga de datos
+  // Efecto de depuración y alertas
   useEffect(() => {
     if (isOpen) {
       if (loadingProducts) {
         console.log("GAS_DEBUG: Cargando productos desde Firestore...");
-      } else if (error) {
+      } 
+      
+      if (error) {
         console.error("GAS_DEBUG: Error al cargar productos:", error);
-      } else if (productos) {
+        alert("Error de Firestore: " + (error.message || "Fallo al leer la colección 'productos'. Verifique reglas de seguridad y CSP."));
+      } 
+      
+      if (productos && productos.length > 0) {
         console.log(`GAS_DEBUG: Se encontraron ${productos.length} documentos en la colección 'productos'.`);
-        if (productos.length > 0) {
-          console.table(productos.map(p => ({ marca: p.marca, peso: p.peso, precio: p.precio })));
-        } else {
-          console.warn("GAS_DEBUG: La colección 'productos' está vacía. Asegúrese de tener documentos creados.");
-        }
+      } else if (!loadingProducts && productos && productos.length === 0) {
+        console.warn("GAS_DEBUG: La colección 'productos' parece estar vacía.");
       }
     }
   }, [isOpen, productos, loadingProducts, error])
@@ -111,12 +114,8 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
         toast({ title: "Pedido Registrado", description: "Su solicitud de vales ha sido enviada exitosamente." })
       })
       .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'pedidos_socios',
-          operation: 'create',
-          requestResourceData: orderData
-        })
-        errorEmitter.emit('permission-error', permissionError)
+        console.error("Error al guardar pedido:", error);
+        alert("No se pudo guardar el pedido: " + error.message);
         setIsSubmitting(false)
       })
   }
@@ -199,7 +198,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     )) : (
                       <div className="text-center py-12 space-y-4">
                         <p className="text-muted-foreground font-medium italic">No hay marcas disponibles en el catálogo.</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Verifique que la colección 'productos' tenga datos.</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Verifique que la colección 'productos' tenga datos y que las reglas de Firestore permitan el acceso.</p>
                       </div>
                     )}
                   </div>

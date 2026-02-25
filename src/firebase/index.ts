@@ -36,6 +36,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   let firestore;
   try {
     // Inicializar Firestore forzando Long Polling para evitar errores de CSP (worker-src 'self')
+    // Esto desactiva el uso de WebWorkers y WebSockets que suelen causar bloqueos en entornos con CSP estricto.
     firestore = initializeFirestore(firebaseApp, {
       experimentalForceLongPolling: true,
     });
