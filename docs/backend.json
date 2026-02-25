@@ -50,56 +50,88 @@
           "type": "string",
           "description": "Reference to Partner."
         },
-        "name": {
+        "nombre": {
           "type": "string",
-          "description": "Name of the associate."
+          "description": "Nombre completo del socio."
         },
-        "email": {
+        "rut": {
           "type": "string",
-          "description": "Email address of the associate.",
-          "format": "email"
+          "description": "RUT del socio."
         },
-        "phoneNumber": {
+        "sexo": {
           "type": "string",
-          "description": "Phone number of the associate."
+          "description": "Sexo del socio."
         },
-        "role": {
+        "servicio": {
           "type": "string",
-          "description": "Role of the associate within the partner application."
+          "description": "Servicio o unidad donde se desempeña."
+        },
+        "establecimiento": {
+          "type": "string",
+          "description": "Establecimiento de salud."
+        },
+        "firmaUrl": {
+          "type": "string",
+          "description": "URL o base64 de la firma del socio."
+        },
+        "fecha": {
+          "type": "string",
+          "description": "Fecha de registro."
+        },
+        "processed": {
+          "type": "boolean",
+          "description": "Indica si la solicitud fue tramitada por la directiva."
         }
       },
       "required": [
         "id",
         "partnerId",
-        "name",
-        "email",
-        "phoneNumber",
-        "role"
+        "nombre",
+        "rut",
+        "firmaUrl"
       ]
     },
     "Product": {
       "title": "Product",
       "type": "object",
+      "description": "Elemento del catálogo de vales de gas.",
       "properties": {
         "id": { "type": "string" },
-        "marca": { "type": "string" },
-        "peso": { "type": "string" },
-        "precio": { "type": "number" }
-      }
+        "Nombre": { "type": "string" },
+        "Marca": { "type": "string" },
+        "Kilos": { "type": "string" },
+        "Precio": { "type": "number" }
+      },
+      "required": ["Nombre", "Marca", "Kilos", "Precio"]
     },
     "GasOrder": {
       "title": "GasOrder",
       "type": "object",
+      "description": "Registro de pedidos de vales de gas realizados por los socios.",
       "properties": {
         "id": { "type": "string" },
         "socioNombre": { "type": "string" },
-        "productoNombre": { "type": "string" },
-        "marca": { "type": "string" },
-        "peso": { "type": "string" },
-        "cantidad": { "type": "number" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "marca": { "type": "string" },
+              "peso": { "type": "string" },
+              "cantidad": { "type": "number" },
+              "precioUnitario": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          }
+        },
+        "totalGeneral": { "type": "number" },
         "comprobanteUrl": { "type": "string" },
-        "fecha": { "type": "string", "format": "date-time" }
-      }
+        "fecha": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pendent", "processed"] },
+        "detalleResumen": { "type": "string" }
+      },
+      "required": ["socioNombre", "items", "totalGeneral", "comprobanteUrl", "fecha"]
     }
   },
   "auth": {

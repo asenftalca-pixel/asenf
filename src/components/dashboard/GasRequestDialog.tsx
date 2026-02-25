@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera, FileImage } from "lucide-react"
+import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
@@ -46,10 +46,10 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   const { data: dataRaw, isLoading: loadingProducts } = useCollection(productosQuery)
   const productos = dataRaw || []
 
-  // Diagnóstico de datos en consola
+  // Diagnóstico de datos en consola con mayúsculas iniciales
   useEffect(() => {
     if (isOpen && productos.length > 0) {
-      console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en colección 'productos'`)
+      console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en 'productos'`)
       productos.forEach(doc => {
         console.log('GAS_DEBUG Item:', {
           id: doc.id,
@@ -58,7 +58,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
           Kilos: doc.Kilos,
           Precio: doc.Precio
         })
-      })
+      });
     }
   }, [isOpen, productos])
 
@@ -141,7 +141,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     }
 
     if (!comprobante) {
-      toast({ variant: "destructive", title: "Comprobante requerido", description: "Debe adjuntar el comprobante de pago para confirmar." })
+      toast({ variant: "destructive", title: "Comprobante requerido", description: "Debe adjuntar el comprobante de pago (obligatorio)." })
       return
     }
 
@@ -253,7 +253,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                       </Button>
                     )) : (
                       <div className="text-center py-10 text-muted-foreground font-medium italic">
-                        No se encontraron marcas en el catálogo.
+                        No se encontraron productos disponibles en el catálogo.
                       </div>
                     )}
                   </div>
@@ -360,7 +360,9 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="socioName" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre del Socio Solicitante</Label>
+                          <Label htmlFor="socioName" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                            Nombre del Socio Solicitante
+                          </Label>
                           <Input 
                             id="socioName" 
                             placeholder="Ingrese su nombre completo" 
@@ -371,7 +373,9 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Comprobante de Pago (Foto/Archivo)</Label>
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                            Comprobante de Pago (Foto/Archivo) <span className="text-rose-500">*</span>
+                          </Label>
                           <div className="relative h-28 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/30 group hover:bg-muted/50 transition-colors overflow-hidden">
                             {comprobante ? (
                               <div className="flex items-center gap-3 p-4 w-full">
@@ -379,18 +383,23 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                                   <img src={comprobante} alt="Comprobante" className="object-cover h-full w-full" />
                                 </div>
                                 <div className="flex-1">
-                                  <p className="text-xs font-bold text-emerald-600">✓ Archivo cargado</p>
-                                  <p className="text-[10px] text-muted-foreground">Haga clic para cambiar</p>
+                                  <p className="text-xs font-bold text-emerald-600">✓ Archivo cargado correctamente</p>
+                                  <p className="text-[10px] text-muted-foreground">Haga clic para cambiar el archivo</p>
                                 </div>
                               </div>
                             ) : (
                               <div className="text-center">
                                 <Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Adjuntar Comprobante</span>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Subir Comprobante (Obligatorio)</span>
                               </div>
                             )}
                             <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
                           </div>
+                          {!comprobante && (
+                            <p className="text-[10px] text-rose-500 font-bold px-1 animate-pulse">
+                              * Se requiere adjuntar el comprobante para habilitar la confirmación.
+                            </p>
+                          )}
                         </div>
                       </div>
 
