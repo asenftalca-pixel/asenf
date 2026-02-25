@@ -1,3 +1,4 @@
+
 import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame } from 'lucide-react'
 
 export interface Application {
@@ -22,10 +23,9 @@ export const APPS: Application[] = [
   { 
     id: 'app-gas', 
     name: 'Vales de Gas', 
-    description: 'Solicita tus vales de gas con descuento a través del formulario oficial.', 
+    description: 'Solicita tus vales de gas Lipigas, Abastible y Gas del Sur con descuento.', 
     icon: 'Flame', 
-    category: 'Beneficios',
-    url: 'https://forms.gle/ifwkMcVfmVxuHcG97'
+    category: 'Beneficios'
   },
   { 
     id: 'app-agreements', 

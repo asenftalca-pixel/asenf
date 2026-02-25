@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -7,6 +8,7 @@ import { CertificateRequestDialog } from '@/components/dashboard/CertificateRequ
 import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDialog'
 import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
 import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnouncementDialog'
+import { GasRequestDialog } from '@/components/dashboard/GasRequestDialog'
 import { AppWindow } from 'lucide-react'
 
 export default function Home() {
@@ -14,6 +16,7 @@ export default function Home() {
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
   const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
+  const [isGasOpen, setIsGasOpen] = useState(false)
 
   // Mostrar el anuncio de asamblea al abrir la app
   useEffect(() => {
@@ -30,6 +33,8 @@ export default function Home() {
       setIsJoinOpen(true)
     } else if (app.id === 'app-agreements') {
       setIsAgreementsOpen(true)
+    } else if (app.id === 'app-gas') {
+      setIsGasOpen(true)
     } else if (app.id === 'app-admin-list') {
       window.location.href = '/admin/socios'
     } else if (app.url) {
@@ -113,6 +118,11 @@ export default function Home() {
       <AgreementsDialog
         isOpen={isAgreementsOpen}
         onClose={() => setIsAgreementsOpen(false)}
+      />
+
+      <GasRequestDialog 
+        isOpen={isGasOpen}
+        onClose={() => setIsGasOpen(false)}
       />
     </div>
   )

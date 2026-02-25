@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Partner": {
@@ -47,7 +48,7 @@
         },
         "partnerId": {
           "type": "string",
-          "description": "Reference to Partner. (Relationship: Partner 1:N Associate)"
+          "description": "Reference to Partner."
         },
         "name": {
           "type": "string",
@@ -75,6 +76,29 @@
         "phoneNumber",
         "role"
       ]
+    },
+    "Product": {
+      "title": "Product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "marca": { "type": "string" },
+        "peso": { "type": "string" },
+        "precio": { "type": "number" }
+      }
+    },
+    "GasOrder": {
+      "title": "GasOrder",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "socioNombre": { "type": "string" },
+        "productoNombre": { "type": "string" },
+        "marca": { "type": "string" },
+        "peso": { "type": "string" },
+        "cantidad": { "type": "number" },
+        "fecha": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -92,13 +116,7 @@
           "schema": {
             "$ref": "#/backend/entities/Partner"
           },
-          "description": "Stores partner application data.",
-          "params": [
-            {
-              "name": "partnerId",
-              "description": "Unique identifier for the Partner entity."
-            }
-          ]
+          "description": "Stores partner application data."
         }
       },
       {
@@ -108,20 +126,25 @@
           "schema": {
             "$ref": "#/backend/entities/Associate"
           },
-          "description": "Stores associate data associated with a partner. Includes `partnerId` in the path for authorization independence.",
-          "params": [
-            {
-              "name": "partnerId",
-              "description": "Unique identifier for the Partner entity."
-            },
-            {
-              "name": "associateId",
-              "description": "Unique identifier for the Associate entity."
-            }
-          ]
+          "description": "Stores associate data."
+        }
+      },
+      {
+        "path": "/productos/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": { "$ref": "#/backend/entities/Product" },
+          "description": "Catálogo de vales de gas disponibles."
+        }
+      },
+      {
+        "path": "/pedidos_socios/{orderId}",
+        "definition": {
+          "entityName": "GasOrder",
+          "schema": { "$ref": "#/backend/entities/GasOrder" },
+          "description": "Registro de pedidos de vales de gas realizados por los socios."
         }
       }
-    ],
-    "reasoning": "The data structure is designed to store partner applications and their associated associates.  It leverages path-based ownership for associates, nesting them under the respective partner document to ensure clear ownership and simplifies security rules. This design promotes authorization independence by avoiding `get()` calls in security rules. Because associates are nested within the partner, the `partnerId` is already available from the document path, so the field in the associate data becomes informational only (still required by the schema).  This structure enables secure `list` operations (QAPs) by allowing listing associates only within a specific partner context. Partners are stored in the `/partners` collection, and associates are stored in `/partners/{partnerId}/associates` subcollection."
+    ]
   }
 }
