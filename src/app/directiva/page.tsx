@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
-import { Application } from '@/lib/app-data'
+import { APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { MemberManager } from '@/components/dashboard/MemberManager'
@@ -18,14 +18,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "@/hooks/use-toast"
 import Link from 'next/link'
 
-const DIRECTIVA_APPS: Application[] = [
-  { id: 'app-report', name: 'Presupuesto Institucional', description: 'Visualización de ingresos, gastos y balance neto mensual.', icon: 'BarChart3', category: 'Finanzas' },
-  { id: 'app3', name: 'Nómina Maestra', description: 'Gestión integral de socios activos y base de datos histórica.', icon: 'Users', category: 'Administración' },
-  { id: 'app-tasks', name: 'Tareas Directiva', description: 'Seguimiento de compromisos, reuniones y metas anuales.', icon: 'List', category: 'Gestión' },
-  { id: 'app-gas', name: 'Gestión de Gas', description: 'Validación de pagos y entrega de vales a los socios.', icon: 'Flame', category: 'Suministros' },
-  { id: 'app-fenasenf', name: 'Fenasenf Chile', description: 'Acceso a normativas y circulares nacionales de la federación.', icon: 'Shield', category: 'Federación' }
-]
-
+/**
+ * DashboardContent - Núcleo del Panel Estratégico.
+ * Sincroniza KPIs de Tareas, Nómina y Pedidos de Gas en tiempo real.
+ */
 function DashboardContent() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isMemberManagerOpen, setIsMemberManagerOpen] = useState(false)
@@ -36,27 +32,33 @@ function DashboardContent() {
 
   const db = useFirestore()
 
+  // KPI: Compromisos Pendientes
   const tasksQuery = useMemoFirebase(() => {
     if (!db) return null
     return query(collection(db, "tareas"), where("completada", "==", false))
   }, [db])
 
+  // KPI: Sindicados Activos
   const nominaActivaQuery = useMemoFirebase(() => {
     if (!db) return null
     return query(collection(db, "nomina_maestra"), where("status", "==", "activo"))
   }, [db])
 
+  // KPI: Pedidos de Gas Pendientes (status !== 'delivered')
   const gasQuery = useMemoFirebase(() => {
     if (!db) return null
-    return query(collection(db, "pedidos_socios"))
+    return collection(db, "pedidos_socios")
   }, [db])
 
-  const { data: activeTasks, isLoading: loadingTasks } = useCollection(tasksQuery)
-  const { data: activeNominas, isLoading: loadingNominas } = useCollection(nominaActivaQuery)
-  const { data: allGasOrders, isLoading: loadingGas } = useCollection(gasQuery)
+  const { data: activeTasksRaw, isLoading: loadingTasks } = useCollection(activeTasksQuery)
+  const { data: activeNominasRaw, isLoading: loadingNominas } = useCollection(nominaActivaQuery)
+  const { data: allGasOrdersRaw, isLoading: loadingGas } = useCollection(gasQuery)
+
+  const activeTasks = activeTasksRaw || []
+  const activeNominas = activeNominasRaw || []
+  const allGasOrders = allGasOrdersRaw || []
 
   const pendingGasCount = useMemo(() => {
-    if (!allGasOrders) return 0
     return allGasOrders.filter((p: any) => {
       const status = (p.status || "").toString().toLowerCase();
       return status !== 'delivered' && status !== 'entregado';
@@ -81,12 +83,13 @@ function DashboardContent() {
     else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
     else if (app.id === 'app-fenasenf') setIsFenasenfOpen(true)
     else if (app.id === 'app-gas') setIsGasManagerOpen(true)
+    else if (app.url) window.open(app.url, '_blank')
   }
 
   if (isInitialLoading) {
     return (
       <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4">
-        <div className="bg-white/10 p-8 rounded-[3rem] backdrop-blur-xl border border-white/10 flex flex-col items-center gap-6">
+        <div className="bg-white/10 p-8 rounded-[3rem] backdrop-blur-xl border border-white/10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
           <div className="bg-secondary p-5 rounded-3xl animate-bounce">
             <AppWindow className="w-12 h-12 text-primary" />
           </div>
@@ -131,11 +134,11 @@ function DashboardContent() {
           
           <div className="flex gap-4 flex-wrap">
             <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
-              <div className="text-4xl font-black text-primary">{activeTasks?.length || 0}</div>
+              <div className="text-4xl font-black text-primary">{activeTasks.length}</div>
               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-2">Compromisos</div>
             </div>
             <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
-              <div className="text-4xl font-black text-secondary-foreground">{activeNominas?.length || 0}</div>
+              <div className="text-4xl font-black text-secondary-foreground">{activeNominas.length}</div>
               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-2">Sindicados</div>
             </div>
             <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
@@ -146,7 +149,7 @@ function DashboardContent() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {DIRECTIVA_APPS.map((app) => (
+          {APPS.map((app) => (
             <AppCard key={app.id} app={app} onClick={() => handleAppClick(app)} />
           ))}
         </div>
@@ -190,7 +193,7 @@ export default function DirectivaPage() {
         <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
           <div className="bg-primary p-10 text-primary-foreground text-center space-y-4">
             <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/20">
-              <Lock className="w-8 h-8 text-secondary" />
+              <ShieldCheck className="w-8 h-8 text-secondary" />
             </div>
             <CardTitle className="text-2xl font-black uppercase tracking-tight">Acceso Estratégico</CardTitle>
             <CardDescription className="text-primary-foreground/60 font-medium">
