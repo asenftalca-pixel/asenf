@@ -1,5 +1,4 @@
-
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame } from 'lucide-react'
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -11,7 +10,10 @@ export interface Application {
   variant?: 'default' | 'gold' | 'admin'
 }
 
-export const APPS: Application[] = [
+/**
+ * Aplicaciones visibles para todos los socios en la raíz (/)
+ */
+export const PUBLIC_APPS: Application[] = [
   { 
     id: 'app-join', 
     name: 'Asóciate', 
@@ -40,17 +42,59 @@ export const APPS: Application[] = [
     description: 'Solicitud y generación automática de certificado de socio vigente.', 
     icon: 'FileCheck', 
     category: 'Administración'
-  },
-  { 
-    id: 'app-admin-list', 
-    name: 'Gestión de Inscripciones', 
-    description: 'Herramienta para la directiva ASENF', 
-    icon: 'List', 
-    category: 'Gestión',
-    variant: 'default'
   }
 ]
 
+/**
+ * Aplicaciones exclusivas para la directiva en /directiva
+ */
+export const ADMIN_APPS: Application[] = [
+  { 
+    id: 'app-tasks', 
+    name: 'Compromisos', 
+    description: 'Gestión de tareas y compromisos de la directiva.', 
+    icon: 'ListTodo', 
+    category: 'Gestión'
+  },
+  { 
+    id: 'app-gas', 
+    name: 'Pedidos de Gas', 
+    description: 'Validación de pagos y control de suministros.', 
+    icon: 'Flame', 
+    category: 'Gestión'
+  },
+  { 
+    id: 'app-report', 
+    name: 'Finanzas', 
+    description: 'Reportes estratégicos de ingresos y gastos.', 
+    icon: 'BarChart3', 
+    category: 'Finanzas'
+  },
+  { 
+    id: 'app3', 
+    name: 'Nómina', 
+    description: 'Base de datos maestra de socios activos.', 
+    icon: 'Users', 
+    category: 'Gestión'
+  },
+  { 
+    id: 'app-fenasenf', 
+    name: 'Fenasenf', 
+    description: 'Circulares e información de la federación nacional.', 
+    icon: 'Shield', 
+    category: 'Institucional'
+  },
+  { 
+    id: 'app-admin-list', 
+    name: 'Inscripciones', 
+    description: 'Listado de solicitudes de nuevos socios.', 
+    icon: 'List', 
+    category: 'Gestión'
+  }
+]
+
+export const APPS = PUBLIC_APPS
+
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo
 }

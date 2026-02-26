@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState, useEffect } from 'react'
-import { APPS, Application } from '@/lib/app-data'
+import { PUBLIC_APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { CertificateRequestDialog } from '@/components/dashboard/CertificateRequestDialog'
 import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDialog'
@@ -36,8 +35,6 @@ export default function Home() {
       setIsAgreementsOpen(true)
     } else if (app.id === 'app-gas') {
       setIsGasOpen(true)
-    } else if (app.id === 'app-admin-list') {
-      router.push('/directiva')
     } else if (app.url) {
       window.open(app.url, '_blank')
     }
@@ -70,14 +67,14 @@ export default function Home() {
           </div>
           <div className="flex gap-4">
             <div className="bg-white p-5 rounded-2xl border shadow-sm text-center min-w-[140px]">
-              <div className="text-3xl font-black text-primary">{APPS.length}</div>
+              <div className="text-3xl font-black text-primary">{PUBLIC_APPS.length}</div>
               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">Sistemas Activos</div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {APPS.map((app) => (
+          {PUBLIC_APPS.map((app) => (
             <AppCard 
               key={app.id} 
               app={app} 

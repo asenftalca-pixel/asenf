@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
-import { APPS, Application } from '@/lib/app-data'
+import { ADMIN_APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
 import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
 import { MemberManager } from '@/components/dashboard/MemberManager'
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 /**
  * DashboardContent - Núcleo del Panel Estratégico.
@@ -29,6 +29,7 @@ function DashboardContent() {
   const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
   const [isGasManagerOpen, setIsGasManagerOpen] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const router = useRouter()
 
   const db = useFirestore()
 
@@ -79,10 +80,11 @@ function DashboardContent() {
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-report') setIsReportOpen(true)
-    else if (app.id === 'app3') setIsMemberManagerOpen(true)
+    else if (app.id === 'app3' || app.id === 'app-members') setIsMemberManagerOpen(true)
     else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
     else if (app.id === 'app-fenasenf') setIsFenasenfOpen(true)
     else if (app.id === 'app-gas') setIsGasManagerOpen(true)
+    else if (app.id === 'app-admin-list') router.push('/admin/socios')
     else if (app.url) window.open(app.url, '_blank')
   }
 
@@ -149,7 +151,7 @@ function DashboardContent() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {APPS.map((app) => (
+          {ADMIN_APPS.map((app) => (
             <AppCard key={app.id} app={app} onClick={() => handleAppClick(app)} />
           ))}
         </div>
