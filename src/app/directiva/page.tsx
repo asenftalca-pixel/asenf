@@ -1,0 +1,255 @@
+
+"use client"
+
+import { useState, useEffect, useMemo } from 'react'
+import { Application } from '@/lib/app-data'
+import { AppCard } from '@/components/dashboard/AppCard'
+import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
+import { MemberManager } from '@/components/dashboard/MemberManager'
+import { TaskManager } from '@/components/dashboard/TaskManager'
+import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
+import { GasOrderManager } from '@/components/dashboard/GasOrderManager'
+import { AppWindow, Cloud, Loader2, Database, ShieldCheck, Lock, ArrowLeft, ArrowRight } from 'lucide-react'
+import { FirebaseClientProvider, useCollection, useFirestore, useMemoFirebase } from '@/firebase'
+import { collection, query, where } from 'firebase/firestore'
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { toast } from "@/hooks/use-toast"
+import Link from 'next/link'
+
+const DIRECTIVA_APPS: Application[] = [
+  { id: 'app-report', name: 'Presupuesto Institucional', description: 'Visualización de ingresos, gastos y balance neto mensual.', icon: 'BarChart3', category: 'Finanzas' },
+  { id: 'app3', name: 'Nómina Maestra', description: 'Gestión integral de socios activos y base de datos histórica.', icon: 'Users', category: 'Administración' },
+  { id: 'app-tasks', name: 'Tareas Directiva', description: 'Seguimiento de compromisos, reuniones y metas anuales.', icon: 'List', category: 'Gestión' },
+  { id: 'app-gas', name: 'Gestión de Gas', description: 'Validación de pagos y entrega de vales a los socios.', icon: 'Flame', category: 'Suministros' },
+  { id: 'app-fenasenf', name: 'Fenasenf Chile', description: 'Acceso a normativas y circulares nacionales de la federación.', icon: 'Shield', category: 'Federación' }
+]
+
+function DashboardContent() {
+  const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isMemberManagerOpen, setIsMemberManagerOpen] = useState(false)
+  const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false)
+  const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
+  const [isGasManagerOpen, setIsGasManagerOpen] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
+
+  const db = useFirestore()
+
+  const tasksQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "tareas"), where("completada", "==", false))
+  }, [db])
+
+  const nominaActivaQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "nomina_maestra"), where("status", "==", "activo"))
+  }, [db])
+
+  const gasQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "pedidos_socios"))
+  }, [db])
+
+  const { data: activeTasks, isLoading: loadingTasks } = useCollection(tasksQuery)
+  const { data: activeNominas, isLoading: loadingNominas } = useCollection(nominaActivaQuery)
+  const { data: allGasOrders, isLoading: loadingGas } = useCollection(gasQuery)
+
+  const pendingGasCount = useMemo(() => {
+    if (!allGasOrders) return 0
+    return allGasOrders.filter((p: any) => {
+      const status = (p.status || "").toString().toLowerCase();
+      return status !== 'delivered' && status !== 'entregado';
+    }).length
+  }, [allGasOrders])
+
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => setIsInitialLoading(false), 3000)
+    if (!loadingTasks && !loadingNominas && !loadingGas) {
+      const timer = setTimeout(() => setIsInitialLoading(false), 500)
+      return () => {
+        clearTimeout(timer)
+        clearTimeout(safetyTimer)
+      }
+    }
+    return () => clearTimeout(safetyTimer)
+  }, [loadingTasks, loadingNominas, loadingGas])
+
+  const handleAppClick = (app: Application) => {
+    if (app.id === 'app-report') setIsReportOpen(true)
+    else if (app.id === 'app3') setIsMemberManagerOpen(true)
+    else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
+    else if (app.id === 'app-fenasenf') setIsFenasenfOpen(true)
+    else if (app.id === 'app-gas') setIsGasManagerOpen(true)
+  }
+
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4">
+        <div className="bg-white/10 p-8 rounded-[3rem] backdrop-blur-xl border border-white/10 flex flex-col items-center gap-6">
+          <div className="bg-secondary p-5 rounded-3xl animate-bounce">
+            <AppWindow className="w-12 h-12 text-primary" />
+          </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Centro de Control Directiva</h1>
+            <p className="text-primary-foreground/60 text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2">
+              <Database className="w-4 h-4" />
+              Sincronizando Cloud Firestore...
+            </p>
+          </div>
+          <Loader2 className="w-8 h-8 text-secondary animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background animate-in fade-in duration-700">
+      <header className="border-b bg-primary text-primary-foreground sticky top-0 z-20 shadow-lg">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="bg-secondary p-2 rounded-xl">
+              <AppWindow className="w-6 h-6 text-primary" />
+            </Link>
+            <h1 className="text-xl font-headline font-black tracking-tighter uppercase">
+              FENASENF <span className="text-secondary">Estratégico</span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-4">
+             <div className="hidden md:flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground/40">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              Acceso Seguro Directiva
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground/40">
+              <Cloud className="w-4 h-4" />
+              Conectado a la Nube
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-12">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10 mb-4">
+               <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Sistema Operativo v2.8</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-headline font-black mb-4 tracking-tighter text-primary leading-tight">
+              Panel de Control <br/><span className="text-secondary-foreground">Gestión Organizacional</span>
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed font-medium">
+              Administración estratégica de socios, compromisos y suministros institucionales en tiempo real.
+            </p>
+          </div>
+          
+          <div className="flex gap-4 flex-wrap">
+            <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
+              <div className="text-4xl font-black text-primary">{activeTasks?.length || 0}</div>
+              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-2">Compromisos</div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
+              <div className="text-4xl font-black text-secondary-foreground">{activeNominas?.length || 0}</div>
+              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-2">Sindicados</div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border shadow-sm text-center min-w-[140px] transition-all hover:shadow-lg hover:-translate-y-1">
+              <div className="text-4xl font-black text-orange-500">{pendingGasCount}</div>
+              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-2">Gas Pendiente</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {DIRECTIVA_APPS.map((app) => (
+            <AppCard key={app.id} app={app} onClick={() => handleAppClick(app)} />
+          ))}
+        </div>
+      </main>
+
+      <FinanceReportDialog isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
+      <MemberManager isOpen={isMemberManagerOpen} onClose={() => setIsMemberManagerOpen(false)} />
+      <TaskManager isOpen={isTaskManagerOpen} onClose={() => setIsTaskManagerOpen(false)} />
+      <FenasenfDialog isOpen={isFenasenfOpen} onClose={() => setIsFenasenfOpen(false)} />
+      <GasOrderManager isOpen={isGasManagerOpen} onClose={() => setIsGasManagerOpen(false)} />
+
+      <footer className="mt-24 py-16 border-t bg-muted/30">
+        <div className="container mx-auto px-4 text-center">
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <AppWindow className="w-5 h-5 text-primary" />
+              </div>
+              <span className="font-headline font-black text-primary uppercase tracking-widest text-sm">FENASENF TALCA & DSSM</span>
+            </div>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] max-w-md mx-auto">
+              SISTEMA DE CONTROL ESTRATÉGICO BASADO EN CLOUD FIRESTORE. PROPIEDAD EXCLUSIVA DE LA DIRECTIVA.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+export default function DirectivaPage() {
+  const [password, setPassword] = useState('')
+  const [isAuthorized, setIsAuthorized] = useState(false)
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password === 'Talca2026') {
+      setIsAuthorized(true)
+      toast({ title: "Acceso Concedido", description: "Bienvenido al Centro Estratégico ASENF." })
+    } else {
+      toast({ variant: "destructive", title: "Error", description: "Contraseña estratégica incorrecta." })
+      setPassword('')
+    }
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center p-6">
+        <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
+          <div className="bg-primary p-10 text-primary-foreground text-center space-y-4">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/20">
+              <Lock className="w-8 h-8 text-secondary" />
+            </div>
+            <CardTitle className="text-2xl font-black uppercase tracking-tight">Acceso Estratégico</CardTitle>
+            <CardDescription className="text-primary-foreground/60 font-medium">
+              Ingrese la clave secreta de la directiva para desbloquear el sistema operativo.
+            </CardDescription>
+          </div>
+          <CardContent className="p-10">
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="h-14 rounded-2xl border-2 text-center text-lg tracking-widest font-mono"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <Button type="submit" className="w-full h-14 rounded-2xl font-bold gap-2">
+                Validar Identidad <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Link href="/" className="block text-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors mt-4">
+                <ArrowLeft className="w-4 h-4 inline mr-2" /> Volver al Inicio
+              </Link>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <FirebaseClientProvider>
+      <DashboardContent />
+    </FirebaseClientProvider>
+  )
+}

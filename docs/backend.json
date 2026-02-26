@@ -7,34 +7,13 @@
       "type": "object",
       "description": "Represents a partner application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Partner entity."
-        },
-        "appName": {
-          "type": "string",
-          "description": "Name of the partner application."
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the partner application."
-        },
-        "logoUrl": {
-          "type": "string",
-          "description": "URL of the partner application's logo."
-        },
-        "websiteUrl": {
-          "type": "string",
-          "description": "URL of the partner application's website."
-        }
+        "id": { "type": "string" },
+        "appName": { "type": "string" },
+        "description": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "websiteUrl": { "type": "string" }
       },
-      "required": [
-        "id",
-        "appName",
-        "description",
-        "logoUrl",
-        "websiteUrl"
-      ]
+      "required": ["id", "appName", "description", "logoUrl", "websiteUrl"]
     },
     "Associate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -42,54 +21,18 @@
       "type": "object",
       "description": "Represents an associate linked to a partner application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Associate entity."
-        },
-        "partnerId": {
-          "type": "string",
-          "description": "Reference to Partner."
-        },
-        "nombre": {
-          "type": "string",
-          "description": "Nombre completo del socio."
-        },
-        "rut": {
-          "type": "string",
-          "description": "RUT del socio."
-        },
-        "sexo": {
-          "type": "string",
-          "description": "Sexo del socio."
-        },
-        "servicio": {
-          "type": "string",
-          "description": "Servicio o unidad donde se desempeña."
-        },
-        "establecimiento": {
-          "type": "string",
-          "description": "Establecimiento de salud."
-        },
-        "firmaUrl": {
-          "type": "string",
-          "description": "URL o base64 de la firma del socio."
-        },
-        "fecha": {
-          "type": "string",
-          "description": "Fecha de registro."
-        },
-        "processed": {
-          "type": "boolean",
-          "description": "Indica si la solicitud fue tramitada por la directiva."
-        }
+        "id": { "type": "string" },
+        "partnerId": { "type": "string" },
+        "nombre": { "type": "string" },
+        "rut": { "type": "string" },
+        "sexo": { "type": "string" },
+        "servicio": { "type": "string" },
+        "establecimiento": { "type": "string" },
+        "firmaUrl": { "type": "string" },
+        "fecha": { "type": "string" },
+        "processed": { "type": "boolean" }
       },
-      "required": [
-        "id",
-        "partnerId",
-        "nombre",
-        "rut",
-        "firmaUrl"
-      ]
+      "required": ["id", "partnerId", "nombre", "rut", "firmaUrl"]
     },
     "Product": {
       "title": "Product",
@@ -128,17 +71,35 @@
         "totalGeneral": { "type": "number" },
         "comprobanteUrl": { "type": "string" },
         "fecha": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["pendent", "processed"] },
+        "status": { "type": "string", "enum": ["pendent", "checked", "delivered"] },
         "detalleResumen": { "type": "string" }
       },
       "required": ["socioNombre", "items", "totalGeneral", "comprobanteUrl", "fecha"]
+    },
+    "Task": {
+      "title": "Task",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titulo": { "type": "string" },
+        "prioridad": { "type": "string" },
+        "completada": { "type": "boolean" },
+        "fecha": { "type": "string" }
+      }
+    },
+    "Nomina": {
+      "title": "Nomina",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "rut": { "type": "string" },
+        "status": { "type": "string" }
+      }
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
@@ -146,9 +107,7 @@
         "path": "/partners/{partnerId}",
         "definition": {
           "entityName": "Partner",
-          "schema": {
-            "$ref": "#/backend/entities/Partner"
-          },
+          "schema": { "$ref": "#/backend/entities/Partner" },
           "description": "Stores partner application data."
         }
       },
@@ -156,9 +115,7 @@
         "path": "/partners/{partnerId}/associates/{associateId}",
         "definition": {
           "entityName": "Associate",
-          "schema": {
-            "$ref": "#/backend/entities/Associate"
-          },
+          "schema": { "$ref": "#/backend/entities/Associate" },
           "description": "Stores associate data."
         }
       },
@@ -176,6 +133,22 @@
           "entityName": "GasOrder",
           "schema": { "$ref": "#/backend/entities/GasOrder" },
           "description": "Registro de pedidos de vales de gas realizados por los socios."
+        }
+      },
+      {
+        "path": "/tareas/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": { "$ref": "#/backend/entities/Task" },
+          "description": "Tareas internas de la directiva."
+        }
+      },
+      {
+        "path": "/nomina_maestra/{nominaId}",
+        "definition": {
+          "entityName": "Nomina",
+          "schema": { "$ref": "#/backend/entities/Nomina" },
+          "description": "Nomina maestra de socios activos."
         }
       }
     ]

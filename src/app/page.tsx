@@ -26,7 +26,6 @@ export default function Home() {
   const [adminPassword, setAdminPassword] = useState('')
   const router = useRouter()
 
-  // Mostrar el anuncio de asamblea al abrir la app
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsAssemblyOpen(true)
@@ -57,7 +56,7 @@ export default function Home() {
         title: "Acceso Autorizado",
         description: "Redirigiendo al panel de gestión..."
       })
-      router.push('/admin/socios')
+      router.push('/directiva')
     } else {
       toast({
         variant: "destructive",
@@ -136,7 +135,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Diálogo de Autenticación Admin */}
       <Dialog open={isAdminAuthOpen} onOpenChange={setIsAdminAuthOpen}>
         <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
           <div className="bg-primary p-8 text-primary-foreground text-center space-y-4">
@@ -166,30 +164,11 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      <AssemblyAnnouncementDialog
-        isOpen={isAssemblyOpen}
-        onClose={() => setIsAssemblyOpen(false)}
-      />
-
-      <CertificateRequestDialog
-        isOpen={isCertificateOpen}
-        onClose={() => setIsCertificateOpen(false)}
-      />
-
-      <JoinAssociationDialog
-        isOpen={isJoinOpen}
-        onClose={() => setIsJoinOpen(false)}
-      />
-
-      <AgreementsDialog
-        isOpen={isAgreementsOpen}
-        onClose={() => setIsAgreementsOpen(false)}
-      />
-
-      <GasRequestDialog 
-        isOpen={isGasOpen}
-        onClose={() => setIsGasOpen(false)}
-      />
+      <AssemblyAnnouncementDialog isOpen={isAssemblyOpen} onClose={() => setIsAssemblyOpen(false)} />
+      <CertificateRequestDialog isOpen={isCertificateOpen} onClose={() => setIsCertificateOpen(false)} />
+      <JoinAssociationDialog isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
+      <AgreementsDialog isOpen={isAgreementsOpen} onClose={() => setIsAgreementsOpen(false)} />
+      <GasRequestDialog isOpen={isGasOpen} onClose={() => setIsGasOpen(false)} />
     </div>
   )
 }
