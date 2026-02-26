@@ -64,6 +64,14 @@ export const ADMIN_APPS: Application[] = [
     category: 'Gestión'
   },
   { 
+    id: 'app-casos', 
+    name: 'Casos Socios', 
+    description: 'Seguimiento y gestión de casos externos de socios.', 
+    icon: 'Database', 
+    category: 'Gestión',
+    url: 'https://studio--studio-7798252305-22ddd.us-central1.hosted.app/'
+  },
+  { 
     id: 'app-report', 
     name: 'Finanzas', 
     description: 'Reportes estratégicos de ingresos y gastos.', 
