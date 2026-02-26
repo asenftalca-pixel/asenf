@@ -14,6 +14,7 @@ import { es } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import * as XLSX from "xlsx"
+import { cn } from "@/lib/utils"
 
 /**
  * GasOrderManager - Módulo de Gestión de Pedidos.

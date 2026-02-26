@@ -50,7 +50,7 @@ function DashboardContent() {
     return collection(db, "pedidos_socios")
   }, [db])
 
-  const { data: activeTasksRaw, isLoading: loadingTasks } = useCollection(activeTasksQuery)
+  const { data: activeTasksRaw, isLoading: loadingTasks } = useCollection(tasksQuery)
   const { data: activeNominasRaw, isLoading: loadingNominas } = useCollection(nominaActivaQuery)
   const { data: allGasOrdersRaw, isLoading: loadingGas } = useCollection(gasQuery)
 
