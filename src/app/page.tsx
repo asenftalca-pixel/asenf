@@ -9,11 +9,7 @@ import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDia
 import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
 import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnouncementDialog'
 import { GasRequestDialog } from '@/components/dashboard/GasRequestDialog'
-import { AppWindow, Lock, ShieldCheck, ArrowRight } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { toast } from "@/hooks/use-toast"
+import { AppWindow, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function Home() {
@@ -22,8 +18,6 @@ export default function Home() {
   const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
   const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
   const [isGasOpen, setIsGasOpen] = useState(false)
-  const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false)
-  const [adminPassword, setAdminPassword] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -43,27 +37,9 @@ export default function Home() {
     } else if (app.id === 'app-gas') {
       setIsGasOpen(true)
     } else if (app.id === 'app-admin-list') {
-      setIsAdminAuthOpen(true)
+      router.push('/directiva')
     } else if (app.url) {
       window.open(app.url, '_blank')
-    }
-  }
-
-  const handleAdminAccess = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (adminPassword === 'ASENF2509') {
-      toast({
-        title: "Acceso Autorizado",
-        description: "Redirigiendo al panel de gestión..."
-      })
-      router.push('/directiva')
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error de Seguridad",
-        description: "Contraseña incorrecta. Solo personal autorizado."
-      })
-      setAdminPassword('')
     }
   }
 
@@ -125,7 +101,7 @@ export default function Home() {
           
           <div className="flex justify-center pt-4 border-t border-muted/50 max-w-xs mx-auto">
             <button 
-              onClick={() => setIsAdminAuthOpen(true)}
+              onClick={() => router.push('/directiva')}
               className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors group"
             >
               <Lock className="w-3 h-3 transition-transform group-hover:scale-110" />
@@ -134,35 +110,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      <Dialog open={isAdminAuthOpen} onOpenChange={setIsAdminAuthOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-          <div className="bg-primary p-8 text-primary-foreground text-center space-y-4">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/20">
-              <ShieldCheck className="w-8 h-8 text-secondary" />
-            </div>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Acceso Directiva</DialogTitle>
-            <DialogDescription className="text-primary-foreground/60 font-medium">
-              Ingrese la clave de seguridad institucional.
-            </DialogDescription>
-          </div>
-          <form onSubmit={handleAdminAccess} className="p-8 space-y-6">
-            <div className="space-y-2">
-              <Input 
-                type="password"
-                placeholder="••••••••"
-                className="h-14 rounded-2xl border-2 text-center text-lg tracking-widest font-mono"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <Button type="submit" className="w-full h-14 rounded-2xl font-bold gap-2">
-              Validar Acceso <ArrowRight className="w-4 h-4" />
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <AssemblyAnnouncementDialog isOpen={isAssemblyOpen} onClose={() => setIsAssemblyOpen(false)} />
       <CertificateRequestDialog isOpen={isCertificateOpen} onClose={() => setIsCertificateOpen(false)} />
