@@ -124,7 +124,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copiado al portapapeles",
-      description: "El dato ha sido copiado correctamente."
+      description: "Los datos de transferencia han sido copiados."
     })
   }
 
@@ -195,6 +195,12 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   }
 
   const totalCart = cart.reduce((sum, item) => sum + item.total, 0)
+
+  const transferData = `ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA
+BANCO SCOTIABANK
+CUENTA CORRIENTE 974728664
+65.110.772-5
+tesoreriaasenftalca@gmail.com`
 
   return (
     <Dialog open={isOpen} onOpenChange={resetDialog}>
@@ -359,48 +365,30 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                         <span className="text-2xl font-black text-emerald-600">{formatCLP(totalCart)}</span>
                       </div>
 
-                      {/* DATOS DE TRANSFERENCIA */}
-                      <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-primary/10 space-y-3 select-text animate-in slide-in-from-bottom-2 duration-500">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Building2 className="w-4 h-4 text-primary" />
-                          <p className="text-[10px] font-black uppercase text-primary tracking-widest">Datos para Transferencia</p>
+                      {/* DATOS DE TRANSFERENCIA - BLOQUE ÚNICO */}
+                      <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-primary/10 space-y-3 animate-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-primary" />
+                            <p className="text-[10px] font-black uppercase text-primary tracking-widest">Datos para Transferencia</p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-[10px] font-bold gap-1 hover:bg-primary/5 text-primary"
+                            onClick={() => handleCopyText(transferData)}
+                          >
+                            <Copy className="w-3 h-3" /> Copiar Todo
+                          </Button>
                         </div>
-                        <div className="grid grid-cols-1 gap-2 text-[11px] font-medium text-slate-700 leading-tight">
-                          <div className="flex justify-between items-start gap-4">
-                            <span className="shrink-0 font-bold text-muted-foreground uppercase text-[9px]">Titular:</span>
-                            <span className="text-right font-black uppercase">ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA</span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
-                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Banco:</span>
-                            <span className="font-black">SCOTIABANK</span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
-                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Cuenta:</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-black">CORRIENTE 974728664</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('974728664')}>
-                                <Copy className="w-3 h-3 text-primary/40" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
-                            <span className="font-bold text-muted-foreground uppercase text-[9px]">RUT:</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-black">65.110.772-5</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('65.110.772-5')}>
-                                <Copy className="w-3 h-3 text-primary/40" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
-                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Email:</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-black lowercase">tesoreriaasenftalca@gmail.com</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('tesoreriaasenftalca@gmail.com')}>
-                                <Copy className="w-3 h-3 text-primary/40" />
-                              </Button>
-                            </div>
-                          </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 select-all cursor-text">
+                          <p className="text-[11px] font-black text-slate-700 leading-relaxed uppercase">
+                            ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA<br/>
+                            BANCO SCOTIABANK<br/>
+                            CUENTA CORRIENTE 974728664<br/>
+                            65.110.772-5<br/>
+                            <span className="lowercase">tesoreriaasenftalca@gmail.com</span>
+                          </p>
                         </div>
                       </div>
 
