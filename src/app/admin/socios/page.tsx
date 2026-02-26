@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -16,7 +17,7 @@ import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import jsPDF from "jspdf"
+import jsPDF from "jsPDF"
 
 export default function AdminSociosPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -40,7 +41,8 @@ export default function AdminSociosPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "admin123") {
+    // Contraseña actualizada según requerimiento: ASENF2509
+    if (password === "ASENF2509") {
       setIsAuthenticated(true)
       initiateAnonymousSignIn(auth)
       toast({
@@ -79,12 +81,13 @@ export default function AdminSociosPage() {
 
   const openDocument = (member: any) => {
     setSelectedMember(member)
-    setIsDocOpen(true)
+    setIsDocOpen(false)
+    setTimeout(() => setIsDocOpen(true), 10)
   }
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new window.Image();
+      const img = new (window.Image)();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -92,13 +95,13 @@ export default function AdminSociosPage() {
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          reject(new Error('Canvas context error'));
+          reject(new Error('Canvas error'));
           return;
         }
         ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
-      img.onerror = () => reject(new Error('Error loading image: ' + url));
+      img.onerror = () => reject(new Error('Image error'));
       img.src = url;
     });
   };
@@ -123,9 +126,7 @@ export default function AdminSociosPage() {
         const logoBase64 = await imageUrlToBase64(logoUrl);
         doc.addImage(logoBase64, 'JPEG', (pageWidth - 35) / 2, y, 35, 35);
         y += 40;
-      } catch (err) {
-        y += 10;
-      }
+      } catch (err) { y += 10; }
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
