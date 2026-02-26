@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera } from "lucide-react"
+import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera, Building2, Copy } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
@@ -50,15 +50,6 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   useEffect(() => {
     if (isOpen && productos.length > 0) {
       console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en 'productos'`)
-      productos.forEach(doc => {
-        console.log('GAS_DEBUG Item:', {
-          id: doc.id,
-          Nombre: doc.Nombre,
-          Marca: doc.Marca,
-          Kilos: doc.Kilos,
-          Precio: doc.Precio
-        })
-      });
     }
   }, [isOpen, productos])
 
@@ -127,6 +118,14 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
   const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(item => item.id !== id))
+  }
+
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copiado al portapapeles",
+      description: "El dato ha sido copiado correctamente."
+    })
   }
 
   const handleSubmitOrder = () => {
@@ -329,7 +328,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                     </Button>
                   </div>
 
-                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                     {cart.map((item) => (
                       <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2 border-dashed group transition-colors hover:bg-slate-100">
                         <div className="space-y-1">
@@ -358,6 +357,51 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                       <div className="flex justify-between items-center px-2">
                         <span className="text-xs font-black uppercase text-muted-foreground">Total General</span>
                         <span className="text-2xl font-black text-emerald-600">{formatCLP(totalCart)}</span>
+                      </div>
+
+                      {/* DATOS DE TRANSFERENCIA */}
+                      <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-primary/10 space-y-3 select-text animate-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Building2 className="w-4 h-4 text-primary" />
+                          <p className="text-[10px] font-black uppercase text-primary tracking-widest">Datos para Transferencia</p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-[11px] font-medium text-slate-700 leading-tight">
+                          <div className="flex justify-between items-start gap-4">
+                            <span className="shrink-0 font-bold text-muted-foreground uppercase text-[9px]">Titular:</span>
+                            <span className="text-right font-black uppercase">ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Banco:</span>
+                            <span className="font-black">SCOTIABANK</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Cuenta:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black">CORRIENTE 974728664</span>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('974728664')}>
+                                <Copy className="w-3 h-3 text-primary/40" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                            <span className="font-bold text-muted-foreground uppercase text-[9px]">RUT:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black">65.110.772-5</span>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('65.110.772-5')}>
+                                <Copy className="w-3 h-3 text-primary/40" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                            <span className="font-bold text-muted-foreground uppercase text-[9px]">Email:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black lowercase">tesoreriaasenftalca@gmail.com</span>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-slate-200" onClick={() => handleCopyText('tesoreriaasenftalca@gmail.com')}>
+                                <Copy className="w-3 h-3 text-primary/40" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="space-y-4">
@@ -429,7 +473,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
                   </div>
                   <div className="bg-slate-50 p-6 rounded-xl border space-y-3">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resumen Final</p>
-                    <div className="text-sm font-black text-primary">
+                    <div className="text-xl font-black text-primary">
                       {formatCLP(finalTotal)}
                     </div>
                     <p className="text-[10px] italic text-slate-400">La directiva validará su pago y procesará los vales.</p>
