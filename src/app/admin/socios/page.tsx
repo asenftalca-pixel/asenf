@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -20,8 +19,6 @@ import { cn } from "@/lib/utils"
 import jsPDF from "jspdf"
 
 export default function AdminSociosPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMember, setSelectedMember] = useState<any | null>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
@@ -29,34 +26,19 @@ export default function AdminSociosPage() {
 
   const { firestore, auth } = useFirebase()
   
+  // Autenticación automática para permisos de Firestore
+  useEffect(() => {
+    initiateAnonymousSignIn(auth)
+  }, [auth])
+
   const associatesQuery = useMemoFirebase(() => {
-    if (!isAuthenticated) return null
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
-  }, [firestore, isAuthenticated])
+  }, [firestore])
 
   const { data: dataRaw, isLoading } = useCollection(associatesQuery)
   const members = dataRaw || []
 
   const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Contraseña actualizada según requerimiento: ASENF2509
-    if (password === "ASENF2509") {
-      setIsAuthenticated(true)
-      initiateAnonymousSignIn(auth)
-      toast({
-        title: "Acceso concedido",
-        description: "Bienvenido al panel de gestión institucional."
-      })
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Acceso denegado",
-        description: "Contraseña incorrecta. Intente de nuevo."
-      })
-    }
-  }
 
   const handleTramitar = (id: string, currentlyProcessed: boolean) => {
     const docRef = doc(firestore, 'partners', 'asenf-talca', 'associates', id)
@@ -249,53 +231,13 @@ export default function AdminSociosPage() {
       return a.processed ? 1 : -1
     })
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
-          <div className="bg-primary p-10 text-primary-foreground text-center space-y-4">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/20">
-              <Lock className="w-8 h-8 text-secondary" />
-            </div>
-            <CardTitle className="text-2xl font-black uppercase tracking-tight">Acceso Restringido</CardTitle>
-            <CardDescription className="text-primary-foreground/60 font-medium">
-              Ingrese la contraseña de la directiva ASENF para gestionar las inscripciones.
-            </CardDescription>
-          </div>
-          <CardContent className="p-10">
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="pass" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Contraseña de Seguridad</Label>
-                <Input 
-                  id="pass"
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="h-14 rounded-2xl border-2 text-center text-lg tracking-widest"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-base shadow-xl hover:scale-[1.02] transition-transform">
-                Verificar Identidad
-              </Button>
-              <Link href="/" className="block text-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors mt-4">
-                <ArrowLeft className="w-4 h-4 inline mr-2" /> Volver al Inicio
-              </Link>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background p-6 md:p-12 animate-in fade-in duration-700">
       <div className="container mx-auto space-y-10">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-4">
-              <Link href="/">
+              <Link href="/directiva">
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
