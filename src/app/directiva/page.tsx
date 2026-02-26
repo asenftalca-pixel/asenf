@@ -91,11 +91,8 @@ function DashboardContent() {
             <AppWindow className="w-12 h-12 text-primary" />
           </div>
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Centro de Control Directiva</h1>
-            <p className="text-primary-foreground/60 text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2">
-              <Database className="w-4 h-4" />
-              Sincronizando Cloud Firestore...
-            </p>
+            <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Panel Directiva</h1>
+            <p className="text-primary-foreground/60 text-[10px] font-bold tracking-[0.2em] uppercase">Sincronizando Cloud Firestore...</p>
           </div>
           <Loader2 className="w-8 h-8 text-secondary animate-spin" />
         </div>
@@ -108,22 +105,15 @@ function DashboardContent() {
       <header className="border-b bg-primary text-primary-foreground sticky top-0 z-20 shadow-lg">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="bg-secondary p-2 rounded-xl">
+            <div className="bg-secondary p-2 rounded-xl">
               <AppWindow className="w-6 h-6 text-primary" />
-            </Link>
+            </div>
             <h1 className="text-xl font-headline font-black tracking-tighter uppercase">
               FENASENF <span className="text-secondary">Estratégico</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-             <div className="hidden md:flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground/40">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Acceso Seguro Directiva
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground/40">
-              <Cloud className="w-4 h-4" />
-              Conectado a la Nube
-            </div>
+          <div className="hidden md:flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground/40">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Acceso Directiva Seguro
           </div>
         </div>
       </header>
@@ -131,18 +121,11 @@ function DashboardContent() {
       <main className="container mx-auto px-4 py-12">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10 mb-4">
-               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Sistema Operativo v2.8</span>
-            </div>
             <h2 className="text-4xl md:text-5xl font-headline font-black mb-4 tracking-tighter text-primary leading-tight">
-              Panel de Control <br/><span className="text-secondary-foreground">Gestión Organizacional</span>
+              Centro de Control <br/><span className="text-secondary-foreground">Gestión Organizacional</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed font-medium">
-              Administración estratégica de socios, compromisos y suministros institucionales en tiempo real.
+              Administración unificada de socios, suministros y compromisos en tiempo real.
             </p>
           </div>
           
@@ -175,19 +158,11 @@ function DashboardContent() {
       <FenasenfDialog isOpen={isFenasenfOpen} onClose={() => setIsFenasenfOpen(false)} />
       <GasOrderManager isOpen={isGasManagerOpen} onClose={() => setIsGasManagerOpen(false)} />
 
-      <footer className="mt-24 py-16 border-t bg-muted/30">
+      <footer className="mt-24 py-12 border-t bg-muted/30">
         <div className="container mx-auto px-4 text-center">
-          <div className="flex flex-col items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <AppWindow className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-headline font-black text-primary uppercase tracking-widest text-sm">FENASENF TALCA & DSSM</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] max-w-md mx-auto">
-              SISTEMA DE CONTROL ESTRATÉGICO BASADO EN CLOUD FIRESTORE. PROPIEDAD EXCLUSIVA DE LA DIRECTIVA.
-            </p>
-          </div>
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.3em]">
+            &copy; {new Date().getFullYear()} SISTEMA ESTRATÉGICO FENASENF TALCA & DSSM. CLOUD FIRESTORE ACTIVO.
+          </p>
         </div>
       </footer>
     </div>
