@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2 } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -47,7 +47,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   }, [db])
 
   const { data: allPedidosRaw, isLoading: loading } = useCollection(pedidosQuery)
-  const allPedidos = allPedidosRaw || []
+  const allPedidosAll = allPedidosRaw || []
 
   const parseSafeDate = (dateValue: any): Date | null => {
     if (!dateValue) return null
@@ -57,7 +57,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   }
 
   const pedidos = useMemo(() => {
-    return allPedidos
+    return allPedidosAll
       .filter((p: any) => {
         const estado = (p.status || "").toString().toLowerCase()
         return estado !== 'delivered' && estado !== 'entregado' && estado !== 'deleted'
@@ -76,7 +76,79 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         const timeB = b.fechaObjeto ? b.fechaObjeto.getTime() : 0
         return timeB - timeA
       })
-  }, [allPedidos])
+  }, [allPedidosAll])
+
+  const handleExportExcel = () => {
+    if (!allPedidosAll || allPedidosAll.length === 0) {
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay pedidos para exportar." })
+      return
+    }
+
+    const dataToExport = allPedidosAll
+      .filter((p: any) => (p.status || "").toLowerCase() !== 'deleted')
+      .map((p: any) => {
+        const date = parseSafeDate(p.fecha || p.createdAt || p.Fecha)
+        const formattedDate = date ? format(date, "dd/MM/yyyy HH:mm") : "S/F"
+        
+        const row: any = {
+          "Fecha": formattedDate,
+          "Socio": p.socioNombre || p.Nombre || p.Socio || "Desconocido",
+          "Marca": "",
+          "5kg": 0,
+          "11kg": 0,
+          "15kg": 0,
+          "45kg": 0,
+          "Total $": Number(p.totalGeneral || p.Total || p.Valor || 0),
+          "Estado": p.status || "Pendiente",
+          "Liquidado Proveedor": p.estadoPagoProveedor === 'pagado' ? "SÍ" : "NO"
+        }
+
+        const marcas = new Set<string>()
+        if (Array.isArray(p.items)) {
+          p.items.forEach((item: any) => {
+            const weight = String(item.peso || "").replace(/\D/g, "")
+            const qty = Number(item.cantidad) || 0
+            const brand = item.marca || ""
+            if (brand) marcas.add(brand)
+
+            if (weight === "5") row["5kg"] += qty
+            else if (weight === "11") row["11kg"] += qty
+            else if (weight === "15") row["15kg"] += qty
+            else if (weight === "45") row["45kg"] += qty
+          })
+        } else {
+          // Fallback para formatos antiguos basados en texto
+          const detail = (p.detalleResumen || p.Marca || "").toLowerCase()
+          if (detail.includes("lipigas")) marcas.add("Lipigas")
+          if (detail.includes("abastible")) marcas.add("Abastible")
+          if (detail.includes("gas del sur")) marcas.add("Gas del Sur")
+          
+          const qtyMatch = detail.match(/(\d+)x/)
+          const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1
+
+          if (detail.includes("5kg")) row["5kg"] = qty
+          else if (detail.includes("11kg")) row["11kg"] = qty
+          else if (detail.includes("15kg")) row["15kg"] = qty
+          else if (detail.includes("45kg")) row["45kg"] = qty
+        }
+
+        row["Marca"] = Array.from(marcas).join(", ")
+        return row
+      })
+      .sort((a, b) => b.Fecha.localeCompare(a.Fecha))
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Pedidos Gas")
+    
+    // Auto-ajuste de columnas
+    const colWidths = Object.keys(dataToExport[0] || {}).map(key => ({ wch: Math.max(key.length, 15) }))
+    ws['!cols'] = colWidths
+
+    XLSX.writeFile(wb, `Reporte_Gas_ASENF_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
+    
+    toast({ title: "Excel Generado", description: "El reporte detallado ha sido descargado." })
+  }
 
   const handleSaveCosts = async () => {
     if (!db) return
@@ -124,7 +196,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       await updateDoc(doc(db, "pedidos_socios", id), updates)
 
       if (newStatus === 'checked' || newStatus === 'revisado') {
-        const order = allPedidos.find(p => p.id === id)
+        const order = allPedidosAll.find(p => p.id === id)
         if (order) {
           const montoBruto = Number(order.totalGeneral || order.Total || order.Valor || 0)
           const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
@@ -174,7 +246,18 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" onClick={() => setIsConfigOpen(true)}>
+              <Button 
+                variant="outline" 
+                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                onClick={handleExportExcel}
+              >
+                <FileSpreadsheet className="w-5 h-5" /> EXPORTAR EXCEL
+              </Button>
+              <Button 
+                variant="outline" 
+                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                onClick={() => setIsConfigOpen(true)}
+              >
                 <Settings2 className="w-5 h-5" /> CONFIGURAR COSTOS
               </Button>
             </div>
