@@ -524,7 +524,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                     <Table>
                                       <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-center text-[10px] font-black uppercase">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
                                       <TableBody>
-                                        {eggresos.map(m => (
+                                        {egresos.map(m => (
                                           <TableRow key={m.id} className="group hover:bg-rose-50/30">
                                             <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
                                             <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
