@@ -1,7 +1,3 @@
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="es">
-      <body>{children}</body>
-    </html>
-  )
+export default function RootLayout({ children }: { children: any }) {
+  return (<html><body>{children}</body></html>)
 }
