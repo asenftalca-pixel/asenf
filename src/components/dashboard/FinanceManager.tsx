@@ -170,7 +170,20 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
   const handleLiquidateSupplier = async () => {
-    if (!firestore || debtBySelectedBrand <= 0 || !window.confirm(`¿Confirmar pago de ${formatCLP(debtBySelectedBrand)} a ${activeLiqBrand}?`)) return
+    if (!firestore) return;
+
+    if (debtBySelectedBrand <= 0) {
+      toast({
+        variant: "destructive",
+        title: "No se puede liquidar",
+        description: "La deuda calculada es $0. Verifique que los 'Costos Base Proveedor' estén configurados."
+      });
+      return;
+    }
+
+    const confirmMessage = `¿Confirmar pago de ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(debtBySelectedBrand)} a ${activeLiqBrand}? Se procesarán ${filteredPendingOrders.length} pedidos.`;
+    
+    if (!window.confirm(confirmMessage)) return
     
     setIsLiquidating(true)
     try {
@@ -203,7 +216,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       await batch.commit()
       toast({ title: `Liquidación ${activeLiqBrand} Completada`, description: "Se ha registrado el egreso y actualizado los pedidos a pagado." })
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error en liquidación", description: e.message })
+      console.error('ERROR_LIQUIDACION:', e);
+      toast({ variant: "destructive", title: "Error en liquidación", description: e.message || "No se pudo procesar la liquidación. Verifique permisos." })
     } finally {
       setIsLiquidating(false)
     }
@@ -709,7 +723,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         <div className="mt-10 relative z-10">
                           <Button 
                             className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
-                            disabled={debtBySelectedBrand <= 0 || isLiquidating}
+                            disabled={isLiquidating}
                             onClick={handleLiquidateSupplier}
                           >
                             {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}

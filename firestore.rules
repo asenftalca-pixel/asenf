@@ -22,7 +22,7 @@ service cloud.firestore {
      */
     match /partners/{partnerId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if true;
 
       match /associates/{associateId} {
         allow create, list, get: if true;
@@ -34,20 +34,51 @@ service cloud.firestore {
      * @description Rules for the Products (Gas Vouchers) catalog.
      */
     match /productos/{productId} {
-      // Catalog is publicly readable
       allow get, list: if true;
-      // Writing to catalog requires authentication (admin)
-      allow write: if isSignedIn();
+      allow write: if true;
     }
 
     /**
      * @description Rules for Gas Orders submitted by socios.
      */
     match /pedidos_socios/{orderId} {
-      // Any user (even anonymous) can submit an order request
       allow create: if true;
-      // Reading orders is allowed for management (authenticated)
       allow get, list, update, delete: if true;
+    }
+
+    /**
+     * @description Rules for internal finance records.
+     */
+    match /finanzas_asenftalca/{docId} {
+      allow read, write: if true;
+    }
+
+    /**
+     * @description Rules for application settings (finances, gas costs).
+     */
+    match /settings/{docId} {
+      allow read, write: if true;
+    }
+
+    /**
+     * @description Rules for tasks and commitments.
+     */
+    match /tareas/{taskId} {
+      allow read, write: if true;
+    }
+
+    /**
+     * @description Rules for the master member list.
+     */
+    match /nomina_maestra/{nominaId} {
+      allow read, write: if true;
+    }
+
+    /**
+     * @description Rules for annual budget goals.
+     */
+    match /presupuesto_anual_asenf/{goalId} {
+      allow read, write: if true;
     }
   }
 }
