@@ -13,9 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
-import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from "firebase/firestore"
+import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
@@ -40,6 +40,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingBank, setIsSavingBank] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isLiquidating, setIsLiquidating] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
   
   const [configData, setConfigData] = useState({
@@ -70,10 +71,23 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     return doc(firestore, "settings", "finances")
   }, [firestore])
 
+  const costsRef = useMemoFirebase(() => {
+    if (!firestore) return null
+    return doc(firestore, "settings", "gas_costs")
+  }, [firestore])
+
+  const pendingGasOrdersQuery = useMemoFirebase(() => {
+    if (!firestore) return null
+    return query(collection(firestore, "pedidos_socios"), where("estadoPagoProveedor", "==", "pendiente"))
+  }, [firestore])
+
   const { data: allMovementsRaw, isLoading: loadingMovements } = useCollection(allMovementsQuery)
   const { data: bankData } = useDoc(bankRef)
+  const { data: costsData } = useDoc(costsRef)
+  const { data: pendingOrdersRaw } = useCollection(pendingGasOrdersQuery)
 
   const allMovements = allMovementsRaw || []
+  const pendingOrders = pendingOrdersRaw || []
 
   // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
   const saldoCalculado = useMemo(() => {
@@ -85,6 +99,24 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     }, startBalance)
   }, [allMovements, bankData])
 
+  // CÁLCULO DE DEUDA PROVEEDOR ACTUAL
+  const totalDeudaProveedor = useMemo(() => {
+    if (!pendingOrders || !costsData?.values) return 0
+    let total = 0
+    pendingOrders.forEach((order: any) => {
+      if (Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          const brand = (item.marca || "").toLowerCase().trim()
+          const weight = String(item.peso || "").replace(/\D/g, "")
+          const costKey = `${brand}_${weight}`
+          const unitCost = costsData.values[costKey] || 0
+          total += unitCost * (Number(item.cantidad) || 0)
+        })
+      }
+    })
+    return total
+  }, [pendingOrders, costsData])
+
   // CÁLCULO DE UTILIDAD GAS (Ingresos Venta Gas - Egresos Costo Proveedor)
   const utilidadGas = useMemo(() => {
     const ingresosGas = allMovements
@@ -92,7 +124,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       .reduce((acc, m) => acc + (Number(m.monto) || 0), 0)
     
     const egresosGas = allMovements
-      .filter(m => m.tipo === 'egreso' && m.categoria === 'Costo Proveedor Gas')
+      .filter(m => m.tipo === 'egreso' && (m.categoria === 'Costo Proveedor Gas' || m.categoria === 'Pago Proveedor Gas'))
       .reduce((acc, m) => acc + (Number(m.monto) || 0), 0)
     
     return { ingresosGas, egresosGas, utilidad: ingresosGas - egresosGas }
@@ -116,6 +148,48 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
+  const handleLiquidateSupplier = async () => {
+    if (!firestore || totalDeudaProveedor <= 0 || !window.confirm(`¿Confirmar pago masivo de ${formatCLP(totalDeudaProveedor)} al proveedor?`)) return
+    
+    setIsLiquidating(true)
+    try {
+      const batch = writeBatch(firestore)
+      const timestamp = serverTimestamp()
+      const today = format(new Date(), "yyyy-MM-dd")
+
+      // 1. Crear el Egreso en Finanzas
+      const financeRef = doc(collection(firestore, "finanzas_asenftalca"))
+      batch.set(financeRef, {
+        tipo: "egreso",
+        categoria: "Pago Proveedor Gas",
+        monto: totalDeudaProveedor,
+        fecha: today,
+        responsable: "Sistema",
+        cuenta: "Cuenta ASENF",
+        glosa: `Liquidación masiva de ${pendingOrders.length} pedidos de gas.`,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      })
+
+      // 2. Marcar pedidos como pagados al proveedor
+      pendingOrders.forEach(order => {
+        const orderRef = doc(firestore, "pedidos_socios", order.id)
+        batch.update(orderRef, {
+          estadoPagoProveedor: "pagado",
+          fechaLiquidacionProveedor: today,
+          updatedAt: timestamp
+        })
+      })
+
+      await batch.commit()
+      toast({ title: "Liquidación Completada", description: "Se ha registrado el egreso y actualizado los pedidos." })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error en liquidación", description: e.message })
+    } finally {
+      setIsLiquidating(false)
+    }
+  }
+
   const handleSyncPastOrders = async () => {
     if (!firestore) return
     setIsSyncing(true)
@@ -132,7 +206,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const socio = orderData.socioNombre || "Socio"
         const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
-        // Solo sincronizamos el ingreso en el migrador antiguo por simplicidad
         await setDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`), {
           tipo: "ingreso",
           categoria: "Venta Gas",
@@ -293,7 +366,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   setIsConfigOpen(true)
                 }}
               >
-                <Settings2 className="w-5 h-5" /> CONFIGURACIÓN
+                <Settings2 className="w-5 h-5" /> AJUSTES CAJA
               </Button>
               <Button 
                 variant="outline"
@@ -335,24 +408,26 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <p className="text-[9px] font-bold text-muted-foreground uppercase mt-2">Última cartola ingresada</p>
                 </Card>
 
+                {/* TARJETA DE DEUDA PENDIENTE PROVEEDOR */}
                 <Card className={cn(
-                  "p-6 border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center",
-                  Math.abs(saldoCalculado - (bankData?.bankAmount || 0)) < 1 ? "bg-emerald-50" : "bg-rose-50"
+                  "p-6 border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center relative overflow-hidden",
+                  totalDeudaProveedor > 0 ? "bg-amber-50" : "bg-emerald-50"
                 )}>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Diferencia de Caja</span>
+                  <div className="absolute top-0 right-0 p-4 opacity-5"><Flame className="w-12 h-12" /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Deuda Proveedor Gas</span>
                   <div className={cn(
                     "text-2xl font-black tracking-tighter",
-                    Math.abs(saldoCalculado - (bankData?.bankAmount || 0)) < 1 ? "text-emerald-600" : "text-rose-600"
+                    totalDeudaProveedor > 0 ? "text-amber-600" : "text-emerald-600"
                   )}>
-                    {formatCLP(saldoCalculado - (bankData?.bankAmount || 0))}
+                    {formatCLP(totalDeudaProveedor)}
                   </div>
-                  <Landmark className={cn(
-                    "w-4 h-4 mt-2",
-                    Math.abs(saldoCalculado - (bankData?.bankAmount || 0)) < 1 ? "text-emerald-400" : "text-rose-400"
-                  )} />
+                  {totalDeudaProveedor > 0 ? (
+                    <p className="text-[9px] font-bold text-amber-700 uppercase mt-2 animate-pulse">{pendingOrders.length} Pedidos por pagar</p>
+                  ) : (
+                    <p className="text-[9px] font-bold text-emerald-600 uppercase mt-2">Todo liquidado</p>
+                  )}
                 </Card>
 
-                {/* TARJETA DE UTILIDAD GAS - ESTRATÉGICA */}
                 <Card className="p-6 bg-primary text-primary-foreground border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16" /></div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-primary-foreground/60 mb-2 relative z-10">Utilidad Real Gas</span>
@@ -360,143 +435,209 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     {formatCLP(utilidadGas.utilidad)}
                   </div>
                   <div className="mt-2 flex flex-col items-center gap-0.5 relative z-10">
-                    <p className="text-[8px] font-bold uppercase text-primary-foreground/40">Margen estimado acumulado</p>
+                    <p className="text-[8px] font-bold uppercase text-primary-foreground/40">Margen real acumulado</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-[8px] border-emerald-500/30 text-emerald-400">Bruto: {formatCLP(utilidadGas.ingresosGas)}</Badge>
-                      <Badge variant="outline" className="text-[8px] border-rose-500/30 text-rose-400">Costo: {formatCLP(utilidadGas.egresosGas)}</Badge>
+                      <Badge variant="outline" className="text-[8px] border-rose-500/30 text-rose-400">Pagado: {formatCLP(utilidadGas.egresosGas)}</Badge>
                     </div>
                   </div>
                 </Card>
               </div>
 
-              <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border">
-                <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <History className="w-5 h-5 text-primary" />
-                    <h3 className="font-black text-sm uppercase tracking-widest text-primary">Libro Diario por Meses</h3>
-                  </div>
-                </div>
+              <Tabs defaultValue="historial" className="space-y-8">
+                <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 max-w-md">
+                  <TabsTrigger value="historial" className="rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <History className="w-4 h-4 mr-2" /> Libro Diario
+                  </TabsTrigger>
+                  <TabsTrigger value="proveedores" className="rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+                    <Flame className="w-4 h-4 mr-2" /> Liquidación Gas
+                  </TabsTrigger>
+                </TabsList>
 
-                <div className="p-6">
-                  {loadingMovements ? (
-                    <div className="h-60 flex items-center justify-center">
-                      <Loader2 className="w-10 h-10 animate-spin opacity-20 text-primary" />
-                    </div>
-                  ) : monthsList.length > 0 ? (
-                    <Tabs defaultValue={monthsList[0]} className="space-y-10">
-                      <TabsList className="bg-muted/20 p-1 h-auto flex flex-wrap gap-1 rounded-xl">
-                        {monthsList.map(month => (
-                          <TabsTrigger 
-                            key={month} value={month}
-                            className="rounded-lg px-4 py-2 text-xs font-black uppercase tracking-tight data-[state=active]:bg-primary data-[state=active]:text-white"
-                          >
-                            {month}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
+                <TabsContent value="historial">
+                  <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border">
+                    <div className="p-6">
+                      {loadingMovements ? (
+                        <div className="h-60 flex items-center justify-center">
+                          <Loader2 className="w-10 h-10 animate-spin opacity-20 text-primary" />
+                        </div>
+                      ) : monthsList.length > 0 ? (
+                        <Tabs defaultValue={monthsList[0]} className="space-y-10">
+                          <TabsList className="bg-muted/20 p-1 h-auto flex flex-wrap gap-1 rounded-xl">
+                            {monthsList.map(month => (
+                              <TabsTrigger 
+                                key={month} value={month}
+                                className="rounded-lg px-4 py-2 text-xs font-black uppercase tracking-tight data-[state=active]:bg-primary data-[state=active]:text-white"
+                              >
+                                {month}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
 
-                      {monthsList.map(month => {
-                        const monthMovements = movementsByMonth[month];
-                        const ingresos = monthMovements.filter(m => m.tipo === 'ingreso');
-                        const egresos = monthMovements.filter(m => m.tipo === 'egreso');
-                        const totalIngresos = ingresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
-                        const totalEgresos = egresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
-                        const monthTotal = totalIngresos - totalEgresos;
+                          {monthsList.map(month => {
+                            const monthMovements = movementsByMonth[month];
+                            const ingresos = monthMovements.filter(m => m.tipo === 'ingreso');
+                            const egresos = monthMovements.filter(m => m.tipo === 'egreso');
+                            const totalIngresos = ingresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                            const totalEgresos = egresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                            const monthTotal = totalIngresos - totalEgresos;
 
-                        return (
-                          <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-12">
-                            
-                            {/* TABLA DE INGRESOS */}
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between px-2">
-                                <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-emerald-600">
-                                  <ArrowUpRight className="w-4 h-4" /> Ingresos del Mes
-                                </h4>
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black">Total +{formatCLP(totalIngresos)}</Badge>
-                              </div>
-                              <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
-                                <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
-                                  <TableBody>
-                                    {ingresos.map(m => (
-                                      <TableRow key={m.id} className="group hover:bg-emerald-50/30">
-                                        <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
-                                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
-                                        <TableCell className="px-6 font-black text-emerald-700 text-xs uppercase">{m.categoria}</TableCell>
-                                        <TableCell className="px-6 font-medium text-muted-foreground text-xs">{m.glosa || "—"}</TableCell>
-                                        <TableCell className="px-6 text-right font-black text-sm text-emerald-600">+{formatCLP(m.monto)}</TableCell>
-                                        <TableCell className="px-6 text-right">
-                                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => startEdit(m)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" onClick={() => handleDeleteMovement(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                                          </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </div>
-
-                            {/* TABLA DE EGRESOS */}
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between px-2">
-                                <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-rose-600">
-                                  <ArrowDownRight className="w-4 h-4" /> Egresos del Mes
-                                </h4>
-                                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-100 font-black">Total -{formatCLP(totalEgresos)}</Badge>
-                              </div>
-                              <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
-                                <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-center text-[10px] font-black uppercase">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
-                                  <TableBody>
-                                    {egresos.map(m => (
-                                      <TableRow key={m.id} className="group hover:bg-rose-50/30">
-                                        <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
-                                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
-                                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.categoria}</TableCell>
-                                        <TableCell className="px-6 font-medium text-muted-foreground text-xs">{m.glosa || "—"}</TableCell>
-                                        <TableCell className="px-6 text-center">
-                                          <Checkbox checked={!!m.devolucionRealizada} onCheckedChange={(c) => toggleRefund(m.id, !!c)} className="w-5 h-5" />
-                                        </TableCell>
-                                        <TableCell className="px-6 text-right font-black text-sm text-primary">-{formatCLP(m.monto)}</TableCell>
-                                        <TableCell className="px-6 text-right">
-                                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => startEdit(m)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" onClick={() => handleDeleteMovement(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                                          </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </div>
-
-                            {/* BALANCE FINAL MENSUAL */}
-                            <div className={cn(
-                              "p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed",
-                              monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
-                            )}>
-                              <div className="flex items-center gap-4">
-                                <div className={cn("p-3 rounded-2xl", monthTotal >= 0 ? "bg-emerald-100" : "bg-rose-100")}>
-                                  <Calculator className={cn("w-6 h-6", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
+                            return (
+                              <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-12">
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between px-2">
+                                    <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-emerald-600">
+                                      <ArrowUpRight className="w-4 h-4" /> Ingresos del Mes
+                                    </h4>
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black">Total +{formatCLP(totalIngresos)}</Badge>
+                                  </div>
+                                  <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
+                                    <Table>
+                                      <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                        {ingresos.map(m => (
+                                          <TableRow key={m.id} className="group hover:bg-emerald-50/30">
+                                            <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
+                                            <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
+                                            <TableCell className="px-6 font-black text-emerald-700 text-xs uppercase">{m.categoria}</TableCell>
+                                            <TableCell className="px-6 font-medium text-muted-foreground text-xs">{m.glosa || "—"}</TableCell>
+                                            <TableCell className="px-6 text-right font-black text-sm text-emerald-600">+{formatCLP(m.monto)}</TableCell>
+                                            <TableCell className="px-6 text-right">
+                                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => startEdit(m)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" onClick={() => handleDeleteMovement(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
                                 </div>
-                                <h4 className="text-lg font-black text-primary uppercase tracking-tight">Resultado del Ejercicio: {month}</h4>
-                              </div>
-                              <div className={cn("text-4xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
-                                {monthTotal > 0 ? "+" : ""}{formatCLP(monthTotal)}
-                              </div>
-                            </div>
-                          </TabsContent>
-                        )
-                      })}
-                    </Tabs>
-                  ) : (
-                    <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic">No hay movimientos financieros registrados aún.</div>
-                  )}
-                </div>
-              </div>
+
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between px-2">
+                                    <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-rose-600">
+                                      <ArrowDownRight className="w-4 h-4" /> Egresos del Mes
+                                    </h4>
+                                    <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-100 font-black">Total -{formatCLP(totalEgresos)}</Badge>
+                                  </div>
+                                  <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
+                                    <Table>
+                                      <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-center text-[10px] font-black uppercase">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                        {egresos.map(m => (
+                                          <TableRow key={m.id} className="group hover:bg-rose-50/30">
+                                            <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
+                                            <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
+                                            <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.categoria}</TableCell>
+                                            <TableCell className="px-6 font-medium text-muted-foreground text-xs">{m.glosa || "—"}</TableCell>
+                                            <TableCell className="px-6 text-center">
+                                              <Checkbox checked={!!m.devolucionRealizada} onCheckedChange={(c) => toggleRefund(m.id, !!c)} className="w-5 h-5" />
+                                            </TableCell>
+                                            <TableCell className="px-6 text-right font-black text-sm text-primary">-{formatCLP(m.monto)}</TableCell>
+                                            <TableCell className="px-6 text-right">
+                                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => startEdit(m)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" onClick={() => handleDeleteMovement(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+
+                                <div className={cn(
+                                  "p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed",
+                                  monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
+                                )}>
+                                  <div className="flex items-center gap-4">
+                                    <div className={cn("p-3 rounded-2xl", monthTotal >= 0 ? "bg-emerald-100" : "bg-rose-100")}>
+                                      <Calculator className={cn("w-6 h-6", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
+                                    </div>
+                                    <h4 className="text-lg font-black text-primary uppercase tracking-tight">Resultado del Ejercicio: {month}</h4>
+                                  </div>
+                                  <div className={cn("text-4xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                    {monthTotal > 0 ? "+" : ""}{formatCLP(monthTotal)}
+                                  </div>
+                                </div>
+                              </TabsContent>
+                            )
+                          })}
+                        </Tabs>
+                      ) : (
+                        <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic">No hay movimientos registrados.</div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="proveedores">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <Card className="lg:col-span-2 p-8 bg-white rounded-[2.5rem] border shadow-sm space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Package className="w-6 h-6 text-amber-500" />
+                          <h3 className="text-xl font-black text-primary uppercase tracking-tight">Pendientes de Liquidación</h3>
+                        </div>
+                        <Badge className="bg-amber-100 text-amber-700 font-black px-4 py-1.5 rounded-full">{pendingOrders.length} Pedidos</Badge>
+                      </div>
+
+                      <div className="rounded-2xl border overflow-hidden">
+                        <Table>
+                          <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {pendingOrders.map((order: any) => (
+                              <TableRow key={order.id} className="hover:bg-slate-50">
+                                <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
+                                <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
+                                <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
+                              </TableRow>
+                            ))}
+                            {pendingOrders.length === 0 && (
+                              <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con proveedores.</TableCell></TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </Card>
+
+                    <Card className="p-8 bg-primary text-primary-foreground rounded-[2.5rem] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-6 opacity-10"><AlertCircle className="w-32 h-32" /></div>
+                      <div className="space-y-6 relative z-10">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Resumen de Liquidación</p>
+                          <h3 className="text-3xl font-black tracking-tighter">Deuda Proveedor</h3>
+                        </div>
+                        
+                        <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold opacity-60 uppercase">Monto Estimado</span>
+                            <span className="text-2xl font-black text-secondary">{formatCLP(totalDeudaProveedor)}</span>
+                          </div>
+                          <p className="text-[9px] leading-relaxed opacity-50 font-bold uppercase">
+                            Este valor se calcula automáticamente multiplicando la cantidad de cilindros por el costo base configurado en el tarifario.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-10 relative z-10">
+                        <Button 
+                          className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
+                          disabled={totalDeudaProveedor <= 0 || isLiquidating}
+                          onClick={handleLiquidateSupplier}
+                        >
+                          {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
+                          LIQUIDAR Y REGISTRAR PAGO
+                        </Button>
+                        <p className="text-[8px] text-center mt-4 opacity-40 font-black uppercase tracking-widest">Registra un egreso masivo en el libro diario</p>
+                      </div>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
 
@@ -504,7 +645,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema de Control Estratégico ASENF v5.0</span>
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema de Control Estratégico ASENF v5.2</span>
               </div>
               <div className="flex items-center gap-4">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Utilidad Gas disponible: <span className="text-emerald-600 font-black">{formatCLP(utilidadGas.utilidad)}</span></p>

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -19,8 +19,7 @@ import * as XLSX from "xlsx"
 import { cn } from "@/lib/utils"
 
 /**
- * GasOrderManager - Gestión de Pedidos con Integración Contable Doble.
- * Registra Ingreso (Pago Socio) y Egreso (Costo Proveedor) para cálculo de utilidad.
+ * GasOrderManager - Gestión de Pedidos con Liquidación Diferida a Proveedores.
  */
 export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const db = useFirestore()
@@ -100,12 +99,20 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!db) return
     try {
-      await updateDoc(doc(db, "pedidos_socios", id), {
+      // Campos a actualizar en el pedido
+      const updates: any = {
         status: newStatus,
         updatedAt: new Date().toISOString()
-      })
+      }
 
-      // LÓGICA DE REGISTRO CONTABLE DOBLE
+      // Si se aprueba, se marca como deuda pendiente con el proveedor
+      if (newStatus === 'checked') {
+        updates.estadoPagoProveedor = 'pendiente'
+      }
+
+      await updateDoc(doc(db, "pedidos_socios", id), updates)
+
+      // REGISTRO ÚNICO: INGRESO BRUTO (PAGO DEL SOCIO)
       if (newStatus === 'checked') {
         const order = allPedidos.find(p => p.id === id)
         if (order) {
@@ -113,19 +120,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
           const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : order.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
           
-          // Calcular Costo Proveedor sumando por item
-          let costoTotalProveedor = 0
-          if (Array.isArray(order.items)) {
-            order.items.forEach((item: any) => {
-              const brand = (item.marca || "").toLowerCase().trim()
-              const weight = String(item.peso || "").replace(/\D/g, "")
-              const costKey = `${brand}_${weight}`
-              const unitCost = costsData?.values?.[costKey] || 0
-              costoTotalProveedor += unitCost * (Number(item.cantidad) || 0)
-            })
-          }
-
-          // Registro A: Ingreso Bruto
           await setDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`), {
             tipo: "ingreso",
             categoria: "Venta Gas",
@@ -138,24 +132,9 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
             updatedAt: serverTimestamp()
           }, { merge: true })
 
-          // Registro B: Egreso (Costo)
-          if (costoTotalProveedor > 0) {
-            await setDoc(doc(db, "finanzas_asenftalca", `gas_cost_${id}`), {
-              tipo: "egreso",
-              categoria: "Costo Proveedor Gas",
-              monto: costoTotalProveedor,
-              fecha: orderDate,
-              responsable: "Sistema",
-              cuenta: "Cuenta ASENF",
-              glosa: `Costo Proveedor - Pedido: ${id} (${socio})`,
-              orderId: id,
-              updatedAt: serverTimestamp()
-            }, { merge: true })
-          }
-
           toast({ 
-            title: "Contabilidad Sincronizada", 
-            description: "Se ha registrado el ingreso bruto y el costo estimado del proveedor." 
+            title: "Pago de Socio Registrado", 
+            description: "El monto bruto ha ingresado a finanzas. La deuda con el proveedor quedó registrada como pendiente." 
           })
         }
       }
@@ -180,7 +159,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </div>
               <div>
                 <DialogTitle className="text-2xl font-black uppercase">Gestión de Suministros Gas</DialogTitle>
-                <DialogDescription className="text-primary-foreground/60">Integración financiera automatizada con cálculo de margen.</DialogDescription>
+                <DialogDescription className="text-primary-foreground/60">Aprobación de vales y control de deuda con proveedores.</DialogDescription>
               </div>
             </div>
             <div className="flex gap-3">
@@ -206,13 +185,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                         <TableHead className="font-black text-[10px] uppercase px-6">Socio</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6">Detalle Pedido</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6 text-right">Total $</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase px-6 text-center">Proveedor</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6 text-center">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {pedidos.map((p: any) => {
                         const isChecked = p.estadoNormalizado === 'checked' || p.estadoNormalizado === 'revisado'
+                        const supplierPaid = p.estadoPagoProveedor === 'pagado'
+                        
                         return (
                           <TableRow key={p.id} className={cn("group transition-colors", isChecked ? "bg-emerald-50/40" : "hover:bg-primary/5")}>
                             <TableCell className="px-6 py-4">
@@ -223,7 +204,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                               <div className="text-sm font-bold uppercase tracking-tight">{p.nombreNormalizado}</div>
                               {isChecked && (
                                 <div className="text-[9px] text-emerald-600 font-black uppercase flex items-center gap-1 mt-1">
-                                  <Check className="w-3 h-3"/> CONTABILIZADO
+                                  <Check className="w-3 h-3"/> SOCIO PAGÓ
                                 </div>
                               )}
                             </TableCell>
@@ -234,16 +215,16 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                               <div className="font-black text-primary text-base">${new Intl.NumberFormat('es-CL').format(p.valorNormalizado)}</div>
                             </TableCell>
                             <TableCell className="px-6 py-4 text-center">
-                              {p.comprobanteUrl ? (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-9 px-4 rounded-xl text-[10px] font-black bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white" 
-                                  onClick={() => setSelectedReceipt(p.comprobanteUrl)}
-                                >
-                                  <Receipt className="w-4 h-4 mr-2" /> VER PAGO
-                                </Button>
-                              ) : <span className="text-[10px] italic opacity-30 font-bold">Sin Comprobante</span>}
+                              {isChecked ? (
+                                <Badge variant="outline" className={cn(
+                                  "rounded-lg text-[9px] font-black uppercase border-2",
+                                  supplierPaid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
+                                )}>
+                                  {supplierPaid ? "Liquidado" : "Pendiente Pago"}
+                                </Badge>
+                              ) : (
+                                <span className="text-[10px] italic opacity-30 font-bold">En espera</span>
+                              )}
                             </TableCell>
                             <TableCell className="px-6 py-4 text-center">
                               <div className="flex gap-2 justify-center">
@@ -253,7 +234,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                                   className="rounded-xl font-bold h-9 w-9 p-0" 
                                   onClick={() => handleUpdateStatus(p.id, 'checked')} 
                                   disabled={isChecked}
-                                  title="Validar Pago y Registrar en Finanzas"
+                                  title="Validar Pago Socio"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                 </Button>

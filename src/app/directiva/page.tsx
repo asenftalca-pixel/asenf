@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
@@ -9,9 +10,9 @@ import { MemberManager } from '@/components/dashboard/MemberManager'
 import { TaskManager } from '@/components/dashboard/TaskManager'
 import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
 import { GasOrderManager } from '@/components/dashboard/GasOrderManager'
-import { AppWindow, Cloud, Loader2, Database, ShieldCheck, Lock, ArrowLeft, ArrowRight } from 'lucide-react'
-import { FirebaseClientProvider, useCollection, useFirestore, useMemoFirebase } from '@/firebase'
-import { collection, query, where } from 'firebase/firestore'
+import { AppWindow, Cloud, Loader2, Database, ShieldCheck, Lock, ArrowLeft, ArrowRight, AlertTriangle, Flame } from 'lucide-react'
+import { FirebaseClientProvider, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase'
+import { collection, query, where, doc } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -47,19 +48,33 @@ function DashboardContent() {
     return query(collection(db, "nomina_maestra"), where("status", "==", "activo"))
   }, [db])
 
-  // KPI: Pedidos de Gas Pendientes
+  // KPI: Pedidos de Gas Pendientes (Socios)
   const gasQuery = useMemoFirebase(() => {
     if (!db) return null
     return collection(db, "pedidos_socios")
   }, [db])
 
+  // KPI: Pedidos Pendientes de Pago al Proveedor (Deuda)
+  const pendingSupplierQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "pedidos_socios"), where("estadoPagoProveedor", "==", "pendiente"))
+  }, [db])
+
+  const costsRef = useMemoFirebase(() => {
+    if (!db) return null
+    return doc(db, "settings", "gas_costs")
+  }, [db])
+
   const { data: activeTasksRaw, isLoading: loadingTasks } = useCollection(tasksQuery)
   const { data: activeNominasRaw, isLoading: loadingNominas } = useCollection(nominaActivaQuery)
   const { data: allGasOrdersRaw, isLoading: loadingGas } = useCollection(gasQuery)
+  const { data: pendingSupplierRaw } = useCollection(pendingSupplierQuery)
+  const { data: costsData } = useDoc(costsRef)
 
   const activeTasks = activeTasksRaw || []
   const activeNominas = activeNominasRaw || []
   const allGasOrders = allGasOrdersRaw || []
+  const pendingSupplierOrders = pendingSupplierRaw || []
 
   const pendingGasCount = useMemo(() => {
     return allGasOrders.filter((p: any) => {
@@ -67,6 +82,24 @@ function DashboardContent() {
       return status !== 'delivered' && status !== 'entregado';
     }).length
   }, [allGasOrders])
+
+  // Cálculo de deuda proveedor para visualización rápida
+  const pendingSupplierDebt = useMemo(() => {
+    if (!pendingSupplierOrders || !costsData?.values) return 0
+    let total = 0
+    pendingSupplierOrders.forEach((order: any) => {
+      if (Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          const brand = (item.marca || "").toLowerCase().trim()
+          const weight = String(item.peso || "").replace(/\D/g, "")
+          const costKey = `${brand}_${weight}`
+          const unitCost = costsData.values[costKey] || 0
+          total += unitCost * (Number(item.cantidad) || 0)
+        })
+      }
+    })
+    return total
+  }, [pendingSupplierOrders, costsData])
 
   useEffect(() => {
     const safetyTimer = setTimeout(() => setIsInitialLoading(false), 3000)
@@ -90,6 +123,8 @@ function DashboardContent() {
     else if (app.id === 'app-admin-list') router.push('/admin/socios')
     else if (app.url) window.open(app.url, '_blank')
   }
+
+  const formatCLP = (v: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(v)
 
   if (isInitialLoading) {
     return (
@@ -127,6 +162,26 @@ function DashboardContent() {
       </header>
 
       <main className="container mx-auto px-4 py-12">
+        {pendingSupplierDebt > 0 && (
+          <div className="mb-8 p-6 bg-amber-50 border-2 border-dashed border-amber-200 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-amber-500 rounded-2xl text-white">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black uppercase text-amber-900 tracking-tight">Liquidación de Gas Pendiente</h4>
+                <p className="text-xs text-amber-700 font-medium">Tienes <span className="font-black">{pendingSupplierOrders.length} pedidos</span> sin pagar al proveedor por un total de <span className="font-black">{formatCLP(pendingSupplierDebt)}</span>.</p>
+              </div>
+            </div>
+            <Button 
+              className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black h-12 px-8 shadow-lg gap-2"
+              onClick={() => setIsFinanceOpen(true)}
+            >
+              IR A LIQUIDAR <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
           <div className="max-w-3xl">
             <h2 className="text-4xl md:text-5xl font-headline font-black mb-4 tracking-tighter text-primary leading-tight">
