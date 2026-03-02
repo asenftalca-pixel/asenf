@@ -32,6 +32,7 @@ const EXPENSE_CATEGORIES = [
 
 const RESPONSABLES = ["Cecilia", "Julia", "Juan Carlos", "Leandro", "Rodrigo", "Sistema"]
 const CUENTAS = ["Cuenta propia", "Cuenta ASENF"]
+const GAS_BRANDS = ["Lipigas", "Abastible", "Gas del Sur"]
 
 export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { firestore } = useFirebase()
@@ -42,6 +43,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLiquidating, setIsLiquidating] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const [activeLiqBrand, setActiveLiqBrand] = useState("Lipigas")
   
   const [configData, setConfigData] = useState({
     bankAmount: "",
@@ -89,6 +91,22 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const allMovements = allMovementsRaw || []
   const pendingOrders = pendingOrdersRaw || []
 
+  // Filtrado de pedidos por marca seleccionada en liquidación
+  const filteredPendingOrders = useMemo(() => {
+    return pendingOrders.filter((order: any) => {
+      // Intentamos obtener la marca de los items o del resumen
+      const summary = (order.detalleResumen || "").toLowerCase();
+      const hasBrand = summary.includes(activeLiqBrand.toLowerCase());
+      
+      // También verificamos si algún item coincide
+      const itemsMatch = Array.isArray(order.items) && order.items.some((it: any) => 
+        (it.marca || "").toLowerCase() === activeLiqBrand.toLowerCase()
+      );
+
+      return hasBrand || itemsMatch;
+    });
+  }, [pendingOrders, activeLiqBrand]);
+
   // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
   const saldoCalculado = useMemo(() => {
     const startBalance = Number(bankData?.initialBankBalance) || 0
@@ -99,23 +117,26 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     }, startBalance)
   }, [allMovements, bankData])
 
-  // CÁLCULO DE DEUDA PROVEEDOR ACTUAL
-  const totalDeudaProveedor = useMemo(() => {
-    if (!pendingOrders || !costsData?.values) return 0
+  // CÁLCULO DE DEUDA PROVEEDOR PARA LA MARCA SELECCIONADA
+  const debtBySelectedBrand = useMemo(() => {
+    if (!filteredPendingOrders || !costsData?.values) return 0
     let total = 0
-    pendingOrders.forEach((order: any) => {
+    filteredPendingOrders.forEach((order: any) => {
       if (Array.isArray(order.items)) {
         order.items.forEach((item: any) => {
           const brand = (item.marca || "").toLowerCase().trim()
-          const weight = String(item.peso || "").replace(/\D/g, "")
-          const costKey = `${brand}_${weight}`
-          const unitCost = costsData.values[costKey] || 0
-          total += unitCost * (Number(item.cantidad) || 0)
+          // Solo sumamos si coincide con la marca activa
+          if (brand === activeLiqBrand.toLowerCase()) {
+            const weight = String(item.peso || "").replace(/\D/g, "")
+            const costKey = `${brand}_${weight}`
+            const unitCost = costsData.values[costKey] || 0
+            total += unitCost * (Number(item.cantidad) || 0)
+          }
         })
       }
     })
     return total
-  }, [pendingOrders, costsData])
+  }, [filteredPendingOrders, costsData, activeLiqBrand])
 
   // CÁLCULO DE UTILIDAD GAS (Ingresos Venta Gas - Egresos Costo Proveedor)
   const utilidadGas = useMemo(() => {
@@ -149,7 +170,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
   const handleLiquidateSupplier = async () => {
-    if (!firestore || totalDeudaProveedor <= 0 || !window.confirm(`¿Confirmar pago masivo de ${formatCLP(totalDeudaProveedor)} al proveedor?`)) return
+    if (!firestore || debtBySelectedBrand <= 0 || !window.confirm(`¿Confirmar pago de ${formatCLP(debtBySelectedBrand)} a ${activeLiqBrand}?`)) return
     
     setIsLiquidating(true)
     try {
@@ -162,17 +183,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       batch.set(financeRef, {
         tipo: "egreso",
         categoria: "Pago Proveedor Gas",
-        monto: totalDeudaProveedor,
+        monto: debtBySelectedBrand,
         fecha: today,
         responsable: "Sistema",
         cuenta: "Cuenta ASENF",
-        glosa: `Liquidación masiva de ${pendingOrders.length} pedidos de gas.`,
+        glosa: `Liquidación de ${filteredPendingOrders.length} pedidos de ${activeLiqBrand}.`,
         createdAt: timestamp,
         updatedAt: timestamp
       })
 
-      // 2. Marcar pedidos como pagados al proveedor
-      pendingOrders.forEach(order => {
+      // 2. Marcar pedidos como pagados al proveedor (solo los de esta marca)
+      filteredPendingOrders.forEach(order => {
         const orderRef = doc(firestore, "pedidos_socios", order.id)
         batch.update(orderRef, {
           estadoPagoProveedor: "pagado",
@@ -182,7 +203,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      toast({ title: "Liquidación Completada", description: "Se ha registrado el egreso y actualizado los pedidos." })
+      toast({ title: `Liquidación ${activeLiqBrand} Completada`, description: "Se ha registrado el egreso y actualizado los pedidos." })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en liquidación", description: e.message })
     } finally {
@@ -201,20 +222,15 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       let updatedCount = 0
       let syncedCount = 0
 
-      console.log('SYNC_DEBUG: Iniciando barrido de seguridad en pedidos_socios...');
-
       querySnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
         
-        // 1. Inyectar campo faltante EXPLÍCITAMENTE (REPARACIÓN DE HISTÓRICOS)
-        // Buscamos pedidos aprobados o marcados que no tengan estadoPagoProveedor
         if (orderData.estadoPagoProveedor === undefined || orderData.estadoPagoProveedor === null) {
           batch.update(orderDoc.ref, { 'estadoPagoProveedor': 'pendiente' })
           updatedCount++
         }
 
-        // 2. Sincronizar ingreso en finanzas si el pedido está aprobado (checked/delivered)
         if (orderData.status === 'checked' || orderData.status === 'delivered') {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
@@ -237,13 +253,11 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      console.log(`SYNC_DEBUG: Proceso finalizado. Reparados: ${updatedCount}, Sincronizados: ${syncedCount}`);
       toast({ 
         title: "Sincronización Completada", 
         description: `Se repararon ${updatedCount} pedidos antiguos y se sincronizaron ${syncedCount} ingresos.` 
       })
     } catch (e: any) {
-      console.error('SYNC_ERROR:', e);
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
       setIsSyncing(false)
@@ -431,20 +445,18 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
                 <Card className={cn(
                   "p-6 border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center relative overflow-hidden",
-                  totalDeudaProveedor > 0 ? "bg-amber-50" : "bg-emerald-50"
+                  pendingOrders.length > 0 ? "bg-amber-50" : "bg-emerald-50"
                 )}>
                   <div className="absolute top-0 right-0 p-4 opacity-5"><Flame className="w-12 h-12" /></div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Deuda Proveedor Gas</span>
                   <div className={cn(
                     "text-2xl font-black tracking-tighter",
-                    totalDeudaProveedor > 0 ? "text-amber-600" : "text-emerald-600"
+                    pendingOrders.length > 0 ? "text-amber-600" : "text-emerald-600"
                   )}>
-                    {formatCLP(totalDeudaProveedor)}
+                    {pendingOrders.length > 0 ? `${pendingOrders.length} Pedidos` : "Todo al día"}
                   </div>
-                  {totalDeudaProveedor > 0 ? (
-                    <p className="text-[9px] font-bold text-amber-700 uppercase mt-2 animate-pulse">{pendingOrders.length} Pedidos por pagar</p>
-                  ) : (
-                    <p className="text-[9px] font-bold text-emerald-600 uppercase mt-2">Todo liquidado</p>
+                  {pendingOrders.length > 0 && (
+                    <p className="text-[9px] font-bold text-amber-700 uppercase mt-2 animate-pulse">Pendientes de pago</p>
                   )}
                 </Card>
 
@@ -595,66 +607,82 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 </TabsContent>
 
                 <TabsContent value="proveedores">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <Card className="lg:col-span-2 p-8 bg-white rounded-[2.5rem] border shadow-sm space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Package className="w-6 h-6 text-amber-500" />
-                          <h3 className="text-xl font-black text-primary uppercase tracking-tight">Pendientes de Liquidación</h3>
-                        </div>
-                        <Badge className="bg-amber-100 text-amber-700 font-black px-4 py-1.5 rounded-full">{pendingOrders.length} Pedidos</Badge>
-                      </div>
+                  <div className="space-y-8">
+                    <Tabs value={activeLiqBrand} onValueChange={setActiveLiqBrand} className="w-full">
+                      <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 w-full max-w-lg">
+                        {GAS_BRANDS.map(brand => (
+                          <TabsTrigger 
+                            key={brand} 
+                            value={brand}
+                            className="flex-1 rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-primary data-[state=active]:text-white"
+                          >
+                            {brand}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
 
-                      <div className="rounded-2xl border overflow-hidden">
-                        <Table>
-                          <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
-                          <TableBody>
-                            {pendingOrders.map((order: any) => (
-                              <TableRow key={order.id} className="hover:bg-slate-50">
-                                <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
-                                <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
-                                <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
-                              </TableRow>
-                            ))}
-                            {pendingOrders.length === 0 && (
-                              <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con proveedores.</TableCell></TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </Card>
-
-                    <Card className="p-8 bg-primary text-primary-foreground rounded-[2.5rem] flex flex-col justify-between shadow-2xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-6 opacity-10"><AlertCircle className="w-32 h-32" /></div>
-                      <div className="space-y-6 relative z-10">
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Resumen de Liquidación</p>
-                          <h3 className="text-3xl font-black tracking-tighter">Deuda Proveedor</h3>
-                        </div>
-                        
-                        <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold opacity-60 uppercase">Monto Estimado</span>
-                            <span className="text-2xl font-black text-secondary">{formatCLP(totalDeudaProveedor)}</span>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+                        <Card className="lg:col-span-2 p-8 bg-white rounded-[2.5rem] border shadow-sm space-y-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Package className="w-6 h-6 text-amber-500" />
+                              <h3 className="text-xl font-black text-primary uppercase tracking-tight">Pendientes {activeLiqBrand}</h3>
+                            </div>
+                            <Badge className="bg-amber-100 text-amber-700 font-black px-4 py-1.5 rounded-full">{filteredPendingOrders.length} Pedidos</Badge>
                           </div>
-                          <p className="text-[9px] leading-relaxed opacity-50 font-bold uppercase">
-                            Este valor se calcula automáticamente multiplicando la cantidad de cilindros por el costo base configurado en el tarifario.
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="mt-10 relative z-10">
-                        <Button 
-                          className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
-                          disabled={totalDeudaProveedor <= 0 || isLiquidating}
-                          onClick={handleLiquidateSupplier}
-                        >
-                          {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
-                          LIQUIDAR Y REGISTRAR PAGO
-                        </Button>
-                        <p className="text-[8px] text-center mt-4 opacity-40 font-black uppercase tracking-widest">Registra un egreso masivo en el libro diario</p>
+                          <div className="rounded-2xl border overflow-hidden">
+                            <Table>
+                              <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
+                              <TableBody>
+                                {filteredPendingOrders.map((order: any) => (
+                                  <TableRow key={order.id} className="hover:bg-slate-50">
+                                    <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
+                                    <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
+                                    <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
+                                  </TableRow>
+                                ))}
+                                {filteredPendingOrders.length === 0 && (
+                                  <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con {activeLiqBrand}.</TableCell></TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </Card>
+
+                        <Card className="p-8 bg-primary text-primary-foreground rounded-[2.5rem] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-6 opacity-10"><AlertCircle className="w-32 h-32" /></div>
+                          <div className="space-y-6 relative z-10">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Liquidación {activeLiqBrand}</p>
+                              <h3 className="text-3xl font-black tracking-tighter">Deuda Proveedor</h3>
+                            </div>
+                            
+                            <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 space-y-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold opacity-60 uppercase">Monto Estimado</span>
+                                <span className="text-2xl font-black text-secondary">{formatCLP(debtBySelectedBrand)}</span>
+                              </div>
+                              <p className="text-[9px] leading-relaxed opacity-50 font-bold uppercase">
+                                Valor calculado para {filteredPendingOrders.length} cilindros de {activeLiqBrand} según tarifario actual.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-10 relative z-10">
+                            <Button 
+                              className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
+                              disabled={debtBySelectedBrand <= 0 || isLiquidating}
+                              onClick={handleLiquidateSupplier}
+                            >
+                              {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
+                              LIQUIDAR {activeLiqBrand.toUpperCase()}
+                            </Button>
+                            <p className="text-[8px] text-center mt-4 opacity-40 font-black uppercase tracking-widest">Registra el egreso de costo en el libro diario</p>
+                          </div>
+                        </Card>
                       </div>
-                    </Card>
+                    </Tabs>
                   </div>
                 </TabsContent>
               </Tabs>
