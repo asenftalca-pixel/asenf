@@ -363,8 +363,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       </Dialog>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-primary p-8 text-primary-foreground">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-primary p-8 text-primary-foreground shrink-0">
             <DialogHeader>
               <div className="flex items-center gap-4">
                 <PlusCircle className="w-8 h-8 text-secondary" />
@@ -376,7 +376,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             </DialogHeader>
           </div>
 
-          <div className="p-8 space-y-6">
+          <div className="p-8 space-y-6 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fecha gasto</Label>
@@ -455,7 +455,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 pb-4">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Comprobante (Foto)</Label>
               <div className="relative h-24 border-2 border-dashed rounded-2xl flex items-center justify-center bg-muted/20 group hover:bg-muted/40 transition-colors overflow-hidden">
                 {formData.comprobante ? (
@@ -477,7 +477,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             </div>
           </div>
 
-          <DialogFooter className="p-8 bg-muted/10 border-t">
+          <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
             <Button 
               className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" 
               onClick={handleSaveMovement}
