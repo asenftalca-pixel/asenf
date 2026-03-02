@@ -1,10 +1,7 @@
 {
-  "name": "asenf-app",
-  "version": "1.0.0",
+  "name": "asenf-talca",
+  "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": "20.x"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +12,6 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "firebase": "latest",
-    "lucide-react": "latest",
-    "recharts": "latest"
+    "lucide-react": "latest"
   }
 }
