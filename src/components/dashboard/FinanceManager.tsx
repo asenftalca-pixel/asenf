@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card } from "@/components/ui/card"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2 } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
-import { collection, doc, addDoc, setDoc, query, orderBy, limit, serverTimestamp } from "firebase/firestore"
+import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
 
 const INCOME_CATEGORIES = ["Cuota social", "Gas", "Copago fiesta", "Otros"]
 const EXPENSE_CATEGORIES = [
@@ -45,14 +48,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     cuenta: ""
   })
 
-  const movementsQuery = useMemoFirebase(() => {
-    if (!firestore) return null
-    return query(collection(firestore, "finanzas_asenftalca"), orderBy("createdAt", "desc"), limit(10))
-  }, [firestore])
-
   const allMovementsQuery = useMemoFirebase(() => {
     if (!firestore) return null
-    return collection(firestore, "finanzas_asenftalca")
+    return query(collection(firestore, "finanzas_asenftalca"), orderBy("fecha", "desc"))
   }, [firestore])
 
   const bankRef = useMemoFirebase(() => {
@@ -60,12 +58,29 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     return doc(firestore, "settings", "finances")
   }, [firestore])
 
-  const { data: movementsRaw, isLoading: loadingMovements } = useCollection(movementsQuery)
-  const { data: allMovementsRaw } = useCollection(allMovementsQuery)
+  const { data: allMovementsRaw, isLoading: loadingMovements } = useCollection(allMovementsQuery)
   const { data: bankData } = useDoc(bankRef)
 
-  const movements = movementsRaw || []
   const allMovements = allMovementsRaw || []
+
+  // Agrupación por meses para las pestañas
+  const movementsByMonth = useMemo(() => {
+    const grouped: Record<string, any[]> = {}
+    allMovements.forEach(mov => {
+      try {
+        const date = parseISO(mov.fecha)
+        const monthYear = format(date, "MMMM yyyy", { locale: es })
+        if (!grouped[monthYear]) grouped[monthYear] = []
+        grouped[monthYear].push(mov)
+      } catch (e) {
+        if (!grouped["Sin Fecha"]) grouped["Sin Fecha"] = []
+        grouped["Sin Fecha"].push(mov)
+      }
+    })
+    return grouped
+  }, [allMovements])
+
+  const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
   const saldoCalculado = useMemo(() => {
     return allMovements.reduce((acc, mov) => {
@@ -112,7 +127,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       ...formData,
       monto: Number(formData.monto),
       createdAt: serverTimestamp(),
-      fechaTimestamp: new Date(formData.fecha).getTime()
+      devolucionRealizada: false
     }
 
     addDoc(collection(firestore, "finanzas_asenftalca"), dataToSave)
@@ -140,6 +155,19 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       .finally(() => setIsSubmitting(false))
   }
 
+  const toggleRefund = (id: string, checked: boolean) => {
+    if (!firestore) return
+    const docRef = doc(firestore, "finanzas_asenftalca", id)
+    updateDoc(docRef, { devolucionRealizada: checked }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: { devolucionRealizada: checked }
+      })
+      errorEmitter.emit("permission-error", permissionError)
+    })
+  }
+
   const formatCLP = (v: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(v)
 
   return (
@@ -165,7 +193,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           </div>
 
           <div className="flex-1 overflow-auto bg-muted/5 p-8">
-            <div className="container mx-auto max-w-6xl space-y-8">
+            <div className="container mx-auto max-w-7xl space-y-8">
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center">
@@ -221,69 +249,103 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <History className="w-5 h-5 text-primary" />
-                    <h3 className="font-black text-sm uppercase tracking-widest text-primary">Últimos 10 Movimientos</h3>
+                    <h3 className="font-black text-sm uppercase tracking-widest text-primary">Historial de Movimientos</h3>
                   </div>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/10 hover:bg-muted/10">
-                      <TableHead className="font-black text-[10px] uppercase px-6">Fecha Gasto</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loadingMovements ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-40 text-center">
-                          <Loader2 className="w-8 h-8 animate-spin mx-auto opacity-20" />
-                        </TableCell>
-                      </TableRow>
-                    ) : movements.map((mov) => (
-                      <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
-                        <TableCell className="px-6 font-bold text-xs text-muted-foreground">{mov.fecha}</TableCell>
-                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
-                        <TableCell className="px-6">
-                          <div className="space-y-1">
-                            <div className={cn(
-                              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                              mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                            )}>
-                              {mov.tipo}
-                            </div>
-                            <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
+
+                <div className="p-6">
+                  {loadingMovements ? (
+                    <div className="h-60 flex items-center justify-center">
+                      <Loader2 className="w-10 h-10 animate-spin opacity-20 text-primary" />
+                    </div>
+                  ) : monthsList.length > 0 ? (
+                    <Tabs defaultValue={monthsList[0]} className="space-y-6">
+                      <TabsList className="bg-muted/20 p-1 h-auto flex flex-wrap gap-1 rounded-xl">
+                        {monthsList.map(month => (
+                          <TabsTrigger 
+                            key={month} 
+                            value={month}
+                            className="rounded-lg px-4 py-2 text-xs font-black uppercase tracking-tight data-[state=active]:bg-primary data-[state=active]:text-white"
+                          >
+                            {month}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+
+                      {monthsList.map(month => (
+                        <TabsContent key={month} value={month} className="animate-in fade-in duration-500">
+                          <div className="rounded-xl border overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/10 hover:bg-muted/10">
+                                  <TableHead className="font-black text-[10px] uppercase px-6">Día</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6 text-center">Devolución</TableHead>
+                                  <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {movementsByMonth[month].map((mov) => (
+                                  <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
+                                    <TableCell className="px-6 font-bold text-xs text-muted-foreground">
+                                      {mov.fecha ? mov.fecha.split("-")[2] : "?"}
+                                    </TableCell>
+                                    <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
+                                    <TableCell className="px-6">
+                                      <div className="space-y-1">
+                                        <div className={cn(
+                                          "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                                          mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                        )}>
+                                          {mov.tipo}
+                                        </div>
+                                        <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
+                                    <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
+                                      {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
+                                    </TableCell>
+                                    <TableCell className="px-6 text-center">
+                                      {mov.tipo === "egreso" ? (
+                                        <div className="flex items-center justify-center">
+                                          <Checkbox 
+                                            checked={!!mov.devolucionRealizada}
+                                            onCheckedChange={(checked) => toggleRefund(mov.id, !!checked)}
+                                            className="w-5 h-5 rounded-md border-2 border-primary/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                          />
+                                        </div>
+                                      ) : <span className="text-[9px] opacity-10">—</span>}
+                                    </TableCell>
+                                    <TableCell className="px-6 text-center">
+                                      {mov.comprobante ? (
+                                        <Button 
+                                          size="icon" 
+                                          variant="ghost" 
+                                          className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg"
+                                          onClick={() => setSelectedReceipt(mov.comprobante)}
+                                        >
+                                          <Receipt className="w-4 h-4" />
+                                        </Button>
+                                      ) : <span className="text-[9px] font-bold text-muted-foreground/30">Sin foto</span>}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
-                        <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
-                          {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
-                        </TableCell>
-                        <TableCell className="px-6 text-center">
-                          {mov.comprobante ? (
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg"
-                              onClick={() => setSelectedReceipt(mov.comprobante)}
-                            >
-                              <Receipt className="w-4 h-4" />
-                            </Button>
-                          ) : <span className="text-[9px] font-bold text-muted-foreground/30">Sin foto</span>}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {movements.length === 0 && !loadingMovements && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic font-medium">
-                          No se han registrado movimientos financieros aún.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  ) : (
+                    <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic font-medium">
+                      No se han registrado movimientos financieros aún.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -292,7 +354,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v2.8</span>
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v3.0</span>
               </div>
               <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
             </div>
