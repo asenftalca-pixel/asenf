@@ -1,13 +1,15 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn } from "lucide-react"
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save } from "lucide-react"
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp } from "firebase/firestore"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
@@ -17,13 +19,29 @@ import * as XLSX from "xlsx"
 import { cn } from "@/lib/utils"
 
 /**
- * GasOrderManager - Módulo de Gestión de Pedidos.
- * Implementa lectura de PascalCase, Modal para Base64 y exportación avanzada por kilos.
- * Automatización: Al marcar como 'checked', registra el ingreso en finanzas_asenftalca usando IDs deterministas.
+ * GasOrderManager - Gestión de Pedidos con Integración Contable Doble.
+ * Registra Ingreso (Pago Socio) y Egreso (Costo Proveedor) para cálculo de utilidad.
  */
 export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const db = useFirestore()
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const [isCostConfigOpen, setIsConfigOpen] = useState(false)
+  const [isSavingCosts, setIsSavingCosts] = useState(false)
+
+  // Referencia a la configuración de costos base
+  const costsRef = useMemoFirebase(() => {
+    if (!db) return null
+    return doc(db, "settings", "gas_costs")
+  }, [db])
+
+  const { data: costsData } = useDoc(costsRef)
+  const [editingCosts, setEditingCosts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (costsData) {
+      setEditingCosts(costsData.values || {})
+    }
+  }, [costsData, isCostConfigOpen])
 
   const pedidosQuery = useMemoFirebase(() => {
     if (!db) return null
@@ -62,6 +80,23 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       })
   }, [allPedidos])
 
+  const handleSaveCosts = async () => {
+    if (!db) return
+    setIsSavingCosts(true)
+    try {
+      await setDoc(doc(db, "settings", "gas_costs"), {
+        values: editingCosts,
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+      toast({ title: "Costos de proveedor actualizados" })
+      setIsConfigOpen(false)
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al guardar costos" })
+    } finally {
+      setIsSavingCosts(false)
+    }
+  }
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!db) return
     try {
@@ -70,76 +105,69 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         updatedAt: new Date().toISOString()
       })
 
-      // Automatización: Si se marca como pagado/revisado, registrar en finanzas con ID único
+      // LÓGICA DE REGISTRO CONTABLE DOBLE
       if (newStatus === 'checked') {
         const order = allPedidos.find(p => p.id === id)
         if (order) {
-          const monto = Number(order.totalGeneral || order.Total || order.Valor || 0)
+          const montoBruto = Number(order.totalGeneral || order.Total || order.Valor || 0)
           const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
           const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : order.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
           
-          // Usar ID determinista: gas_order_ID para evitar duplicados
-          await setDoc(doc(db, "finanzas_asenftalca", `gas_order_${id}`), {
+          // Calcular Costo Proveedor sumando por item
+          let costoTotalProveedor = 0
+          if (Array.isArray(order.items)) {
+            order.items.forEach((item: any) => {
+              const brand = (item.marca || "").toLowerCase().trim()
+              const weight = String(item.peso || "").replace(/\D/g, "")
+              const costKey = `${brand}_${weight}`
+              const unitCost = costsData?.values?.[costKey] || 0
+              costoTotalProveedor += unitCost * (Number(item.cantidad) || 0)
+            })
+          }
+
+          // Registro A: Ingreso Bruto
+          await setDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`), {
             tipo: "ingreso",
-            categoria: "Gas",
-            monto: monto,
+            categoria: "Venta Gas",
+            monto: montoBruto,
             fecha: orderDate,
             responsable: "Sistema",
             cuenta: "Cuenta ASENF",
-            glosa: `Pago Gas - Socio: ${socio}`,
+            glosa: `Ingreso Pedido Gas - Socio: ${socio}`,
             orderId: id,
-            createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           }, { merge: true })
 
+          // Registro B: Egreso (Costo)
+          if (costoTotalProveedor > 0) {
+            await setDoc(doc(db, "finanzas_asenftalca", `gas_cost_${id}`), {
+              tipo: "egreso",
+              categoria: "Costo Proveedor Gas",
+              monto: costoTotalProveedor,
+              fecha: orderDate,
+              responsable: "Sistema",
+              cuenta: "Cuenta ASENF",
+              glosa: `Costo Proveedor - Pedido: ${id} (${socio})`,
+              orderId: id,
+              updatedAt: serverTimestamp()
+            }, { merge: true })
+          }
+
           toast({ 
-            title: "Ingreso Automatizado", 
-            description: "Se ha registrado/actualizado el pago en la bitácora financiera." 
+            title: "Contabilidad Sincronizada", 
+            description: "Se ha registrado el ingreso bruto y el costo estimado del proveedor." 
           })
         }
       }
 
       toast({ title: "Estado Actualizado", description: `Pedido marcado como ${newStatus}.` })
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar el estado." })
+      toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar el estado contable." })
     }
   }
 
-  const exportToExcel = () => {
-    if (pedidos.length === 0) return
-    const dataToExport = pedidos.map(p => {
-      const kgCols: Record<string, number> = { "5kg": 0, "11kg": 0, "15kg": 0, "45kg": 0 }
-      const marcas = new Set<string>()
-      
-      if (Array.isArray(p.items)) {
-        p.items.forEach((item: any) => {
-          const peso = String(item.peso || "").replace("Kg", "").replace("kg", "").trim()
-          const cant = Number(item.cantidad || 0)
-          const key = `${peso}kg`
-          if (kgCols[key] !== undefined) kgCols[key] += cant
-          if (item.marca) marcas.add(item.marca)
-        })
-      } else {
-        marcas.add(p.detalleNormalizado)
-      }
-
-      return {
-        ID: p.id,
-        Fecha: p.fechaObjeto ? format(p.fechaObjeto, "dd/MM/yyyy HH:mm") : "S/F",
-        Socio: p.nombreNormalizado,
-        Marcas: Array.from(marcas).join(", "),
-        ...kgCols,
-        "Total Pesos": p.valorNormalizado,
-        Estado: p.estadoNormalizado
-      }
-    })
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Reporte Pedidos")
-    XLSX.writeFile(wb, `Reporte_Gas_FENASENF_${format(new Date(), "dd-MM-yyyy")}.xlsx`)
-    toast({ title: "Excel Generado", description: "Se han exportado los datos desglosados por kilos." })
-  }
+  const brands = ["lipigas", "abastible", "gas del sur"]
+  const weights = ["5", "11", "15", "45"]
 
   return (
     <>
@@ -151,13 +179,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <Flame className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase">Gestión de Gas Estratégica</DialogTitle>
-                <DialogDescription className="text-primary-foreground/60">Monitoreo de suministros y validación de pagos Base64.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase">Gestión de Suministros Gas</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60">Integración financiera automatizada con cálculo de margen.</DialogDescription>
               </div>
             </div>
-            <Button variant="secondary" className="rounded-xl font-black gap-2 h-12 px-6 shadow-lg" onClick={exportToExcel}>
-              <Download className="w-5 h-5" /> EXPORTAR REPORTE EXCEL
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="outline" className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" onClick={() => setIsConfigOpen(true)}>
+                <Settings2 className="w-5 h-5" /> CONFIGURAR COSTOS
+              </Button>
+            </div>
           </div>
 
           <ScrollArea className="flex-1 bg-muted/5">
@@ -171,12 +201,12 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="bg-white border rounded-[2rem] shadow-sm overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableRow className="bg-muted/30">
                         <TableHead className="font-black text-[10px] uppercase px-6 h-14">ID / Fecha</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6">Socio</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6">Producto / Detalle</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase px-6">Detalle Pedido</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6 text-right">Total $</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6 text-center">Pago</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
                         <TableHead className="font-black text-[10px] uppercase px-6 text-center">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -193,7 +223,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                               <div className="text-sm font-bold uppercase tracking-tight">{p.nombreNormalizado}</div>
                               {isChecked && (
                                 <div className="text-[9px] text-emerald-600 font-black uppercase flex items-center gap-1 mt-1">
-                                  <Check className="w-3 h-3"/> REVISADO Y VALIDADO
+                                  <Check className="w-3 h-3"/> CONTABILIZADO
                                 </div>
                               )}
                             </TableCell>
@@ -208,12 +238,12 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                                 <Button 
                                   size="sm" 
                                   variant="outline" 
-                                  className="h-9 px-4 rounded-xl text-[10px] font-black bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-sm" 
+                                  className="h-9 px-4 rounded-xl text-[10px] font-black bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white" 
                                   onClick={() => setSelectedReceipt(p.comprobanteUrl)}
                                 >
-                                  <Receipt className="w-4 h-4 mr-2" /> VER COMPROBANTE
+                                  <Receipt className="w-4 h-4 mr-2" /> VER PAGO
                                 </Button>
-                              ) : <span className="text-[10px] italic opacity-30 font-bold uppercase">Sin Respaldo</span>}
+                              ) : <span className="text-[10px] italic opacity-30 font-bold">Sin Comprobante</span>}
                             </TableCell>
                             <TableCell className="px-6 py-4 text-center">
                               <div className="flex gap-2 justify-center">
@@ -223,7 +253,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                                   className="rounded-xl font-bold h-9 w-9 p-0" 
                                   onClick={() => handleUpdateStatus(p.id, 'checked')} 
                                   disabled={isChecked}
-                                  title="Marcar como Revisado"
+                                  title="Validar Pago y Registrar en Finanzas"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                 </Button>
@@ -240,58 +270,74 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           </TableRow>
                         )
                       })}
-                      {pedidos.length === 0 && !loading && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="h-60 text-center">
-                            <div className="flex flex-col items-center gap-2 opacity-30">
-                              <Flame className="w-12 h-12" />
-                              <p className="font-black uppercase tracking-widest text-sm">No hay pedidos pendientes registrados</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
                     </TableBody>
                   </Table>
                 </div>
               )}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
-          <DialogFooter className="px-8 py-4 bg-muted/10 border-t shrink-0">
-             <div className="flex items-center justify-between w-full">
-                <div className="text-[10px] font-black text-primary/40 uppercase tracking-[0.2em]">SISTEMA ESTRATÉGICO FENASENF</div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-[10px] font-bold uppercase opacity-60">Revisados ({pedidos.filter(p => p.estadoNormalizado === 'checked').length})</span>
+      {/* DIÁLOGO CONFIGURACIÓN COSTOS PROVEEDOR */}
+      <Dialog open={isCostConfigOpen} onOpenChange={setIsConfigOpen}>
+        <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-primary p-8 text-primary-foreground">
+            <DialogHeader>
+              <div className="flex items-center gap-5">
+                <div className="p-3 bg-secondary rounded-2xl">
+                  <Settings2 className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black uppercase">Costos Base Proveedor</DialogTitle>
+                  <DialogDescription className="text-primary-foreground/60">Configure el valor que la asociación paga por cada cilindro.</DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <ScrollArea className="max-h-[60vh] p-8">
+            <div className="space-y-8">
+              {brands.map(brand => (
+                <div key={brand} className="space-y-4">
+                  <h4 className="text-xs font-black uppercase text-primary tracking-widest border-b pb-2">{brand}</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {weights.map(weight => {
+                      const key = `${brand}_${weight}`
+                      return (
+                        <div key={weight} className="space-y-1">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">{weight} Kg</Label>
+                          <Input 
+                            type="number"
+                            placeholder="Costo base..."
+                            className="h-10 rounded-xl bg-muted/20 border-none font-black"
+                            value={editingCosts[key] || ""}
+                            onChange={(e) => setEditingCosts({...editingCosts, [key]: Number(e.target.value)})}
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-             </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-8 bg-muted/10 border-t">
+            <Button className="w-full h-14 rounded-2xl font-black gap-2 shadow-xl" onClick={handleSaveCosts} disabled={isSavingCosts}>
+              {isSavingCosts ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              GUARDAR TARIFARIO PROVEEDOR
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* VISUALIZADOR DE COMPROBANTE */}
       <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-black/95">
           <div className="relative w-full h-[85vh] flex flex-col items-center justify-center p-6">
-            <Button 
-              variant="secondary" 
-              size="icon" 
-              className="absolute top-6 right-6 rounded-full h-12 w-12 shadow-2xl hover:scale-110 transition-transform" 
-              onClick={() => setSelectedReceipt(null)}
-            >
-              <X className="w-6 h-6" />
-            </Button>
-            {selectedReceipt && (
-              <img 
-                src={selectedReceipt} 
-                alt="Comprobante de Pago Base64" 
-                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300" 
-              />
-            )}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
-               <p className="text-white text-xs font-black uppercase tracking-widest">Respaldo Digital FENASENF</p>
-            </div>
+            <Button variant="secondary" size="icon" className="absolute top-6 right-6 rounded-full h-12 w-12" onClick={() => setSelectedReceipt(null)}><X className="w-6 h-6" /></Button>
+            {selectedReceipt && <img src={selectedReceipt} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" alt="Pago" />}
           </div>
         </DialogContent>
       </Dialog>

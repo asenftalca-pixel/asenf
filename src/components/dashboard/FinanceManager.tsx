@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2 } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 
-const INCOME_CATEGORIES = ["Cuota social", "Gas", "Copago fiesta", "Otros"]
+const INCOME_CATEGORIES = ["Cuota social", "Venta Gas", "Copago fiesta", "Otros"]
 const EXPENSE_CATEGORIES = [
-  "FENASENF", "Capacitación", "Gastos digitales", "Viaticos gastos diarios", 
+  "Costo Proveedor Gas", "FENASENF", "Capacitación", "Gastos digitales", "Viaticos gastos diarios", 
   "Gastos oficina", "Alimentacion", "Transporte y estacionamientos", 
   "Coordinacion regional", "Regalo navidad", "Asesores", 
   "Reuniones sociales (fiesta, asamblea, desayunos)", "Fiesta Enfermeria", 
@@ -75,6 +75,29 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const allMovements = allMovementsRaw || []
 
+  // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
+  const saldoCalculado = useMemo(() => {
+    const startBalance = Number(bankData?.initialBankBalance) || 0
+    if (!allMovements) return startBalance
+    return allMovements.reduce((acc, mov) => {
+      const valor = Number(mov.monto) || 0
+      return mov.tipo === "ingreso" ? acc + valor : acc - valor
+    }, startBalance)
+  }, [allMovements, bankData])
+
+  // CÁLCULO DE UTILIDAD GAS (Ingresos Venta Gas - Egresos Costo Proveedor)
+  const utilidadGas = useMemo(() => {
+    const ingresosGas = allMovements
+      .filter(m => m.tipo === 'ingreso' && (m.categoria === 'Venta Gas' || m.categoria === 'Gas'))
+      .reduce((acc, m) => acc + (Number(m.monto) || 0), 0)
+    
+    const egresosGas = allMovements
+      .filter(m => m.tipo === 'egreso' && m.categoria === 'Costo Proveedor Gas')
+      .reduce((acc, m) => acc + (Number(m.monto) || 0), 0)
+    
+    return { ingresosGas, egresosGas, utilidad: ingresosGas - egresosGas }
+  }, [allMovements])
+
   const movementsByMonth = useMemo(() => {
     const grouped: Record<string, any[]> = {}
     allMovements.forEach(mov => {
@@ -93,16 +116,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
-  // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
-  const saldoCalculado = useMemo(() => {
-    const startBalance = Number(bankData?.initialBankBalance) || 0
-    if (!allMovements) return startBalance
-    return allMovements.reduce((acc, mov) => {
-      const valor = Number(mov.monto) || 0
-      return mov.tipo === "ingreso" ? acc + valor : acc - valor
-    }, startBalance)
-  }, [allMovements, bankData])
-
   const handleSyncPastOrders = async () => {
     if (!firestore) return
     setIsSyncing(true)
@@ -115,19 +128,19 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       const syncPromises = querySnapshot.docs.map(async (orderDoc) => {
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
-        const monto = Number(orderData.totalGeneral || orderData.Total || 0)
-        const socio = orderData.socioNombre || orderData.Nombre || "Socio"
+        const monto = Number(orderData.totalGeneral || 0)
+        const socio = orderData.socioNombre || "Socio"
         const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
-        const financeDocId = `gas_order_${orderId}`
-        await setDoc(doc(firestore, "finanzas_asenftalca", financeDocId), {
+        // Solo sincronizamos el ingreso en el migrador antiguo por simplicidad
+        await setDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`), {
           tipo: "ingreso",
-          categoria: "Gas",
+          categoria: "Venta Gas",
           monto: monto,
           fecha: fechaOrder,
           responsable: "Sistema",
           cuenta: "Cuenta ASENF",
-          glosa: `Pago Gas - Socio: ${socio}`,
+          glosa: `Ingreso Pedido Gas - Socio: ${socio}`,
           orderId: orderId,
           updatedAt: serverTimestamp()
         }, { merge: true })
@@ -135,7 +148,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await Promise.all(syncPromises)
-      toast({ title: "Sincronización Completada", description: `Se han integrado ${syncedCount} pedidos.` })
+      toast({ title: "Sincronización Completada", description: `Se han integrado ${syncedCount} ingresos de gas.` })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
@@ -264,8 +277,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <Wallet className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase">Gestión Financiera ASENF</DialogTitle>
-                <DialogDescription className="text-primary-foreground/60">Control de flujos, conciliación y saldos iniciales.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase">Centro Financiero ASENF</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60">Control de flujos, conciliación y utilidad de suministros.</DialogDescription>
               </div>
             </div>
             <div className="flex gap-3">
@@ -303,13 +316,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="flex-1 overflow-auto bg-muted/5 p-8">
             <div className="container mx-auto max-w-7xl space-y-8">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Saldo Digital Actual</span>
-                  <div className="text-4xl font-black text-primary tracking-tighter">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Saldo Digital Neto</span>
+                  <div className="text-3xl font-black text-primary tracking-tighter">
                     {formatCLP(saldoCalculado)}
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase">
+                  <div className="mt-2 flex items-center gap-1 text-[9px] font-bold text-emerald-600 uppercase">
                     <CheckCircle2 className="w-3 h-3" /> Inc. Saldo 01/01
                   </div>
                 </Card>
@@ -328,15 +341,31 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 )}>
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Diferencia de Caja</span>
                   <div className={cn(
-                    "text-3xl font-black tracking-tighter",
+                    "text-2xl font-black tracking-tighter",
                     Math.abs(saldoCalculado - (bankData?.bankAmount || 0)) < 1 ? "text-emerald-600" : "text-rose-600"
                   )}>
                     {formatCLP(saldoCalculado - (bankData?.bankAmount || 0))}
                   </div>
                   <Landmark className={cn(
-                    "w-5 h-5 mt-2",
+                    "w-4 h-4 mt-2",
                     Math.abs(saldoCalculado - (bankData?.bankAmount || 0)) < 1 ? "text-emerald-400" : "text-rose-400"
                   )} />
+                </Card>
+
+                {/* TARJETA DE UTILIDAD GAS - ESTRATÉGICA */}
+                <Card className="p-6 bg-primary text-primary-foreground border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16" /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary-foreground/60 mb-2 relative z-10">Utilidad Real Gas</span>
+                  <div className="text-3xl font-black text-secondary tracking-tighter relative z-10">
+                    {formatCLP(utilidadGas.utilidad)}
+                  </div>
+                  <div className="mt-2 flex flex-col items-center gap-0.5 relative z-10">
+                    <p className="text-[8px] font-bold uppercase text-primary-foreground/40">Margen estimado acumulado</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-[8px] border-emerald-500/30 text-emerald-400">Bruto: {formatCLP(utilidadGas.ingresosGas)}</Badge>
+                      <Badge variant="outline" className="text-[8px] border-rose-500/30 text-rose-400">Costo: {formatCLP(utilidadGas.egresosGas)}</Badge>
+                    </div>
+                  </div>
                 </Card>
               </div>
 
@@ -344,7 +373,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <History className="w-5 h-5 text-primary" />
-                    <h3 className="font-black text-sm uppercase tracking-widest text-primary">Historial por Periodos</h3>
+                    <h3 className="font-black text-sm uppercase tracking-widest text-primary">Libro Diario por Meses</h3>
                   </div>
                 </div>
 
@@ -377,16 +406,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         return (
                           <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-12">
                             
+                            {/* TABLA DE INGRESOS */}
                             <div className="space-y-4">
                               <div className="flex items-center justify-between px-2">
                                 <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-emerald-600">
-                                  <ArrowUpRight className="w-4 h-4" /> Ingresos
+                                  <ArrowUpRight className="w-4 h-4" /> Ingresos del Mes
                                 </h4>
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black">+{formatCLP(totalIngresos)}</Badge>
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black">Total +{formatCLP(totalIngresos)}</Badge>
                               </div>
                               <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
                                 <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16">Día</TableHead><TableHead className="px-6">Responsable</TableHead><TableHead className="px-6">Categoría</TableHead><TableHead className="px-6">Detalle</TableHead><TableHead className="px-6 text-right">Monto</TableHead><TableHead className="px-6 text-right w-24">Acción</TableHead></TableRow></TableHeader>
+                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
                                   <TableBody>
                                     {ingresos.map(m => (
                                       <TableRow key={m.id} className="group hover:bg-emerald-50/30">
@@ -408,16 +438,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                               </div>
                             </div>
 
+                            {/* TABLA DE EGRESOS */}
                             <div className="space-y-4">
                               <div className="flex items-center justify-between px-2">
                                 <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-rose-600">
-                                  <ArrowDownRight className="w-4 h-4" /> Egresos
+                                  <ArrowDownRight className="w-4 h-4" /> Egresos del Mes
                                 </h4>
-                                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-100 font-black">-{formatCLP(totalEgresos)}</Badge>
+                                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-100 font-black">Total -{formatCLP(totalEgresos)}</Badge>
                               </div>
                               <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
                                 <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16">Día</TableHead><TableHead className="px-6">Responsable</TableHead><TableHead className="px-6">Categoría</TableHead><TableHead className="px-6">Detalle</TableHead><TableHead className="px-6 text-center">Devolución</TableHead><TableHead className="px-6 text-right">Monto</TableHead><TableHead className="px-6 text-right w-24">Acción</TableHead></TableRow></TableHeader>
+                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-center text-[10px] font-black uppercase">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
                                   <TableBody>
                                     {egresos.map(m => (
                                       <TableRow key={m.id} className="group hover:bg-rose-50/30">
@@ -442,6 +473,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                               </div>
                             </div>
 
+                            {/* BALANCE FINAL MENSUAL */}
                             <div className={cn(
                               "p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed",
                               monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
@@ -450,7 +482,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                 <div className={cn("p-3 rounded-2xl", monthTotal >= 0 ? "bg-emerald-100" : "bg-rose-100")}>
                                   <Calculator className={cn("w-6 h-6", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
                                 </div>
-                                <h4 className="text-lg font-black text-primary uppercase tracking-tight">Balance de {month}</h4>
+                                <h4 className="text-lg font-black text-primary uppercase tracking-tight">Resultado del Ejercicio: {month}</h4>
                               </div>
                               <div className={cn("text-4xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
                                 {monthTotal > 0 ? "+" : ""}{formatCLP(monthTotal)}
@@ -461,7 +493,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       })}
                     </Tabs>
                   ) : (
-                    <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic">No hay movimientos financieros aún.</div>
+                    <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic">No hay movimientos financieros registrados aún.</div>
                   )}
                 </div>
               </div>
@@ -472,9 +504,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v4.0</span>
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema de Control Estratégico ASENF v5.0</span>
               </div>
-              <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
+              <div className="flex items-center gap-4">
+                <p className="text-[9px] font-bold text-muted-foreground uppercase">Utilidad Gas disponible: <span className="text-emerald-600 font-black">{formatCLP(utilidadGas.utilidad)}</span></p>
+                <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -490,7 +525,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <div className="p-3 bg-secondary rounded-2xl"><Settings2 className="w-8 h-8 text-primary" /></div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase">Configuración de Caja</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/60">Configure los saldos iniciales y bancarios.</DialogDescription>
+                  <DialogDescription className="text-primary-foreground/60">Saldos iniciales y conciliación bancaria.</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
@@ -501,35 +536,32 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Saldo Inicial al 01/01/2026</Label>
               <Input 
                 type="number" 
-                placeholder="Saldo inicial año..." 
+                placeholder="Monto al iniciar el año..." 
                 className="h-12 rounded-xl bg-muted/30 border-none font-black text-primary"
                 value={configData.initialBankBalance}
                 onChange={(e) => setConfigData({...configData, initialBankBalance: e.target.value})}
               />
-              <p className="text-[9px] text-muted-foreground italic px-1">Este monto será la base para el cálculo del Saldo Digital.</p>
+              <p className="text-[9px] text-muted-foreground italic px-1">Base para el cálculo del Saldo Digital acumulado.</p>
             </div>
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Monto Real Actual en Banco</Label>
               <Input 
                 type="number" 
-                placeholder="Monto según cartola hoy..." 
+                placeholder="Según cartola de hoy..." 
                 className="h-12 rounded-xl bg-muted/30 border-none font-black text-secondary-foreground"
                 value={configData.bankAmount}
                 onChange={(e) => setConfigData({...configData, bankAmount: e.target.value})}
               />
-              <p className="text-[9px] text-muted-foreground italic px-1">Actualice este valor con el saldo real que ve en su banco hoy.</p>
+              <p className="text-[9px] text-muted-foreground italic px-1">Valor real para comparar contra el saldo digital.</p>
             </div>
           </div>
 
           <DialogFooter className="p-8 bg-muted/10 border-t">
-            <div className="flex gap-3 w-full">
-              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsConfigOpen(false)}>CANCELAR</Button>
-              <Button className="flex-1 h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" onClick={handleSaveConfig} disabled={isSavingBank}>
-                {isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-                GUARDAR AJUSTES
-              </Button>
-            </div>
+            <Button className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" onClick={handleSaveConfig} disabled={isSavingBank}>
+              {isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+              GUARDAR AJUSTES DE CAJA
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
