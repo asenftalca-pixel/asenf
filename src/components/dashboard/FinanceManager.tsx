@@ -11,9 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
-import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
+import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
@@ -36,6 +36,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingBank, setIsSavingBank] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
   const [montoBancoManual, setMontoBancoManual] = useState<string>("")
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -66,7 +67,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const allMovements = allMovementsRaw || []
 
-  // Agrupación por meses para las pestañas
   const movementsByMonth = useMemo(() => {
     const grouped: Record<string, any[]> = {}
     allMovements.forEach(mov => {
@@ -86,11 +86,54 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
   const saldoCalculado = useMemo(() => {
+    if (!allMovements) return 0
     return allMovements.reduce((acc, mov) => {
       const valor = Number(mov.monto) || 0
       return mov.tipo === "ingreso" ? acc + valor : acc - valor
     }, 0)
   }, [allMovements])
+
+  const handleSyncPastOrders = async () => {
+    if (!firestore) return
+    setIsSyncing(true)
+    try {
+      const ordersRef = collection(firestore, "pedidos_socios")
+      const q = query(ordersRef, where("status", "in", ["checked", "delivered", "revisado", "entregado"]))
+      const querySnapshot = await getDocs(q)
+      
+      let syncedCount = 0
+      const syncPromises = querySnapshot.docs.map(async (orderDoc) => {
+        const orderData = orderDoc.data()
+        const orderId = orderDoc.id
+        const monto = Number(orderData.totalGeneral || orderData.Total || 0)
+        const socio = orderData.socioNombre || orderData.Nombre || "Socio"
+        const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
+
+        // Usar un ID determinista para evitar duplicados
+        const financeDocId = `gas_order_${orderId}`
+        await setDoc(doc(firestore, "finanzas_asenftalca", financeDocId), {
+          tipo: "ingreso",
+          categoria: "Gas",
+          monto: monto,
+          fecha: fechaOrder,
+          responsable: "Sistema",
+          cuenta: "Cuenta ASENF",
+          glosa: `Pago Gas - Socio: ${socio}`,
+          orderId: orderId,
+          updatedAt: serverTimestamp()
+        }, { merge: true })
+        syncedCount++
+      })
+
+      await Promise.all(syncPromises)
+      toast({ title: "Sincronización Completada", description: `Se han integrado ${syncedCount} pedidos al historial.` })
+    } catch (e: any) {
+      console.error("Sync error:", e)
+      toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const handleSaveBank = async () => {
     if (!firestore) return
@@ -231,15 +274,26 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <DialogDescription className="text-primary-foreground/60">Control estratégico de flujos y conciliación bancaria.</DialogDescription>
               </div>
             </div>
-            <Button 
-              className="rounded-xl font-black gap-2 h-12 px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90" 
-              onClick={() => {
-                resetForm()
-                setIsFormOpen(true)
-              }}
-            >
-              <PlusCircle className="w-5 h-5" /> INGRESAR MOVIMIENTO
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline"
+                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                onClick={handleSyncPastOrders}
+                disabled={isSyncing}
+              >
+                {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                SINCRONIZAR PEDIDOS
+              </Button>
+              <Button 
+                className="rounded-xl font-black gap-2 h-12 px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90" 
+                onClick={() => {
+                  resetForm()
+                  setIsFormOpen(true)
+                }}
+              >
+                <PlusCircle className="w-5 h-5" /> INGRESAR MOVIMIENTO
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-auto bg-muted/5 p-8">

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase"
-import { collection, doc, updateDoc, query, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, doc, updateDoc, query, setDoc, serverTimestamp } from "firebase/firestore"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 /**
  * GasOrderManager - Módulo de Gestión de Pedidos.
  * Implementa lectura de PascalCase, Modal para Base64 y exportación avanzada por kilos.
- * Automatización: Al marcar como 'checked', registra el ingreso en finanzas_asenftalca.
+ * Automatización: Al marcar como 'checked', registra el ingreso en finanzas_asenftalca usando IDs deterministas.
  */
 export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const db = useFirestore()
@@ -70,28 +70,31 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         updatedAt: new Date().toISOString()
       })
 
-      // Automatización: Si se marca como pagado/revisado, registrar en finanzas
+      // Automatización: Si se marca como pagado/revisado, registrar en finanzas con ID único
       if (newStatus === 'checked') {
         const order = allPedidos.find(p => p.id === id)
         if (order) {
           const monto = Number(order.totalGeneral || order.Total || order.Valor || 0)
           const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
+          const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : order.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
           
-          await addDoc(collection(db, "finanzas_asenftalca"), {
+          // Usar ID determinista: gas_order_ID para evitar duplicados
+          await setDoc(doc(db, "finanzas_asenftalca", `gas_order_${id}`), {
             tipo: "ingreso",
             categoria: "Gas",
             monto: monto,
-            fecha: format(new Date(), "yyyy-MM-dd"),
+            fecha: orderDate,
             responsable: "Sistema",
             cuenta: "Cuenta ASENF",
             glosa: `Pago Gas - Socio: ${socio}`,
+            orderId: id,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          })
+          }, { merge: true })
 
           toast({ 
             title: "Ingreso Automatizado", 
-            description: "Se ha registrado el pago en la bitácora financiera." 
+            description: "Se ha registrado/actualizado el pago en la bitácora financiera." 
           })
         }
       }
