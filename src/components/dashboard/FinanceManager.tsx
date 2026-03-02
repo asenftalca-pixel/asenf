@@ -78,7 +78,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     return doc(firestore, "settings", "gas_costs")
   }, [firestore])
 
-  // FILTRO ESTRICTO: Solo pedidos con estado aprobado/revisado y deuda pendiente
   const pendingGasOrdersQuery = useMemoFirebase(() => {
     if (!firestore) return null
     return query(
@@ -93,14 +92,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { data: pendingOrdersRaw } = useCollection(pendingGasOrdersQuery)
 
   const allMovements = allMovementsRaw || []
-  const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked')
+  const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked' || p.status === 'delivered')
 
-  // Filtrado de pedidos por marca seleccionada en liquidación y ORDENAMIENTO POR FECHA
   const filteredPendingOrders = useMemo(() => {
     return pendingOrders
       .filter((order: any) => {
-        const summary = (order.detalleResumen || "").toLowerCase();
-        const hasBrand = summary.includes(activeLiqBrand.toLowerCase());
+        const brand = (order.detalleResumen || "").toLowerCase();
+        const hasBrand = brand.includes(activeLiqBrand.toLowerCase());
         const itemsMatch = Array.isArray(order.items) && order.items.some((it: any) => 
           (it.marca || "").toLowerCase() === activeLiqBrand.toLowerCase()
         );
@@ -188,7 +186,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         fecha: today,
         responsable: "Sistema",
         cuenta: "Cuenta ASENF",
-        glosa: `Liquidación de ${filteredPendingOrders.length} pedidos de ${activeLiqBrand}.`,
+        glosa: `Liquidación de ${filteredPendingOrders.length} pedidos de ${activeLiqBrand}. Pago a proveedor.`,
         createdAt: timestamp,
         updatedAt: timestamp
       })
@@ -203,7 +201,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      toast({ title: `Liquidación ${activeLiqBrand} Completada`, description: "Se ha registrado el egreso y actualizado los pedidos." })
+      toast({ title: `Liquidación ${activeLiqBrand} Completada`, description: "Se ha registrado el egreso y actualizado los pedidos a pagado." })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en liquidación", description: e.message })
     } finally {
@@ -211,25 +209,19 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     }
   }
 
-  // BOTÓN DE LIMPIEZA DE FANTASMAS
   const handleClearGhosts = async () => {
     if (!firestore) return
     setIsSyncing(true)
     try {
       const batch = writeBatch(firestore)
-      
-      // 1. Obtener todos los pedidos actuales para referencia
       const ordersSnap = await getDocs(collection(firestore, "pedidos_socios"))
       const validOrderIds = new Set(ordersSnap.docs.map(d => d.id))
-
-      // 2. Buscar en finanzas registros vinculados a pedidos
       const financeSnap = await getDocs(collection(firestore, "finanzas_asenftalca"))
       let deletedCount = 0
 
       financeSnap.docs.forEach(fDoc => {
         const data = fDoc.data()
         if (data.orderId && !validOrderIds.has(data.orderId)) {
-          // REGISTRO FANTASMA DETECTADO (Pedido borrado pero finanzas quedó)
           batch.delete(fDoc.ref)
           deletedCount++
         }
@@ -254,7 +246,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     try {
       const ordersRef = collection(firestore, "pedidos_socios")
       const querySnapshot = await getDocs(ordersRef)
-      
       const batch = writeBatch(firestore)
       let updatedCount = 0
       let syncedCount = 0
@@ -263,17 +254,15 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
         
-        // Reparar estado de deuda
         if (orderData.estadoPagoProveedor === undefined || orderData.estadoPagoProveedor === null) {
           batch.update(orderDoc.ref, { 'estadoPagoProveedor': 'pendiente' })
           updatedCount++
         }
 
-        // Sincronizar ingresos
         if (orderData.status === 'checked' || orderData.status === 'delivered') {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
-          const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
+          const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : String(orderData.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
           batch.set(financeRef, {
@@ -292,10 +281,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      toast({ 
-        title: "Sincronización Completada", 
-        description: `Se repararon ${updatedCount} pedidos y se sincronizaron ${syncedCount} ingresos.` 
-      })
+      toast({ title: "Sincronización Completada", description: `Se repararon ${updatedCount} pedidos y se sincronizaron ${syncedCount} ingresos.` })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
@@ -754,7 +740,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
-      {/* DIÁLOGO DE CONFIGURACIÓN DE SALDOS */}
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground relative">
@@ -805,7 +790,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
-      {/* FORMULARIO DE MOVIMIENTO */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground shrink-0">

@@ -27,7 +27,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isCostConfigOpen, setIsConfigOpen] = useState(false)
   const [isSavingCosts, setIsSavingCosts] = useState(false)
 
-  // Referencia a la configuración de costos base
   const costsRef = useMemoFirebase(() => {
     if (!db) return null
     return doc(db, "settings", "gas_costs")
@@ -96,16 +95,11 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     }
   }
 
-  // ELIMINACIÓN SINCRONIZADA (PEDIDO + FINANZAS)
   const handleDeleteOrder = async (id: string) => {
     if (!db || !window.confirm("¿Está seguro de eliminar este pedido? Se borrará también el registro financiero asociado.")) return
     try {
-      // 1. Eliminar el pedido
       await deleteDoc(doc(db, "pedidos_socios", id))
-      
-      // 2. Eliminar el registro de finanzas (si existe)
       await deleteDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`))
-      
       toast({ title: "Pedido Eliminado", description: "Se han limpiado todos los registros asociados." })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error al eliminar", description: e.message })
@@ -132,7 +126,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         if (order) {
           const montoBruto = Number(order.totalGeneral || order.Total || order.Valor || 0)
           const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
-          const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : order.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
+          const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : String(order.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
           
           await setDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`), {
             tipo: "ingreso",
@@ -284,7 +278,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         </DialogContent>
       </Dialog>
 
-      {/* DIÁLOGO CONFIGURACIÓN COSTOS PROVEEDOR */}
       <Dialog open={isCostConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground">
@@ -337,7 +330,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         </DialogContent>
       </Dialog>
 
-      {/* VISUALIZADOR DE COMPROBANTE */}
       <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-black/95">
           <div className="relative w-full h-[85vh] flex flex-col items-center justify-center p-6">
