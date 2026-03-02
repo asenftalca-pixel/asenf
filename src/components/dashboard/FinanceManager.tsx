@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -109,7 +109,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const socio = orderData.socioNombre || orderData.Nombre || "Socio"
         const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
-        // Usar un ID determinista para evitar duplicados
         const financeDocId = `gas_order_${orderId}`
         await setDoc(doc(firestore, "finanzas_asenftalca", financeDocId), {
           tipo: "ingreso",
@@ -363,7 +362,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       <Loader2 className="w-10 h-10 animate-spin opacity-20 text-primary" />
                     </div>
                   ) : monthsList.length > 0 ? (
-                    <Tabs defaultValue={monthsList[0]} className="space-y-6">
+                    <Tabs defaultValue={monthsList[0]} className="space-y-10">
                       <TabsList className="bg-muted/20 p-1 h-auto flex flex-wrap gap-1 rounded-xl">
                         {monthsList.map(month => (
                           <TabsTrigger 
@@ -377,49 +376,96 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       </TabsList>
 
                       {monthsList.map(month => {
-                        const monthTotal = calculateMonthTotal(movementsByMonth[month]);
+                        const monthMovements = movementsByMonth[month];
+                        const ingresos = monthMovements.filter(m => m.tipo === 'ingreso');
+                        const egresos = monthMovements.filter(m => m.tipo === 'egreso');
+                        const totalIngresos = ingresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                        const totalEgresos = egresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                        const monthTotal = totalIngresos - totalEgresos;
+
                         return (
-                          <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-6">
-                            <div className="rounded-xl border overflow-hidden">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow className="bg-muted/10 hover:bg-muted/10">
-                                    <TableHead className="font-black text-[10px] uppercase px-6">Día</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6">Detalle</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6 text-center">Devolución</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase px-6 text-right">Acciones</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {movementsByMonth[month].map((mov) => (
-                                    <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
-                                      <TableCell className="px-6 font-bold text-xs text-muted-foreground">
-                                        {mov.fecha ? mov.fecha.split("-")[2] : "?"}
-                                      </TableCell>
-                                      <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
-                                      <TableCell className="px-6">
-                                        <div className="space-y-1">
-                                          <div className={cn(
-                                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                                            mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                                          )}>
-                                            {mov.tipo}
+                          <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-12">
+                            
+                            {/* SECCIÓN INGRESOS */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between px-2">
+                                <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-emerald-600">
+                                  <ArrowUpRight className="w-4 h-4" /> Ingresos del Mes
+                                </h4>
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black">
+                                  Total +{formatCLP(totalIngresos)}
+                                </Badge>
+                              </div>
+                              <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                      <TableHead className="font-black text-[9px] uppercase px-6 w-16">Día</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Responsable</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Cuenta</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Categoría</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Detalle</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6 text-right">Monto</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6 text-right w-24">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {ingresos.length > 0 ? ingresos.map((mov) => (
+                                      <TableRow key={mov.id} className="group hover:bg-emerald-50/30 transition-colors">
+                                        <TableCell className="px-6 font-bold text-xs text-muted-foreground">{mov.fecha ? mov.fecha.split("-")[2] : "?"}</TableCell>
+                                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
+                                        <TableCell className="px-6 font-bold text-[10px] text-muted-foreground">{mov.cuenta}</TableCell>
+                                        <TableCell className="px-6 font-black text-emerald-700 text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
+                                        <TableCell className="px-6 font-medium text-muted-foreground text-xs">{mov.glosa || "—"}</TableCell>
+                                        <TableCell className="px-6 text-right font-black text-sm text-emerald-600">+{formatCLP(mov.monto)}</TableCell>
+                                        <TableCell className="px-6 text-right">
+                                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary" onClick={() => startEdit(mov)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-rose-500" onClick={() => handleDeleteMovement(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                           </div>
-                                          <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
-                                      <TableCell className="px-6 font-medium text-muted-foreground text-xs">{mov.glosa || "—"}</TableCell>
-                                      <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
-                                        {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
-                                      </TableCell>
-                                      <TableCell className="px-6 text-center">
-                                        {mov.tipo === "egreso" ? (
+                                        </TableCell>
+                                      </TableRow>
+                                    )) : (
+                                      <TableRow><TableCell colSpan={7} className="h-20 text-center text-muted-foreground italic text-xs">Sin ingresos registrados.</TableCell></TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+
+                            {/* SECCIÓN EGRESOS */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between px-2">
+                                <h4 className="flex items-center gap-2 font-black text-xs uppercase tracking-[0.2em] text-rose-600">
+                                  <ArrowDownRight className="w-4 h-4" /> Egresos del Mes
+                                </h4>
+                                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-100 font-black">
+                                  Total -{formatCLP(totalEgresos)}
+                                </Badge>
+                              </div>
+                              <div className="rounded-2xl border overflow-hidden bg-white shadow-sm">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                      <TableHead className="font-black text-[9px] uppercase px-6 w-16">Día</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Responsable</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Cuenta</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Categoría</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6">Detalle</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6 text-center">Devolución</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6 text-right">Monto</TableHead>
+                                      <TableHead className="font-black text-[9px] uppercase px-6 text-right w-24">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {egresos.length > 0 ? egresos.map((mov) => (
+                                      <TableRow key={mov.id} className="group hover:bg-rose-50/30 transition-colors">
+                                        <TableCell className="px-6 font-bold text-xs text-muted-foreground">{mov.fecha ? mov.fecha.split("-")[2] : "?"}</TableCell>
+                                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
+                                        <TableCell className="px-6 font-bold text-[10px] text-muted-foreground">{mov.cuenta}</TableCell>
+                                        <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
+                                        <TableCell className="px-6 font-medium text-muted-foreground text-xs">{mov.glosa || "—"}</TableCell>
+                                        <TableCell className="px-6 text-center">
                                           <div className="flex items-center justify-center">
                                             <Checkbox 
                                               checked={!!mov.devolucionRealizada}
@@ -427,45 +473,38 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                               className="w-5 h-5 rounded-md border-2 border-primary/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                             />
                                           </div>
-                                        ) : <span className="text-[9px] opacity-10">—</span>}
-                                      </TableCell>
-                                      <TableCell className="px-6 text-center">
-                                        {mov.comprobante ? (
-                                          <Button 
-                                            size="icon" 
-                                            variant="ghost" 
-                                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg"
-                                            onClick={() => setSelectedReceipt(mov.comprobante)}
-                                          >
-                                            <Receipt className="w-4 h-4" />
-                                          </Button>
-                                        ) : <span className="text-[9px] font-bold text-muted-foreground/30">Sin foto</span>}
-                                      </TableCell>
-                                      <TableCell className="px-6 text-right">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary" onClick={() => startEdit(mov)}>
-                                            <Pencil className="w-3.5 h-3.5" />
-                                          </Button>
-                                          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-rose-500" onClick={() => handleDeleteMovement(mov.id)}>
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                                        </TableCell>
+                                        <TableCell className="px-6 text-right font-black text-sm text-primary">-{formatCLP(mov.monto)}</TableCell>
+                                        <TableCell className="px-6 text-right">
+                                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary" onClick={() => startEdit(mov)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-rose-500" onClick={() => handleDeleteMovement(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )) : (
+                                      <TableRow><TableCell colSpan={8} className="h-20 text-center text-muted-foreground italic text-xs">Sin egresos registrados.</TableCell></TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
                             </div>
 
+                            {/* BALANCE FINAL MENSUAL */}
                             <div className={cn(
-                              "p-6 rounded-2xl flex items-center justify-between border-2 border-dashed",
+                              "p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed",
                               monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
                             )}>
-                              <div className="flex items-center gap-3">
-                                <Calculator className={cn("w-5 h-5", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
-                                <span className="text-xs font-black uppercase tracking-widest text-primary/60">Balance Total {month}</span>
+                              <div className="flex items-center gap-4">
+                                <div className={cn("p-3 rounded-2xl", monthTotal >= 0 ? "bg-emerald-100" : "bg-rose-100")}>
+                                  <Calculator className={cn("w-6 h-6", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40">Resultado Neto del Periodo</span>
+                                  <h4 className="text-lg font-black text-primary uppercase tracking-tight">Balance de {month}</h4>
+                                </div>
                               </div>
-                              <div className={cn("text-2xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                              <div className={cn("text-4xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
                                 {monthTotal > 0 ? "+" : ""}{formatCLP(monthTotal)}
                               </div>
                             </div>
@@ -487,7 +526,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v3.0</span>
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v3.5</span>
               </div>
               <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
             </div>
@@ -495,6 +534,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
+      {/* FORMULARIO */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground shrink-0">
@@ -513,19 +553,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fecha gasto</Label>
-                <Input 
-                  type="date" 
-                  className="h-12 rounded-xl bg-muted/30 border-none"
-                  value={formData.fecha}
-                  onChange={(e) => setFormData({...formData, fecha: e.target.value})}
-                />
+                <Input type="date" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.fecha} onChange={(e) => setFormData({...formData, fecha: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
                 <Select value={formData.tipo} onValueChange={(v: any) => setFormData({...formData, tipo: v, categoria: ""})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="ingreso">Ingreso (+)</SelectItem>
                     <SelectItem value="egreso">Egreso (-)</SelectItem>
@@ -538,26 +571,18 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Responsable</Label>
                 <Select value={formData.responsable} onValueChange={(v) => setFormData({...formData, responsable: v})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
-                    <SelectValue placeholder="Quién gasta..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Quién gasta..." /></SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {RESPONSABLES.map(resp => (
-                      <SelectItem key={resp} value={resp}>{resp}</SelectItem>
-                    ))}
+                    {RESPONSABLES.map(resp => (<SelectItem key={resp} value={resp}>{resp}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cuenta</Label>
                 <Select value={formData.cuenta} onValueChange={(v) => setFormData({...formData, cuenta: v})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
-                    <SelectValue placeholder="Origen fondos..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Origen fondos..." /></SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {CUENTAS.map(cuenta => (
-                      <SelectItem key={cuenta} value={cuenta}>{cuenta}</SelectItem>
-                    ))}
+                    {CUENTAS.map(cuenta => (<SelectItem key={cuenta} value={cuenta}>{cuenta}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -566,36 +591,21 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
               <Select value={formData.categoria} onValueChange={(v) => setFormData({...formData, categoria: v})}>
-                <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
-                  <SelectValue placeholder="Seleccione categoría..." />
-                </SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Seleccione categoría..." /></SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
+                  {(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Glosa / Detalle</Label>
-              <Input 
-                placeholder="Ej: Pago factura luz oficina"
-                className="h-12 rounded-xl bg-muted/30 border-none"
-                value={formData.glosa}
-                onChange={(e) => setFormData({...formData, glosa: e.target.value})}
-              />
+              <Input placeholder="Ej: Pago factura luz oficina" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.glosa} onChange={(e) => setFormData({...formData, glosa: e.target.value})} />
             </div>
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Monto ($)</Label>
-              <Input 
-                type="number" 
-                placeholder="Ej: 50000"
-                className="h-14 rounded-2xl bg-muted/30 border-none text-xl font-black text-primary"
-                value={formData.monto || ""}
-                onChange={(e) => setFormData({...formData, monto: Number(e.target.value)})}
-              />
+              <Input type="number" placeholder="Ej: 50000" className="h-14 rounded-2xl bg-muted/30 border-none text-xl font-black text-primary" value={formData.monto || ""} onChange={(e) => setFormData({...formData, monto: Number(e.target.value)})} />
             </div>
 
             <div className="space-y-2 pb-4">
@@ -622,14 +632,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
           <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
             <div className="flex gap-3 w-full">
-              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsFormOpen(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                className="flex-1 h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" 
-                onClick={handleSaveMovement}
-                disabled={isSubmitting}
-              >
+              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+              <Button className="flex-1 h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" onClick={handleSaveMovement} disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
                 {editingId ? 'ACTUALIZAR DATOS' : 'REGISTRAR EN FINANZAS'}
               </Button>
@@ -641,21 +645,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-black/95">
           <div className="relative w-full h-[70vh] flex items-center justify-center p-6">
-            <Button 
-              variant="secondary" 
-              size="icon" 
-              className="absolute top-6 right-6 rounded-full h-10 w-10 shadow-2xl" 
-              onClick={() => setSelectedReceipt(null)}
-            >
-              <X className="w-5 h-5" />
-            </Button>
-            {selectedReceipt && (
-              <img 
-                src={selectedReceipt} 
-                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" 
-                alt="Comprobante" 
-              />
-            )}
+            <Button variant="secondary" size="icon" className="absolute top-6 right-6 rounded-full h-10 w-10 shadow-2xl" onClick={() => setSelectedReceipt(null)}><X className="w-5 h-5" /></Button>
+            {selectedReceipt && (<img src={selectedReceipt} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" alt="Comprobante" />)}
           </div>
         </DialogContent>
       </Dialog>
