@@ -201,20 +201,23 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       let updatedCount = 0
       let syncedCount = 0
 
+      console.log('SYNC_DEBUG: Iniciando barrido de seguridad en pedidos_socios...');
+
       querySnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
         
-        // 1. Inyectar campo faltante si no existe (Reparación de históricos solicitada)
-        if (orderData.estadoPagoProveedor === undefined) {
-          batch.update(orderDoc.ref, { estadoPagoProveedor: 'pendiente' })
+        // 1. Inyectar campo faltante EXPLÍCITAMENTE (REPARACIÓN DE HISTÓRICOS)
+        // Buscamos pedidos aprobados o marcados que no tengan estadoPagoProveedor
+        if (orderData.estadoPagoProveedor === undefined || orderData.estadoPagoProveedor === null) {
+          batch.update(orderDoc.ref, { 'estadoPagoProveedor': 'pendiente' })
           updatedCount++
         }
 
         // 2. Sincronizar ingreso en finanzas si el pedido está aprobado (checked/delivered)
         if (orderData.status === 'checked' || orderData.status === 'delivered') {
-          const monto = Number(orderData.totalGeneral || 0)
-          const socio = orderData.socioNombre || "Socio"
+          const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
+          const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
@@ -234,11 +237,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
+      console.log(`SYNC_DEBUG: Proceso finalizado. Reparados: ${updatedCount}, Sincronizados: ${syncedCount}`);
       toast({ 
         title: "Sincronización Completada", 
         description: `Se repararon ${updatedCount} pedidos antiguos y se sincronizaron ${syncedCount} ingresos.` 
       })
     } catch (e: any) {
+      console.error('SYNC_ERROR:', e);
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
       setIsSyncing(false)

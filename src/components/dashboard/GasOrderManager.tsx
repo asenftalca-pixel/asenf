@@ -99,16 +99,19 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!db) return
     try {
-      // Campos a actualizar en el pedido
+      // Objeto de actualización explícito
       const updates: any = {
         status: newStatus,
         updatedAt: new Date().toISOString()
       }
 
-      // REGLA: Si se aprueba, se ACTIVA la deuda con el proveedor automáticamente
+      // REGLA CRÍTICA: Activar deuda explícitamente como 'pendiente'
       if (newStatus === 'checked') {
-        updates.estadoPagoProveedor = 'pendiente'
+        updates['estadoPagoProveedor'] = 'pendiente';
       }
+
+      // Depuración antes de enviar a Firebase
+      console.log('GAS_UPDATE_DEBUG: Enviando a Firebase:', updates);
 
       await updateDoc(doc(db, "pedidos_socios", id), updates)
 
@@ -141,6 +144,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
       toast({ title: "Estado Actualizado", description: `Pedido marcado como ${newStatus}.` })
     } catch (e: any) {
+      console.error('GAS_ERROR:', e);
       toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar el estado contable." })
     }
   }
