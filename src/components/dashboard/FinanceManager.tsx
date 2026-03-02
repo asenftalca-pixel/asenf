@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle, ShieldAlert, Sparkles } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle, ShieldAlert, Sparkles, Check } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -448,6 +448,30 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     updateDoc(doc(firestore, "finanzas_asenftalca", id), { devolucionRealizada: checked })
   }
 
+  const handleManualSettle = async (id: string) => {
+    if (!firestore || !window.confirm("¿Marcar este pedido como pagado individualmente?")) return
+    try {
+      await updateDoc(doc(firestore, "pedidos_socios", id), {
+        estadoPagoProveedor: 'pagado',
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "Pedido saldado" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al actualizar" })
+    }
+  }
+
+  const handleManualDelete = async (id: string) => {
+    if (!firestore || !window.confirm("¿Eliminar definitivamente este registro huérfano de la base de datos?")) return
+    try {
+      await deleteDoc(doc(firestore, "pedidos_socios", id))
+      await deleteDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${id}`))
+      toast({ title: "Registro eliminado de raíz" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al eliminar" })
+    }
+  }
+
   const formatCLP = (v: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(v)
 
   return (
@@ -720,17 +744,46 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
                         <div className="rounded-2xl border overflow-hidden">
                           <Table>
-                            <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
+                            <TableHeader>
+                              <TableRow className="bg-slate-50">
+                                <TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead>
+                                <TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead>
+                                <TableHead className="px-6 text-[10px] font-black uppercase text-right">Fecha</TableHead>
+                                <TableHead className="px-6 text-[10px] font-black uppercase text-right w-24">Acciones</TableHead>
+                              </TableRow>
+                            </TableHeader>
                             <TableBody>
                               {filteredPendingOrders.map((order: any) => (
-                                <TableRow key={order.id} className="hover:bg-slate-50">
+                                <TableRow key={order.id} className="hover:bg-slate-50 group">
                                   <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
                                   <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
                                   <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
+                                  <TableCell className="px-6 text-right">
+                                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 rounded-full"
+                                        onClick={() => handleManualSettle(order.id)}
+                                        title="Saldar individualmente"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-full"
+                                        onClick={() => handleManualDelete(order.id)}
+                                        title="Eliminar de raíz"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
                                 </TableRow>
                               ))}
                               {filteredPendingOrders.length === 0 && (
-                                <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con {activeLiqBrand}.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con {activeLiqBrand}.</TableCell></TableRow>
                               )}
                             </TableBody>
                           </Table>
