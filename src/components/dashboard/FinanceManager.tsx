@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card } from "@/components/ui/card"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, limit, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -24,6 +24,9 @@ const EXPENSE_CATEGORIES = [
   "Aporte socios / Servicios", "Asamblea FENASENF", "Varios"
 ]
 
+const RESPONSABLES = ["Cecilia", "Julia", "Juan Carlos", "Leandro", "Rodrigo"]
+const CUENTAS = ["Cuenta propia", "Cuenta ASENF"]
+
 export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { firestore } = useFirebase()
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -37,7 +40,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     tipo: "ingreso" as "ingreso" | "egreso",
     categoria: "",
     monto: 0,
-    comprobante: null as string | null
+    comprobante: null as string | null,
+    responsable: "",
+    cuenta: ""
   })
 
   const movementsQuery = useMemoFirebase(() => {
@@ -97,8 +102,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   const handleSaveMovement = async () => {
-    if (!firestore || !formData.categoria || formData.monto <= 0) {
-      toast({ variant: "destructive", title: "Datos incompletos", description: "Categoría y monto son obligatorios." })
+    if (!firestore || !formData.categoria || !formData.responsable || !formData.cuenta || formData.monto <= 0) {
+      toast({ variant: "destructive", title: "Datos incompletos", description: "Todos los campos son obligatorios." })
       return
     }
 
@@ -119,7 +124,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           tipo: "ingreso",
           categoria: "",
           monto: 0,
-          comprobante: null
+          comprobante: null,
+          responsable: "",
+          cuenta: ""
         })
       })
       .catch(async (error) => {
@@ -220,8 +227,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/10 hover:bg-muted/10">
-                      <TableHead className="font-black text-[10px] uppercase px-6">Fecha</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase px-6">Tipo</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase px-6">Fecha Gasto</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
                       <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
                       <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
                       <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
@@ -230,20 +238,23 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <TableBody>
                     {loadingMovements ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-40 text-center">
+                        <TableCell colSpan={6} className="h-40 text-center">
                           <Loader2 className="w-8 h-8 animate-spin mx-auto opacity-20" />
                         </TableCell>
                       </TableRow>
                     ) : movements.map((mov) => (
                       <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
                         <TableCell className="px-6 font-bold text-xs text-muted-foreground">{mov.fecha}</TableCell>
+                        <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
                         <TableCell className="px-6">
-                          <div className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                            mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                          )}>
-                            {mov.tipo === "ingreso" ? <ArrowUpCircle className="w-3 h-3" /> : <ArrowDownCircle className="w-3 h-3" />}
-                            {mov.tipo}
+                          <div className="space-y-1">
+                            <div className={cn(
+                              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                              mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                            )}>
+                              {mov.tipo}
+                            </div>
+                            <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
                           </div>
                         </TableCell>
                         <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
@@ -266,7 +277,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     ))}
                     {movements.length === 0 && !loadingMovements && (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic font-medium">
+                        <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic font-medium">
                           No se han registrado movimientos financieros aún.
                         </TableCell>
                       </TableRow>
@@ -290,7 +301,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       </Dialog>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground">
             <DialogHeader>
               <div className="flex items-center gap-4">
@@ -306,7 +317,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="p-8 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fecha</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fecha gasto</Label>
                 <Input 
                   type="date" 
                   className="h-12 rounded-xl bg-muted/30 border-none"
@@ -323,6 +334,35 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <SelectContent className="rounded-xl">
                     <SelectItem value="ingreso">Ingreso (+)</SelectItem>
                     <SelectItem value="egreso">Egreso (-)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Responsable</Label>
+                <Select value={formData.responsable} onValueChange={(v) => setFormData({...formData, responsable: v})}>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
+                    <SelectValue placeholder="Quién gasta..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {RESPONSABLES.map(resp => (
+                      <SelectItem key={resp} value={resp}>{resp}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cuenta</Label>
+                <Select value={formData.cuenta} onValueChange={(v) => setFormData({...formData, cuenta: v})}>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none">
+                    <SelectValue placeholder="Origen fondos..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {CUENTAS.map(cuenta => (
+                      <SelectItem key={cuenta} value={cuenta}>{cuenta}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
