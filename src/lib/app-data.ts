@@ -1,4 +1,4 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo } from 'lucide-react'
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -74,8 +74,15 @@ export const ADMIN_APPS: Application[] = [
   { 
     id: 'app-report', 
     name: 'Finanzas', 
-    description: 'Reportes estratégicos de ingresos y gastos.', 
-    icon: 'BarChart3', 
+    description: 'Bitácora de movimientos y flujos de caja.', 
+    icon: 'Coins', 
+    category: 'Finanzas'
+  },
+  { 
+    id: 'app-budget', 
+    name: 'Reportes y Presupuesto', 
+    description: 'Control de ejecución presupuestaria y gráficos.', 
+    icon: 'PieChart', 
     category: 'Finanzas'
   },
   { 
@@ -104,5 +111,5 @@ export const ADMIN_APPS: Application[] = [
 export const APPS = PUBLIC_APPS
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart
 }
