@@ -135,10 +135,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           }
         })
       } else {
-        // Fallback para pedidos antiguos sin array de items
         const brand = (order.detalleResumen || "").toLowerCase();
         if (brand.includes(activeLiqBrand.toLowerCase())) {
-           // Intentar extraer kilos
            const match = brand.match(/(\d+)kg/i);
            const kilos = match ? match[1] : "11";
            const costKey = `${activeLiqBrand.toLowerCase()}_${kilos}`;
@@ -152,7 +150,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const utilidadGas = useMemo(() => {
     const ingresosGas = allMovements
-      .filter(m => m.tipo === 'ingreso' && (m.categoria === 'Venta Gas' || m.categoria === 'Gas'))
+      .filter(m => m.tipo === 'ingreso' && (m.categoria === 'Venta Gas' || m.categoria === 'Gas' || m.categoria === 'GAS'))
       .reduce((acc, m) => acc + (Number(m.monto) || 0), 0)
     
     const egresosGas = allMovements
@@ -198,15 +196,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     
     if (!window.confirm(confirmMessage)) return
     
-    alert('Iniciando proceso de liquidación atómica para ' + filteredPendingOrders.length + ' pedidos de ' + activeLiqBrand);
-    
     setIsLiquidating(true)
     try {
       const batch = writeBatch(firestore)
       const timestamp = serverTimestamp()
       const today = format(new Date(), "yyyy-MM-dd")
 
-      // 1. Registrar el Egreso Masivo en la Bitácora
       const financeRef = doc(collection(firestore, "finanzas_asenftalca"))
       batch.set(financeRef, {
         tipo: "egreso",
@@ -220,7 +215,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         updatedAt: timestamp
       })
 
-      // 2. Actualizar cada pedido a 'pagado'
       filteredPendingOrders.forEach(order => {
         const orderRef = doc(firestore, "pedidos_socios", order.id)
         batch.update(orderRef, {
@@ -232,7 +226,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       await batch.commit()
       alert("¡Éxito! Se ha registrado el egreso y actualizado los registros de deuda.");
-      window.location.reload(); // Recargar para limpiar vistas y sincronizar balance
+      window.location.reload();
     } catch (e: any) {
       console.error('ERROR_LIQUIDACION_BATCH:', e);
       alert("Error crítico durante la liquidación: " + e.message);
@@ -253,7 +247,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       financeSnap.docs.forEach(fDoc => {
         const data = fDoc.data()
+        
+        // 1. Borrar si el pedido ya no existe físicamente
         if (data.orderId && !validOrderIds.has(data.orderId)) {
+          batch.delete(fDoc.ref)
+          deletedCount++
+        }
+
+        // 2. Borrar si es categoría antigua 'GAS'/'Gas' y tiene orderId 
+        // (Será reemplazado por el registro oficial 'Venta Gas' con ID fijo al sincronizar)
+        const cat = String(data.categoria || "").toUpperCase().trim()
+        if (data.orderId && (cat === 'GAS' || cat === 'GAS ')) {
           batch.delete(fDoc.ref)
           deletedCount++
         }
@@ -261,9 +265,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       if (deletedCount > 0) {
         await batch.commit()
-        toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros financieros huérfanos.` })
+        toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros duplicados o huérfanos.` })
       } else {
-        toast({ title: "Sistema Limpio", description: "No se encontraron registros fantasma." })
+        toast({ title: "Sistema Limpio", description: "No se encontraron registros redundantes." })
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en limpieza", description: e.message })
@@ -296,6 +300,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : String(orderData.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
+          // USAR ID FIJO gas_income_... PARA EVITAR DUPLICADOS
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
           batch.set(financeRef, {
             tipo: "ingreso",
@@ -313,7 +318,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      toast({ title: "Sincronización Completada", description: `Se repararon ${updatedCount} pedidos y se sincronizaron ${syncedCount} ingresos.` })
+      toast({ title: "Sincronización Completada", description: `Se repararon ${updatedCount} pedidos y se consolidaron ${syncedCount} registros oficiales.` })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
