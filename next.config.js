@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // <--- ESTO ES LO QUE GOOGLE PIDE
+  output: 'standalone', 
   typescript: {
     ignoreBuildErrors: true,
   },
