@@ -91,20 +91,23 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const allMovements = allMovementsRaw || []
   const pendingOrders = pendingOrdersRaw || []
 
-  // Filtrado de pedidos por marca seleccionada en liquidación
+  // Filtrado de pedidos por marca seleccionada en liquidación y ORDENAMIENTO POR FECHA
   const filteredPendingOrders = useMemo(() => {
-    return pendingOrders.filter((order: any) => {
-      // Intentamos obtener la marca de los items o del resumen
-      const summary = (order.detalleResumen || "").toLowerCase();
-      const hasBrand = summary.includes(activeLiqBrand.toLowerCase());
-      
-      // También verificamos si algún item coincide
-      const itemsMatch = Array.isArray(order.items) && order.items.some((it: any) => 
-        (it.marca || "").toLowerCase() === activeLiqBrand.toLowerCase()
-      );
-
-      return hasBrand || itemsMatch;
-    });
+    return pendingOrders
+      .filter((order: any) => {
+        const summary = (order.detalleResumen || "").toLowerCase();
+        const hasBrand = summary.includes(activeLiqBrand.toLowerCase());
+        const itemsMatch = Array.isArray(order.items) && order.items.some((it: any) => 
+          (it.marca || "").toLowerCase() === activeLiqBrand.toLowerCase()
+        );
+        return hasBrand || itemsMatch;
+      })
+      .sort((a: any, b: any) => {
+        // Normalización de fecha para ordenamiento DESC (más nuevo primero)
+        const dateA = a.fecha?.toDate ? a.fecha.toDate().getTime() : new Date(a.fecha || 0).getTime();
+        const dateB = b.fecha?.toDate ? b.fecha.toDate().getTime() : new Date(b.fecha || 0).getTime();
+        return dateB - dateA;
+      });
   }, [pendingOrders, activeLiqBrand]);
 
   // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
@@ -125,7 +128,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       if (Array.isArray(order.items)) {
         order.items.forEach((item: any) => {
           const brand = (item.marca || "").toLowerCase().trim()
-          // Solo sumamos si coincide con la marca activa
           if (brand === activeLiqBrand.toLowerCase()) {
             const weight = String(item.peso || "").replace(/\D/g, "")
             const costKey = `${brand}_${weight}`
@@ -178,7 +180,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       const timestamp = serverTimestamp()
       const today = format(new Date(), "yyyy-MM-dd")
 
-      // 1. Crear el Egreso en Finanzas
       const financeRef = doc(collection(firestore, "finanzas_asenftalca"))
       batch.set(financeRef, {
         tipo: "egreso",
@@ -192,7 +193,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         updatedAt: timestamp
       })
 
-      // 2. Marcar pedidos como pagados al proveedor (solo los de esta marca)
       filteredPendingOrders.forEach(order => {
         const orderRef = doc(firestore, "pedidos_socios", order.id)
         batch.update(orderRef, {
