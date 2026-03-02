@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ADMIN_APPS, Application } from '@/lib/app-data'
 import { AppCard } from '@/components/dashboard/AppCard'
-import { FinanceReportDialog } from '@/components/dashboard/FinanceReportDialog'
+import { FinanceManager } from '@/components/dashboard/FinanceManager'
 import { MemberManager } from '@/components/dashboard/MemberManager'
 import { TaskManager } from '@/components/dashboard/TaskManager'
 import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
@@ -23,7 +23,7 @@ import { useRouter } from 'next/navigation'
  * Sincroniza KPIs de Tareas, Nómina y Pedidos de Gas en tiempo real.
  */
 function DashboardContent() {
-  const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const [isMemberManagerOpen, setIsMemberManagerOpen] = useState(false)
   const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false)
   const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
@@ -45,7 +45,7 @@ function DashboardContent() {
     return query(collection(db, "nomina_maestra"), where("status", "==", "activo"))
   }, [db])
 
-  // KPI: Pedidos de Gas Pendientes (status !== 'delivered')
+  // KPI: Pedidos de Gas Pendientes
   const gasQuery = useMemoFirebase(() => {
     if (!db) return null
     return collection(db, "pedidos_socios")
@@ -79,7 +79,7 @@ function DashboardContent() {
   }, [loadingTasks, loadingNominas, loadingGas])
 
   const handleAppClick = (app: Application) => {
-    if (app.id === 'app-report') setIsReportOpen(true)
+    if (app.id === 'app-report') setIsFinanceOpen(true)
     else if (app.id === 'app3' || app.id === 'app-members') setIsMemberManagerOpen(true)
     else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
     else if (app.id === 'app-fenasenf') setIsFenasenfOpen(true)
@@ -93,7 +93,7 @@ function DashboardContent() {
       <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4">
         <div className="bg-white/10 p-8 rounded-[3rem] backdrop-blur-xl border border-white/10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
           <div className="bg-secondary p-5 rounded-3xl animate-bounce">
-            <AppWindow className="w-12 h-12 text-primary" />
+            <Landmark className="w-12 h-12 text-primary" />
           </div>
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Panel Directiva</h1>
@@ -157,7 +157,7 @@ function DashboardContent() {
         </div>
       </main>
 
-      <FinanceReportDialog isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
+      <FinanceManager isOpen={isFinanceOpen} onClose={() => setIsFinanceOpen(false)} />
       <MemberManager isOpen={isMemberManagerOpen} onClose={() => setIsMemberManagerOpen(false)} />
       <TaskManager isOpen={isTaskManagerOpen} onClose={() => setIsTaskManagerOpen(false)} />
       <FenasenfDialog isOpen={isFenasenfOpen} onClose={() => setIsFenasenfOpen(false)} />
@@ -173,6 +173,27 @@ function DashboardContent() {
     </div>
   )
 }
+
+const Landmark = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" height="24" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <line x1="3" y1="22" x2="21" y2="22"></line>
+    <line x1="6" y1="18" x2="6" y2="11"></line>
+    <line x1="10" y1="18" x2="10" y2="11"></line>
+    <line x1="14" y1="18" x2="14" y2="11"></line>
+    <line x1="18" y1="18" x2="18" y2="11"></line>
+    <polygon points="12 2 3 7 3 11 21 11 21 7 12 2"></polygon>
+  </svg>
+)
 
 export default function DirectivaPage() {
   const [password, setPassword] = useState('')
