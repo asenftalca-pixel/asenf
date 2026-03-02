@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, AlertCircle, X, ZoomIn } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, limit, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
 
 const INCOME_CATEGORIES = ["Cuota social", "Gas", "Copago fiesta", "Otros"]
 const EXPENSE_CATEGORIES = [
@@ -30,6 +30,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingBank, setIsSavingBank] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const [montoBancoManual, setMontoBancoManual] = useState<string>("")
 
   const [formData, setFormData] = useState({
     fecha: format(new Date(), "yyyy-MM-dd"),
@@ -39,27 +40,27 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     comprobante: null as string | null
   })
 
-  // Consulta de los últimos 10 movimientos
   const movementsQuery = useMemoFirebase(() => {
     if (!firestore) return null
     return query(collection(firestore, "finanzas_asenftalca"), orderBy("createdAt", "desc"), limit(10))
   }, [firestore])
 
-  // Consulta de todos para el saldo (En una app real se usaría una Cloud Function para agregación)
   const allMovementsQuery = useMemoFirebase(() => {
     if (!firestore) return null
     return collection(firestore, "finanzas_asenftalca")
   }, [firestore])
 
-  // Consulta del saldo bancario manual
   const bankRef = useMemoFirebase(() => {
     if (!firestore) return null
     return doc(firestore, "settings", "finances")
   }, [firestore])
 
-  const { data: movements = [], isLoading: loadingMovements } = useCollection(movementsQuery)
-  const { data: allMovements = [] } = useCollection(allMovementsQuery)
+  const { data: movementsRaw, isLoading: loadingMovements } = useCollection(movementsQuery)
+  const { data: allMovementsRaw } = useCollection(allMovementsQuery)
   const { data: bankData } = useDoc(bankRef)
+
+  const movements = movementsRaw || []
+  const allMovements = allMovementsRaw || []
 
   const saldoCalculado = useMemo(() => {
     return allMovements.reduce((acc, mov) => {
@@ -67,8 +68,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       return mov.tipo === "ingreso" ? acc + valor : acc - valor
     }, 0)
   }, [allMovements])
-
-  const [montoBancoManual, setMontoBancoManual] = useState<string>("")
 
   const handleSaveBank = async () => {
     if (!firestore) return
@@ -126,7 +125,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: "finanzas_asenftalca",
-          operation: "create",
+          operation: 'create',
           requestResourceData: dataToSave
         })
         errorEmitter.emit("permission-error", permissionError)
@@ -161,7 +160,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="flex-1 overflow-auto bg-muted/5 p-8">
             <div className="container mx-auto max-w-6xl space-y-8">
               
-              {/* Resumen Visual */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Saldo Actual Digital</span>
@@ -212,7 +210,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 </Card>
               </div>
 
-              {/* Historial */}
               <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border">
                 <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -283,8 +280,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <DialogFooter className="px-8 py-4 bg-white border-t shrink-0">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
-                < लैंडmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v2.8 - Encriptación AES-256</span>
+                <Landmark className="w-4 h-4 text-emerald-500" />
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema Financiero ASENF v2.8</span>
               </div>
               <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
             </div>
@@ -292,7 +289,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
-      {/* DIALOGO DE FORMULARIO NUEVO MOVIMIENTO */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground">
@@ -392,7 +388,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
-      {/* VISOR DE COMPROBANTE */}
       <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-black/95">
           <div className="relative w-full h-[70vh] flex items-center justify-center p-6">
