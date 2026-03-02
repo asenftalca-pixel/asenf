@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2 } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
-import { collection, doc, updateDoc, query, setDoc, serverTimestamp } from "firebase/firestore"
+import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
@@ -61,7 +61,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     return allPedidos
       .filter((p: any) => {
         const estado = (p.status || "").toString().toLowerCase()
-        return estado !== 'delivered' && estado !== 'entregado'
+        return estado !== 'delivered' && estado !== 'entregado' && estado !== 'deleted'
       })
       .map((p: any) => ({
         ...p,
@@ -96,26 +96,37 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     }
   }
 
+  // ELIMINACIÓN SINCRONIZADA (PEDIDO + FINANZAS)
+  const handleDeleteOrder = async (id: string) => {
+    if (!db || !window.confirm("¿Está seguro de eliminar este pedido? Se borrará también el registro financiero asociado.")) return
+    try {
+      // 1. Eliminar el pedido
+      await deleteDoc(doc(db, "pedidos_socios", id))
+      
+      // 2. Eliminar el registro de finanzas (si existe)
+      await deleteDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`))
+      
+      toast({ title: "Pedido Eliminado", description: "Se han limpiado todos los registros asociados." })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error al eliminar", description: e.message })
+    }
+  }
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!db) return
     try {
-      // Objeto de actualización explícito
       const updates: any = {
         status: newStatus,
         updatedAt: new Date().toISOString()
       }
 
-      // REGLA CRÍTICA: Activar deuda explícitamente como 'pendiente'
       if (newStatus === 'checked') {
         updates['estadoPagoProveedor'] = 'pendiente';
       }
 
-      // Depuración antes de enviar a Firebase
       console.log('GAS_UPDATE_DEBUG: Enviando a Firebase:', updates);
-
       await updateDoc(doc(db, "pedidos_socios", id), updates)
 
-      // REGISTRO ÚNICO: INGRESO BRUTO (PAGO DEL SOCIO)
       if (newStatus === 'checked') {
         const order = allPedidos.find(p => p.id === id)
         if (order) {
@@ -137,7 +148,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
           toast({ 
             title: "Pago de Socio Registrado", 
-            description: "El monto bruto ha ingresado a finanzas. La deuda con el proveedor quedó registrada como pendiente." 
+            description: "El monto bruto ha ingresado a finanzas." 
           })
         }
       }
@@ -249,6 +260,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                                   title="Marcar como Entregado"
                                 >
                                   <Truck className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="rounded-xl font-bold h-9 w-9 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50" 
+                                  onClick={() => handleDeleteOrder(p.id)}
+                                  title="Eliminar Pedido"
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             </TableCell>

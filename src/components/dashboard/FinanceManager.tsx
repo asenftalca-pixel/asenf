@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle, ShieldAlert, Sparkles } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -78,9 +78,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     return doc(firestore, "settings", "gas_costs")
   }, [firestore])
 
+  // FILTRO ESTRICTO: Solo pedidos con estado aprobado/revisado y deuda pendiente
   const pendingGasOrdersQuery = useMemoFirebase(() => {
     if (!firestore) return null
-    return query(collection(firestore, "pedidos_socios"), where("estadoPagoProveedor", "==", "pendiente"))
+    return query(
+      collection(firestore, "pedidos_socios"), 
+      where("estadoPagoProveedor", "==", "pendiente")
+    )
   }, [firestore])
 
   const { data: allMovementsRaw, isLoading: loadingMovements } = useCollection(allMovementsQuery)
@@ -89,7 +93,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { data: pendingOrdersRaw } = useCollection(pendingGasOrdersQuery)
 
   const allMovements = allMovementsRaw || []
-  const pendingOrders = pendingOrdersRaw || []
+  const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked')
 
   // Filtrado de pedidos por marca seleccionada en liquidación y ORDENAMIENTO POR FECHA
   const filteredPendingOrders = useMemo(() => {
@@ -103,14 +107,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         return hasBrand || itemsMatch;
       })
       .sort((a: any, b: any) => {
-        // Normalización de fecha para ordenamiento DESC (más nuevo primero)
         const dateA = a.fecha?.toDate ? a.fecha.toDate().getTime() : new Date(a.fecha || 0).getTime();
         const dateB = b.fecha?.toDate ? b.fecha.toDate().getTime() : new Date(b.fecha || 0).getTime();
         return dateB - dateA;
       });
   }, [pendingOrders, activeLiqBrand]);
 
-  // SALDO CALCULADO: Saldo Inicial (01/01) + Suma Ingresos - Suma Egresos
   const saldoCalculado = useMemo(() => {
     const startBalance = Number(bankData?.initialBankBalance) || 0
     if (!allMovements) return startBalance
@@ -120,7 +122,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     }, startBalance)
   }, [allMovements, bankData])
 
-  // CÁLCULO DE DEUDA PROVEEDOR PARA LA MARCA SELECCIONADA
   const debtBySelectedBrand = useMemo(() => {
     if (!filteredPendingOrders || !costsData?.values) return 0
     let total = 0
@@ -140,7 +141,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     return total
   }, [filteredPendingOrders, costsData, activeLiqBrand])
 
-  // CÁLCULO DE UTILIDAD GAS (Ingresos Venta Gas - Egresos Costo Proveedor)
   const utilidadGas = useMemo(() => {
     const ingresosGas = allMovements
       .filter(m => m.tipo === 'ingreso' && (m.categoria === 'Venta Gas' || m.categoria === 'Gas'))
@@ -211,6 +211,43 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     }
   }
 
+  // BOTÓN DE LIMPIEZA DE FANTASMAS
+  const handleClearGhosts = async () => {
+    if (!firestore) return
+    setIsSyncing(true)
+    try {
+      const batch = writeBatch(firestore)
+      
+      // 1. Obtener todos los pedidos actuales para referencia
+      const ordersSnap = await getDocs(collection(firestore, "pedidos_socios"))
+      const validOrderIds = new Set(ordersSnap.docs.map(d => d.id))
+
+      // 2. Buscar en finanzas registros vinculados a pedidos
+      const financeSnap = await getDocs(collection(firestore, "finanzas_asenftalca"))
+      let deletedCount = 0
+
+      financeSnap.docs.forEach(fDoc => {
+        const data = fDoc.data()
+        if (data.orderId && !validOrderIds.has(data.orderId)) {
+          // REGISTRO FANTASMA DETECTADO (Pedido borrado pero finanzas quedó)
+          batch.delete(fDoc.ref)
+          deletedCount++
+        }
+      })
+
+      if (deletedCount > 0) {
+        await batch.commit()
+        toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros financieros huérfanos.` })
+      } else {
+        toast({ title: "Sistema Limpio", description: "No se encontraron registros fantasma." })
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error en limpieza", description: e.message })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   const handleSyncPastOrders = async () => {
     if (!firestore) return
     setIsSyncing(true)
@@ -226,11 +263,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
         
+        // Reparar estado de deuda
         if (orderData.estadoPagoProveedor === undefined || orderData.estadoPagoProveedor === null) {
           batch.update(orderDoc.ref, { 'estadoPagoProveedor': 'pendiente' })
           updatedCount++
         }
 
+        // Sincronizar ingresos
         if (orderData.status === 'checked' || orderData.status === 'delivered') {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
@@ -255,7 +294,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       await batch.commit()
       toast({ 
         title: "Sincronización Completada", 
-        description: `Se repararon ${updatedCount} pedidos antiguos y se sincronizaron ${syncedCount} ingresos.` 
+        description: `Se repararon ${updatedCount} pedidos y se sincronizaron ${syncedCount} ingresos.` 
       })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
@@ -477,7 +516,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               </div>
 
               <Tabs defaultValue="historial" className="space-y-8">
-                <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 max-w-md">
+                <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 max-w-lg">
                   <TabsTrigger value="historial" className="rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-primary data-[state=active]:text-white">
                     <History className="w-4 h-4 mr-2" /> Libro Diario
                   </TabsTrigger>
@@ -608,81 +647,92 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
                 <TabsContent value="proveedores">
                   <div className="space-y-8">
-                    <Tabs value={activeLiqBrand} onValueChange={setActiveLiqBrand} className="w-full">
-                      <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 w-full max-w-lg">
-                        {GAS_BRANDS.map(brand => (
-                          <TabsTrigger 
-                            key={brand} 
-                            value={brand}
-                            className="flex-1 rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-primary data-[state=active]:text-white"
-                          >
-                            {brand}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-                        <Card className="lg:col-span-2 p-8 bg-white rounded-[2.5rem] border shadow-sm space-y-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Package className="w-6 h-6 text-amber-500" />
-                              <h3 className="text-xl font-black text-primary uppercase tracking-tight">Pendientes {activeLiqBrand}</h3>
-                            </div>
-                            <Badge className="bg-amber-100 text-amber-700 font-black px-4 py-1.5 rounded-full">{filteredPendingOrders.length} Pedidos</Badge>
-                          </div>
-
-                          <div className="rounded-2xl border overflow-hidden">
-                            <Table>
-                              <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
-                              <TableBody>
-                                {filteredPendingOrders.map((order: any) => (
-                                  <TableRow key={order.id} className="hover:bg-slate-50">
-                                    <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
-                                    <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
-                                    <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
-                                  </TableRow>
-                                ))}
-                                {filteredPendingOrders.length === 0 && (
-                                  <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con {activeLiqBrand}.</TableCell></TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </Card>
-
-                        <Card className="p-8 bg-primary text-primary-foreground rounded-[2.5rem] flex flex-col justify-between shadow-2xl relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-6 opacity-10"><AlertCircle className="w-32 h-32" /></div>
-                          <div className="space-y-6 relative z-10">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Liquidación {activeLiqBrand}</p>
-                              <h3 className="text-3xl font-black tracking-tighter">Deuda Proveedor</h3>
-                            </div>
-                            
-                            <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 space-y-4">
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold opacity-60 uppercase">Monto Estimado</span>
-                                <span className="text-2xl font-black text-secondary">{formatCLP(debtBySelectedBrand)}</span>
-                              </div>
-                              <p className="text-[9px] leading-relaxed opacity-50 font-bold uppercase">
-                                Valor calculado para {filteredPendingOrders.length} cilindros de {activeLiqBrand} según tarifario actual.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-10 relative z-10">
-                            <Button 
-                              className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
-                              disabled={debtBySelectedBrand <= 0 || isLiquidating}
-                              onClick={handleLiquidateSupplier}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <Tabs value={activeLiqBrand} onValueChange={setActiveLiqBrand} className="w-full max-w-lg">
+                        <TabsList className="bg-white p-1 rounded-2xl border shadow-sm h-14 flex items-center justify-start gap-2 w-full">
+                          {GAS_BRANDS.map(brand => (
+                            <TabsTrigger 
+                              key={brand} 
+                              value={brand}
+                              className="flex-1 rounded-xl px-6 h-11 font-black uppercase text-xs data-[state=active]:bg-primary data-[state=active]:text-white"
                             >
-                              {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
-                              LIQUIDAR {activeLiqBrand.toUpperCase()}
-                            </Button>
-                            <p className="text-[8px] text-center mt-4 opacity-40 font-black uppercase tracking-widest">Registra el egreso de costo en el libro diario</p>
+                              {brand}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="rounded-xl font-bold h-14 px-6 border-dashed border-2 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all gap-2"
+                        onClick={handleClearGhosts}
+                        disabled={isSyncing}
+                      >
+                        <Sparkles className="w-4 h-4" /> LIMPIAR FANTASMAS
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+                      <Card className="lg:col-span-2 p-8 bg-white rounded-[2.5rem] border shadow-sm space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Package className="w-6 h-6 text-amber-500" />
+                            <h3 className="text-xl font-black text-primary uppercase tracking-tight">Pendientes {activeLiqBrand}</h3>
                           </div>
-                        </Card>
-                      </div>
-                    </Tabs>
+                          <Badge className="bg-amber-100 text-amber-700 font-black px-4 py-1.5 rounded-full">{filteredPendingOrders.length} Pedidos</Badge>
+                        </div>
+
+                        <div className="rounded-2xl border overflow-hidden">
+                          <Table>
+                            <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Socio</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Fecha</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                              {filteredPendingOrders.map((order: any) => (
+                                <TableRow key={order.id} className="hover:bg-slate-50">
+                                  <TableCell className="px-6 font-bold text-xs">{order.socioNombre}</TableCell>
+                                  <TableCell className="px-6 text-xs text-muted-foreground italic">{order.detalleResumen}</TableCell>
+                                  <TableCell className="px-6 text-right text-[10px] font-bold opacity-40">{order.fecha ? (typeof order.fecha.toDate === 'function' ? order.fecha.toDate().toLocaleDateString() : String(order.fecha).split('T')[0]) : "S/F"}</TableCell>
+                                </TableRow>
+                              ))}
+                              {filteredPendingOrders.length === 0 && (
+                                <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground font-medium italic">No hay deudas pendientes con {activeLiqBrand}.</TableCell></TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </Card>
+
+                      <Card className="p-8 bg-primary text-primary-foreground rounded-[2.5rem] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-10"><AlertCircle className="w-32 h-32" /></div>
+                        <div className="space-y-6 relative z-10">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Liquidación {activeLiqBrand}</p>
+                            <h3 className="text-3xl font-black tracking-tighter">Deuda Proveedor</h3>
+                          </div>
+                          
+                          <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 space-y-4">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold opacity-60 uppercase">Monto Estimado</span>
+                              <span className="text-2xl font-black text-secondary">{formatCLP(debtBySelectedBrand)}</span>
+                            </div>
+                            <p className="text-[9px] leading-relaxed opacity-50 font-bold uppercase">
+                              Valor calculado para {filteredPendingOrders.length} cilindros de {activeLiqBrand}.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-10 relative z-10">
+                          <Button 
+                            className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
+                            disabled={debtBySelectedBrand <= 0 || isLiquidating}
+                            onClick={handleLiquidateSupplier}
+                          >
+                            {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
+                            LIQUIDAR {activeLiqBrand.toUpperCase()}
+                          </Button>
+                          <p className="text-[8px] text-center mt-4 opacity-40 font-black uppercase tracking-widest">Registra el egreso de costo en el libro diario</p>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -693,7 +743,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema de Control Estratégico ASENF v5.2</span>
+                <span className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Sistema de Control Estratégico ASENF v5.5</span>
               </div>
               <div className="flex items-center gap-4">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Utilidad Gas disponible: <span className="text-emerald-600 font-black">{formatCLP(utilidadGas.utilidad)}</span></p>
@@ -748,7 +798,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
           <DialogFooter className="p-8 bg-muted/10 border-t">
             <Button className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" onClick={handleSaveConfig} disabled={isSavingBank}>
-              {isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+              {isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-5 h-5" />}
               GUARDAR AJUSTES DE CAJA
             </Button>
           </DialogFooter>
