@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2 } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
-import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, serverTimestamp } from "firebase/firestore"
+import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
@@ -37,6 +37,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isSavingBank, setIsSavingBank] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
   const [montoBancoManual, setMontoBancoManual] = useState<string>("")
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     fecha: format(new Date(), "yyyy-MM-dd"),
@@ -126,33 +127,68 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     const dataToSave = {
       ...formData,
       monto: Number(formData.monto),
-      createdAt: serverTimestamp(),
-      devolucionRealizada: false
+      updatedAt: serverTimestamp(),
+      createdAt: editingId ? undefined : serverTimestamp(),
+      devolucionRealizada: formData.tipo === "ingreso" ? false : (formData as any).devolucionRealizada || false
     }
 
-    addDoc(collection(firestore, "finanzas_asenftalca"), dataToSave)
+    const savePromise = editingId 
+      ? setDoc(doc(firestore, "finanzas_asenftalca", editingId), dataToSave, { merge: true })
+      : addDoc(collection(firestore, "finanzas_asenftalca"), { ...dataToSave, createdAt: serverTimestamp() })
+
+    savePromise
       .then(() => {
-        toast({ title: "Movimiento registrado con éxito" })
+        toast({ title: editingId ? "Movimiento actualizado" : "Movimiento registrado" })
+        resetForm()
         setIsFormOpen(false)
-        setFormData({
-          fecha: format(new Date(), "yyyy-MM-dd"),
-          tipo: "ingreso",
-          categoria: "",
-          monto: 0,
-          comprobante: null,
-          responsable: "",
-          cuenta: ""
-        })
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: "finanzas_asenftalca",
-          operation: 'create',
+          operation: editingId ? 'update' : 'create',
           requestResourceData: dataToSave
         })
         errorEmitter.emit("permission-error", permissionError)
       })
       .finally(() => setIsSubmitting(false))
+  }
+
+  const resetForm = () => {
+    setFormData({
+      fecha: format(new Date(), "yyyy-MM-dd"),
+      tipo: "ingreso",
+      categoria: "",
+      monto: 0,
+      comprobante: null,
+      responsable: "",
+      cuenta: ""
+    })
+    setEditingId(null)
+  }
+
+  const startEdit = (mov: any) => {
+    setFormData({
+      fecha: mov.fecha,
+      tipo: mov.tipo,
+      categoria: mov.categoria,
+      monto: mov.monto,
+      comprobante: mov.comprobante || null,
+      responsable: mov.responsable,
+      cuenta: mov.cuenta
+    })
+    setEditingId(mov.id)
+    setIsFormOpen(true)
+  }
+
+  const handleDeleteMovement = async (id: string) => {
+    if (!firestore || !window.confirm("¿Está seguro de eliminar este registro?")) return
+    
+    try {
+      await deleteDoc(doc(firestore, "finanzas_asenftalca", id))
+      toast({ title: "Registro eliminado" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al eliminar" })
+    }
   }
 
   const toggleRefund = (id: string, checked: boolean) => {
@@ -170,6 +206,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const formatCLP = (v: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(v)
 
+  const calculateMonthTotal = (movements: any[]) => {
+    return movements.reduce((acc, mov) => {
+      const valor = Number(mov.monto) || 0
+      return mov.tipo === "ingreso" ? acc + valor : acc - valor
+    }, 0)
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -186,7 +229,10 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             </div>
             <Button 
               className="rounded-xl font-black gap-2 h-12 px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90" 
-              onClick={() => setIsFormOpen(true)}
+              onClick={() => {
+                resetForm()
+                setIsFormOpen(true)
+              }}
             >
               <PlusCircle className="w-5 h-5" /> INGRESAR MOVIMIENTO
             </Button>
@@ -272,73 +318,100 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         ))}
                       </TabsList>
 
-                      {monthsList.map(month => (
-                        <TabsContent key={month} value={month} className="animate-in fade-in duration-500">
-                          <div className="rounded-xl border overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="bg-muted/10 hover:bg-muted/10">
-                                  <TableHead className="font-black text-[10px] uppercase px-6">Día</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6 text-center">Devolución</TableHead>
-                                  <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {movementsByMonth[month].map((mov) => (
-                                  <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
-                                    <TableCell className="px-6 font-bold text-xs text-muted-foreground">
-                                      {mov.fecha ? mov.fecha.split("-")[2] : "?"}
-                                    </TableCell>
-                                    <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
-                                    <TableCell className="px-6">
-                                      <div className="space-y-1">
-                                        <div className={cn(
-                                          "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                                          mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                                        )}>
-                                          {mov.tipo}
-                                        </div>
-                                        <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
-                                    <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
-                                      {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
-                                    </TableCell>
-                                    <TableCell className="px-6 text-center">
-                                      {mov.tipo === "egreso" ? (
-                                        <div className="flex items-center justify-center">
-                                          <Checkbox 
-                                            checked={!!mov.devolucionRealizada}
-                                            onCheckedChange={(checked) => toggleRefund(mov.id, !!checked)}
-                                            className="w-5 h-5 rounded-md border-2 border-primary/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                          />
-                                        </div>
-                                      ) : <span className="text-[9px] opacity-10">—</span>}
-                                    </TableCell>
-                                    <TableCell className="px-6 text-center">
-                                      {mov.comprobante ? (
-                                        <Button 
-                                          size="icon" 
-                                          variant="ghost" 
-                                          className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg"
-                                          onClick={() => setSelectedReceipt(mov.comprobante)}
-                                        >
-                                          <Receipt className="w-4 h-4" />
-                                        </Button>
-                                      ) : <span className="text-[9px] font-bold text-muted-foreground/30">Sin foto</span>}
-                                    </TableCell>
+                      {monthsList.map(month => {
+                        const monthTotal = calculateMonthTotal(movementsByMonth[month]);
+                        return (
+                          <TabsContent key={month} value={month} className="animate-in fade-in duration-500 space-y-6">
+                            <div className="rounded-xl border overflow-hidden">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="bg-muted/10 hover:bg-muted/10">
+                                    <TableHead className="font-black text-[10px] uppercase px-6">Día</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6 text-center">Devolución</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6 text-right">Acciones</TableHead>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </TabsContent>
-                      ))}
+                                </TableHeader>
+                                <TableBody>
+                                  {movementsByMonth[month].map((mov) => (
+                                    <TableRow key={mov.id} className="group hover:bg-muted/5 transition-colors">
+                                      <TableCell className="px-6 font-bold text-xs text-muted-foreground">
+                                        {mov.fecha ? mov.fecha.split("-")[2] : "?"}
+                                      </TableCell>
+                                      <TableCell className="px-6 font-black text-primary text-xs uppercase">{mov.responsable}</TableCell>
+                                      <TableCell className="px-6">
+                                        <div className="space-y-1">
+                                          <div className={cn(
+                                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                                            mov.tipo === "ingreso" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                          )}>
+                                            {mov.tipo}
+                                          </div>
+                                          <p className="text-[9px] font-bold text-muted-foreground ml-1">{mov.cuenta}</p>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
+                                      <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
+                                        {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
+                                      </TableCell>
+                                      <TableCell className="px-6 text-center">
+                                        {mov.tipo === "egreso" ? (
+                                          <div className="flex items-center justify-center">
+                                            <Checkbox 
+                                              checked={!!mov.devolucionRealizada}
+                                              onCheckedChange={(checked) => toggleRefund(mov.id, !!checked)}
+                                              className="w-5 h-5 rounded-md border-2 border-primary/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                            />
+                                          </div>
+                                        ) : <span className="text-[9px] opacity-10">—</span>}
+                                      </TableCell>
+                                      <TableCell className="px-6 text-center">
+                                        {mov.comprobante ? (
+                                          <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg"
+                                            onClick={() => setSelectedReceipt(mov.comprobante)}
+                                          >
+                                            <Receipt className="w-4 h-4" />
+                                          </Button>
+                                        ) : <span className="text-[9px] font-bold text-muted-foreground/30">Sin foto</span>}
+                                      </TableCell>
+                                      <TableCell className="px-6 text-right">
+                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary" onClick={() => startEdit(mov)}>
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-rose-500" onClick={() => handleDeleteMovement(mov.id)}>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+
+                            <div className={cn(
+                              "p-6 rounded-2xl flex items-center justify-between border-2 border-dashed",
+                              monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
+                            )}>
+                              <div className="flex items-center gap-3">
+                                <Calculator className={cn("w-5 h-5", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")} />
+                                <span className="text-xs font-black uppercase tracking-widest text-primary/60">Balance Total {month}</span>
+                              </div>
+                              <div className={cn("text-2xl font-black tracking-tighter", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                {monthTotal > 0 ? "+" : ""}{formatCLP(monthTotal)}
+                              </div>
+                            </div>
+                          </TabsContent>
+                        )
+                      })}
                     </Tabs>
                   ) : (
                     <div className="h-60 flex flex-col items-center justify-center text-muted-foreground italic font-medium">
@@ -367,9 +440,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="bg-primary p-8 text-primary-foreground shrink-0">
             <DialogHeader>
               <div className="flex items-center gap-4">
-                <PlusCircle className="w-8 h-8 text-secondary" />
+                {editingId ? <Pencil className="w-8 h-8 text-secondary" /> : <PlusCircle className="w-8 h-8 text-secondary" />}
                 <div>
-                  <DialogTitle className="text-xl font-black uppercase">Nuevo Movimiento</DialogTitle>
+                  <DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle>
                   <DialogDescription className="text-primary-foreground/60">Ingrese los datos del flujo de caja.</DialogDescription>
                 </div>
               </div>
@@ -478,14 +551,19 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           </div>
 
           <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
-            <Button 
-              className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" 
-              onClick={handleSaveMovement}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-              REGISTRAR EN FINANZAS
-            </Button>
+            <div className="flex gap-3 w-full">
+              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                className="flex-1 h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" 
+                onClick={handleSaveMovement}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+                {editingId ? 'ACTUALIZAR DATOS' : 'REGISTRAR EN FINANZAS'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
