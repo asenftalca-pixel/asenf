@@ -195,41 +195,49 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     setIsSyncing(true)
     try {
       const ordersRef = collection(firestore, "pedidos_socios")
-      const q = query(ordersRef, where("status", "in", ["checked", "delivered"]))
-      const querySnapshot = await getDocs(q)
+      const querySnapshot = await getDocs(ordersRef)
       
+      const batch = writeBatch(firestore)
+      let updatedCount = 0
       let syncedCount = 0
-      const syncPromises = querySnapshot.docs.map(async (orderDoc) => {
+
+      querySnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
-        const monto = Number(orderData.totalGeneral || 0)
-        const socio = orderData.socioNombre || "Socio"
-        const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
-
-        // 1. Asegurar que el pedido tenga el campo estadoPagoProveedor si le falta
-        if (!orderData.estadoPagoProveedor) {
-          await updateDoc(doc(firestore, "pedidos_socios", orderId), {
-            estadoPagoProveedor: 'pendiente'
-          })
+        
+        // 1. Inyectar campo faltante si no existe (Reparación de históricos solicitada)
+        if (orderData.estadoPagoProveedor === undefined) {
+          batch.update(orderDoc.ref, { estadoPagoProveedor: 'pendiente' })
+          updatedCount++
         }
 
-        // 2. Sincronizar Ingreso en Finanzas
-        await setDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`), {
-          tipo: "ingreso",
-          categoria: "Venta Gas",
-          monto: monto,
-          fecha: fechaOrder,
-          responsable: "Sistema",
-          cuenta: "Cuenta ASENF",
-          glosa: `Ingreso Pedido Gas - Socio: ${socio}`,
-          orderId: orderId,
-          updatedAt: serverTimestamp()
-        }, { merge: true })
-        syncedCount++
+        // 2. Sincronizar ingreso en finanzas si el pedido está aprobado (checked/delivered)
+        if (orderData.status === 'checked' || orderData.status === 'delivered') {
+          const monto = Number(orderData.totalGeneral || 0)
+          const socio = orderData.socioNombre || "Socio"
+          const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
+
+          const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
+          batch.set(financeRef, {
+            tipo: "ingreso",
+            categoria: "Venta Gas",
+            monto: monto,
+            fecha: fechaOrder,
+            responsable: "Sistema",
+            cuenta: "Cuenta ASENF",
+            glosa: `Ingreso Pedido Gas - Socio: ${socio}`,
+            orderId: orderId,
+            updatedAt: serverTimestamp()
+          }, { merge: true })
+          syncedCount++
+        }
       })
 
-      await Promise.all(syncPromises)
-      toast({ title: "Sincronización Completada", description: `Se han integrado ${syncedCount} ingresos de gas.` })
+      await batch.commit()
+      toast({ 
+        title: "Sincronización Completada", 
+        description: `Se repararon ${updatedCount} pedidos antiguos y se sincronizaron ${syncedCount} ingresos.` 
+      })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en sincronización", description: e.message })
     } finally {
