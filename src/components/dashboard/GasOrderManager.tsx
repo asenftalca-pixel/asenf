@@ -105,7 +105,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         updatedAt: new Date().toISOString()
       }
 
-      // Si se aprueba, se marca como deuda pendiente con el proveedor
+      // REGLA: Si se aprueba, se ACTIVA la deuda con el proveedor automáticamente
       if (newStatus === 'checked') {
         updates.estadoPagoProveedor = 'pendiente'
       }

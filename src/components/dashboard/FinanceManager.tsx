@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo } from "react"
@@ -205,6 +206,14 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const socio = orderData.socioNombre || "Socio"
         const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : orderData.fecha.split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
+        // 1. Asegurar que el pedido tenga el campo estadoPagoProveedor si le falta
+        if (!orderData.estadoPagoProveedor) {
+          await updateDoc(doc(firestore, "pedidos_socios", orderId), {
+            estadoPagoProveedor: 'pendiente'
+          })
+        }
+
+        // 2. Sincronizar Ingreso en Finanzas
         await setDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`), {
           tipo: "ingreso",
           categoria: "Venta Gas",
