@@ -1,12 +1,13 @@
+
 "use client"
 
 import { useState, useMemo, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts"
-import { PieChart as PieIcon, Upload, Loader2, Calculator, Info, FileSpreadsheet, AlertCircle, ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react"
+import { TrendingUp, Upload, Loader2, Calculator, Info, FileSpreadsheet, AlertCircle } from "lucide-react"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query } from "firebase/firestore"
+import { collection, query, where, writeBatch, doc, getDocs, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -21,60 +22,67 @@ interface BudgetCategory {
   tipo: "ingreso" | "egreso"
 }
 
-const INCOME_CATEGORIES = ["Cuota social", "Gas", "Copago fiesta", "Otros"]
+const CURRENT_YEAR = 2026
+const INCOME_CATEGORIES_KEYWORDS = ["cuota", "gas", "copago", "ingreso"]
 
 export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { firestore } = useFirebase()
-  const [budgetData, setBudgetData] = useState<any[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Consultar todos los movimientos (ingresos y egresos)
+  // Consultar todos los movimientos reales
   const movementsQuery = useMemoFirebase(() => {
     if (!firestore) return null
     return query(collection(firestore, "finanzas_asenftalca"))
   }, [firestore])
 
-  const { data: allMovementsRaw, isLoading } = useCollection(movementsQuery)
+  // Consultar el presupuesto persistente en Firebase
+  const budgetQuery = useMemoFirebase(() => {
+    if (!firestore) return null
+    return query(collection(firestore, "presupuesto_anual_asenf"), where("year", "==", CURRENT_YEAR))
+  }, [firestore])
+
+  const { data: allMovementsRaw, isLoading: loadingMovements } = useCollection(movementsQuery)
+  const { data: budgetDataRaw, isLoading: loadingBudget } = useCollection(budgetQuery)
+
   const allMovements = allMovementsRaw || []
+  const budgetGoals = budgetDataRaw || []
 
   // Calcular montos reales ejecutados por categoría
   const executedByCategory = useMemo(() => {
     const map: Record<string, number> = {}
     allMovements.forEach(mov => {
-      const cat = (mov.categoria || "Varios").trim()
+      const cat = (mov.categoria || "Varios").trim().toLowerCase()
       map[cat] = (map[cat] || 0) + (Number(mov.monto) || 0)
     })
     return map
   }, [allMovements])
 
-  // Combinar presupuesto con ejecución real
+  // Combinar presupuesto de Firebase con ejecución real de Firebase
   const reportData = useMemo((): BudgetCategory[] => {
-    if (budgetData.length === 0) return []
-    return budgetData.map(item => {
-      const ejecutado = executedByCategory[item.categoria] || 0
-      const porcentaje = item.presupuesto > 0 ? Math.round((ejecutado / item.presupuesto) * 100) : 0
-      
-      // Determinar tipo basado en la categoría o columna del Excel si existiera
-      const esIngreso = item.tipo === 'ingreso' || INCOME_CATEGORIES.some(c => item.categoria.toLowerCase().includes(c.toLowerCase()))
+    if (budgetGoals.length === 0) return []
+    return budgetGoals.map(goal => {
+      const ejecutado = executedByCategory[goal.categoria.toLowerCase()] || 0
+      const porcentaje = goal.presupuesto > 0 ? Math.round((ejecutado / goal.presupuesto) * 100) : 0
       
       return {
-        ...item,
+        categoria: goal.categoria,
+        presupuesto: goal.presupuesto,
         gastado: ejecutado,
         porcentaje,
-        tipo: esIngreso ? "ingreso" : "egreso"
+        tipo: goal.tipo || "egreso"
       }
     })
-  }, [budgetData, executedByCategory])
+  }, [budgetGoals, executedByCategory])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !firestore) return
 
     setIsProcessing(true)
     const reader = new FileReader()
     
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer)
         const wb = XLSX.read(data, { type: 'array' })
@@ -92,10 +100,16 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
             const tipoKey = keys.find(k => k.toLowerCase().includes("tipo"))
             
             if (catKey && mountKey) {
+              const catName = String(row[catKey]).trim()
+              const isIngreso = tipoKey 
+                ? String(row[tipoKey]).toLowerCase().includes("ingreso") 
+                : INCOME_CATEGORIES_KEYWORDS.some(kw => catName.toLowerCase().includes(kw))
+
               return {
-                categoria: String(row[catKey]).trim(),
+                categoria: catName,
                 presupuesto: Number(row[mountKey]) || 0,
-                tipo: tipoKey ? String(row[tipoKey]).toLowerCase().trim() : ""
+                year: CURRENT_YEAR,
+                tipo: isIngreso ? "ingreso" : "egreso"
               }
             }
             return null
@@ -106,8 +120,21 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
           throw new Error("No se detectaron las columnas 'Categoría' y 'Monto Presupuestado'.")
         }
 
-        setBudgetData(parsed)
-        toast({ title: "Presupuesto Cargado", description: `Se han importado ${parsed.length} categorías.` })
+        // GUARDADO PERSISTENTE EN FIREBASE
+        const batch = writeBatch(firestore)
+        
+        // 1. Limpiar presupuesto anterior del mismo año
+        const oldDocs = await getDocs(query(collection(firestore, "presupuesto_anual_asenf"), where("year", "==", CURRENT_YEAR)))
+        oldDocs.forEach(d => batch.delete(d.ref))
+
+        // 2. Insertar nuevos registros
+        parsed.forEach(item => {
+          const newDocRef = doc(collection(firestore, "presupuesto_anual_asenf"))
+          batch.set(newDocRef, item)
+        })
+
+        await batch.commit()
+        toast({ title: "Presupuesto 2026 Guardado", description: `Se han sincronizado ${parsed.length} metas en la nube.` })
       } catch (err: any) {
         toast({ variant: "destructive", title: "Error en el archivo", description: err.message })
       } finally {
@@ -122,15 +149,17 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const getStatusColor = (percent: number, tipo: "ingreso" | "egreso") => {
     if (tipo === "ingreso") {
-      if (percent >= 100) return "#10b981" // Completado (Esmeralda)
+      if (percent >= 100) return "#10b981" // Meta cumplida (Esmeralda)
       if (percent >= 50) return "#3b82f6" // En camino (Azul)
-      return "#6366f1" // Iniciando (Indigo)
+      return "#6366f1" // Inicial
     } else {
       if (percent <= 70) return "#10b981" // Óptimo
       if (percent <= 90) return "#f59e0b" // Alerta
       return "#ef4444" // Crítico
     }
   }
+
+  const isLoading = loadingMovements || loadingBudget
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -141,8 +170,8 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight">Reporte Estratégico de Presupuesto</DialogTitle>
-              <DialogDescription className="text-primary-foreground/60 font-medium">Comparativa de Metas vs Realidad (Ingresos y Gastos).</DialogDescription>
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight">Reporte Estratégico {CURRENT_YEAR}</DialogTitle>
+              <DialogDescription className="text-primary-foreground/60 font-medium">Metas vs Ejecución Real (Datos persistentes en Cloud).</DialogDescription>
             </div>
           </div>
           <div className="flex gap-3">
@@ -154,7 +183,7 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
               disabled={isProcessing}
             >
               {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
-              SUBIR PLANILLA DE METAS
+              SOBRESCRIBIR PRESUPUESTO 2026
             </Button>
           </div>
         </div>
@@ -164,21 +193,21 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
             {isLoading ? (
               <div className="h-60 flex flex-col items-center justify-center gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Calculando balances...</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Sincronizando metas y gastos...</p>
               </div>
-            ) : budgetData.length === 0 ? (
+            ) : budgetGoals.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-700">
                 <div className="w-24 h-24 bg-muted/20 rounded-full flex items-center justify-center">
                   <Calculator className="w-12 h-12 text-muted-foreground/40" />
                 </div>
                 <div className="max-w-md space-y-3">
-                  <h3 className="text-2xl font-black text-primary uppercase">Control de Metas Institucionales</h3>
+                  <h3 className="text-2xl font-black text-primary uppercase">Presupuesto 2026 no detectado</h3>
                   <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-                    Sube tu Excel con las columnas <b>Categoría</b> y <b>Monto Presupuestado</b> para ver el avance de recaudación y gastos.
+                    Sube tu Excel con las metas para este año. El sistema las guardará permanentemente en la base de datos de la directiva.
                   </p>
                 </div>
                 <Button onClick={() => fileInputRef.current?.click()} className="rounded-xl font-black h-14 px-10 shadow-xl">
-                  IMPORTAR EXCEL AHORA
+                  SUBIR PRESUPUESTO AHORA
                 </Button>
               </div>
             ) : (
@@ -198,13 +227,12 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       "bg-white p-6 rounded-[2.5rem] border-2 shadow-sm group hover:shadow-xl transition-all duration-500 relative flex flex-col items-center animate-in zoom-in-95",
                       isIngreso ? "border-blue-100 hover:border-blue-200" : "border-slate-50 hover:border-slate-200"
                     )}>
-                      {/* Badge de Tipo */}
                       <div className="absolute top-6 left-6">
                         <Badge className={cn(
                           "rounded-lg text-[9px] font-black uppercase px-2 py-0.5",
                           isIngreso ? "bg-blue-500 hover:bg-blue-600" : "bg-primary"
                         )}>
-                          {isIngreso ? "Presupuesto Ingreso" : "Presupuesto Gasto"}
+                          {isIngreso ? "Meta Recaudación" : "Meta de Gasto"}
                         </Badge>
                       </div>
 
@@ -252,7 +280,7 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                           <span className="text-4xl font-black tracking-tighter" style={{ color }}>{item.porcentaje}%</span>
                           <span className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em] mt-1">
-                            {isIngreso ? "Recaudado" : "Utilizado"}
+                            {isIngreso ? "Progreso" : "Consumo"}
                           </span>
                         </div>
                       </div>
@@ -269,7 +297,7 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
                             : (remaining >= 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")
                         )}>
                           {isIngreso 
-                            ? (remaining <= 0 ? "Meta Cumplida" : `Faltan ${formatCLP(remaining)}`)
+                            ? (remaining <= 0 ? "Meta Alcanzada" : `Faltan ${formatCLP(remaining)}`)
                             : (remaining >= 0 ? `Quedan ${formatCLP(remaining)}` : `Excedido ${formatCLP(Math.abs(remaining))}`)
                           }
                         </div>
@@ -296,7 +324,7 @@ export function ExpenseReports({ isOpen, onClose }: { isOpen: boolean; onClose: 
             </div>
             <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
               <Info className="w-4 h-4" />
-              Sincronizado con FinanzasASENF Cloud
+              Sincronización Cloud Activa — Periodo {CURRENT_YEAR}
             </div>
           </div>
         </DialogFooter>

@@ -96,6 +96,17 @@
         "rut": { "type": "string" },
         "status": { "type": "string" }
       }
+    },
+    "BudgetGoal": {
+      "title": "BudgetGoal",
+      "type": "object",
+      "description": "Metas de presupuesto anual por categoría.",
+      "properties": {
+        "categoria": { "type": "string" },
+        "presupuesto": { "type": "number" },
+        "year": { "type": "number" },
+        "tipo": { "type": "string", "enum": ["ingreso", "egreso"] }
+      }
     }
   },
   "auth": {
@@ -149,6 +160,14 @@
           "entityName": "Nomina",
           "schema": { "$ref": "#/backend/entities/Nomina" },
           "description": "Nomina maestra de socios activos."
+        }
+      },
+      {
+        "path": "/presupuesto_anual_asenf/{goalId}",
+        "definition": {
+          "entityName": "BudgetGoal",
+          "schema": { "$ref": "#/backend/entities/BudgetGoal" },
+          "description": "Metas de presupuesto para el control de gestión."
         }
       }
     ]
