@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo } from "react"
@@ -255,7 +254,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         }
 
         // 2. Borrar si es categoría antigua 'GAS'/'Gas' y tiene orderId 
-        // (Será reemplazado por el registro oficial 'Venta Gas' con ID fijo al sincronizar)
         const cat = String(data.categoria || "").toUpperCase().trim()
         if (data.orderId && (cat === 'GAS' || cat === 'GAS ')) {
           batch.delete(fDoc.ref)
@@ -453,8 +451,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             </div>
             <div className="flex gap-3">
               <Button 
-                variant="outline"
-                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                variant="secondary"
+                className="rounded-xl font-bold gap-2 h-12 px-6 shadow-sm border border-secondary/20" 
                 onClick={() => {
                   setConfigData({
                     bankAmount: String(bankData?.bankAmount || ""),
@@ -466,8 +464,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <Settings2 className="w-5 h-5" /> AJUSTES CAJA
               </Button>
               <Button 
-                variant="outline"
-                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                variant="secondary"
+                className="rounded-xl font-bold gap-2 h-12 px-6 shadow-sm border border-secondary/20" 
                 onClick={handleSyncPastOrders}
                 disabled={isSyncing}
               >
@@ -686,8 +684,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       </Tabs>
                       
                       <Button 
-                        variant="outline" 
-                        className="rounded-xl font-bold h-14 px-6 border-dashed border-2 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all gap-2"
+                        variant="secondary" 
+                        className="rounded-xl font-bold h-14 px-6 border-dashed border-2 bg-rose-50/50 text-rose-600 border-rose-200 hover:bg-rose-100 transition-all gap-2"
                         onClick={handleClearGhosts}
                         disabled={isSyncing}
                       >
@@ -770,7 +768,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               </div>
               <div className="flex items-center gap-4">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Utilidad Gas disponible: <span className="text-emerald-600 font-black">{formatCLP(utilidadGas.utilidad)}</span></p>
-                <Button variant="ghost" className="text-xs font-bold" onClick={onClose}>Cerrar Gestión</Button>
+                <Button variant="secondary" className="text-xs font-bold px-6 bg-slate-100 hover:bg-slate-200" onClick={onClose}>Cerrar Gestión</Button>
               </div>
             </div>
           </DialogFooter>
@@ -899,7 +897,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           </ScrollArea>
           <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
             <div className="flex gap-3 w-full">
-              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsFormOpen(false)}>CANCELAR</Button>
+              <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button>
               <Button className="flex-1 h-14 rounded-2xl font-black text-lg gap-2 shadow-xl" onClick={handleSaveMovement} disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
                 {editingId ? 'ACTUALIZAR' : 'REGISTRAR'}

@@ -16,7 +16,7 @@ import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import jsPDF from "jspdf"
+import jsPDF from "jsPDF"
 
 export default function AdminSociosPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -35,7 +35,7 @@ export default function AdminSociosPage() {
     return collection(firestore, 'partners', 'asenf-talca', 'associates')
   }, [firestore])
 
-  const { data: dataRaw, isLoading } = useCollection(associatesQuery)
+  const { data: dataRaw, isLoading: loading } = useCollection(associatesQuery)
   const members = dataRaw || []
 
   const logoUrl = "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf"
@@ -238,7 +238,7 @@ export default function AdminSociosPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-4">
               <Link href="/directiva">
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="secondary" size="icon" className="rounded-full bg-slate-100 hover:bg-slate-200">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
@@ -251,7 +251,7 @@ export default function AdminSociosPage() {
           </div>
           <div className="flex gap-3">
             <Button 
-              variant="outline" 
+              variant="secondary" 
               className="h-12 rounded-xl font-bold border-2 gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200" 
               onClick={exportToExcel}
               disabled={filteredAndSortedMembers.length === 0}
@@ -273,7 +273,7 @@ export default function AdminSociosPage() {
               />
             </div>
             <div className="text-sm font-bold text-muted-foreground">
-              {isLoading ? "Consultando Base de Datos..." : `${filteredAndSortedMembers.length} inscripciones registradas`}
+              {loading ? "Consultando Base de Datos..." : `${filteredAndSortedMembers.length} inscripciones registradas`}
             </div>
           </div>
           
@@ -289,7 +289,7 @@ export default function AdminSociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {loading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium italic">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 opacity-20" />
@@ -325,9 +325,9 @@ export default function AdminSociosPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button 
-                      variant="ghost" 
+                      variant="secondary" 
                       size="sm" 
-                      className="font-bold text-xs text-primary underline gap-2"
+                      className="font-bold text-xs text-primary underline gap-2 bg-primary/5 hover:bg-primary/10 border-none"
                       onClick={() => openDocument(member)}
                     >
                       <FileText className="w-4 h-4" /> Ver Solicitud
@@ -335,7 +335,7 @@ export default function AdminSociosPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && filteredAndSortedMembers.length === 0 && (
+              {!loading && filteredAndSortedMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">
                     No hay inscripciones registradas en la base de datos.
@@ -350,12 +350,12 @@ export default function AdminSociosPage() {
       <Dialog open={isDocOpen} onOpenChange={setIsDocOpen}>
         <DialogContent className="sm:max-w-[800px] rounded-[2rem] p-0 overflow-hidden bg-white max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <div className="bg-muted/30 p-4 border-b flex items-center justify-between sticky top-0 bg-white z-20 print:hidden">
-            <Button variant="ghost" className="gap-2 font-bold text-muted-foreground" onClick={() => setIsDocOpen(false)}>
+            <Button variant="secondary" className="gap-2 font-bold text-muted-foreground bg-slate-100 hover:bg-slate-200" onClick={() => setIsDocOpen(false)}>
               Cerrar
             </Button>
             <Button 
-              variant="outline" 
-              className="gap-2 font-bold border-2 rounded-xl" 
+              variant="secondary" 
+              className="gap-2 font-bold border-2 rounded-xl bg-secondary/20 text-primary border-secondary/30 hover:bg-secondary/30" 
               onClick={handleExportPDF}
               disabled={isExporting}
             >

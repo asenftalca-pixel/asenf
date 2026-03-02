@@ -17,11 +17,6 @@ import { cn } from "@/lib/utils"
 
 /**
  * MemberManager - Sistema de Gestión de Nóminas y Socios.
- * Permite: 
- * 1. Cargar Excel Base y Mensual.
- * 2. Comparar diferencias (Altas/Bajas).
- * 3. Sincronizar cambios masivamente en Firestore.
- * 4. Gestión manual de socios.
  */
 export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const db = useFirestore()
@@ -52,7 +47,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     totalExcel: any[]
   } | null>(null)
 
-  // Consulta en tiempo real de la nómina actual en Firestore
   const nominaQuery = useMemoFirebase(() => {
     if (!db) return null
     return query(collection(db, "nomina_maestra"), orderBy("nombre", "asc"))
@@ -61,7 +55,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const { data: currentNominaRaw } = useCollection(nominaQuery)
   const currentNomina = currentNominaRaw || []
 
-  // Filtrado de la lista visual
   const filteredNomina = useMemo(() => {
     return currentNomina.filter(s => {
       const searchLower = search.toLowerCase()
@@ -73,9 +66,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     })
   }, [currentNomina, search, filterStatus])
 
-  /**
-   * Normaliza el RUT para comparaciones exactas.
-   */
   const normalizeRut = (rutRaw: any): string => {
     if (rutRaw === undefined || rutRaw === null) return ""
     return String(rutRaw)
@@ -84,9 +74,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
       .replace(/[^0-9K]/g, "")
   }
 
-  /**
-   * Procesa archivos Excel buscando columnas de Nombre, RUT, Establecimiento y Monto.
-   */
   const processFile = (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -103,7 +90,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
           let estIdx = -1
           let montoIdx = -1
 
-          // Búsqueda inteligente de encabezados
           for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
             const row = (jsonData[i] || []).map(h => String(h || "").toLowerCase().trim())
             const nIdx = row.findIndex(h => h.includes('nombre') || h.includes('trabajador') || h.includes('funcionario') || h === 'nombres' || h === 'nombre completo')
@@ -166,9 +152,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     }
   }
 
-  /**
-   * Compara los datos cargados con la base actual para encontrar Altas y Bajas.
-   */
   const runComparison = () => {
     if (!monthlyData) {
       toast({ variant: "destructive", title: "Falta archivo", description: "Carga la planilla mensual para comparar." })
@@ -182,9 +165,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     setIsProcessing(false)
   }
 
-  /**
-   * Sincroniza los resultados de la comparación directamente en Firestore.
-   */
   const handleApplyUpdate = async () => {
     if (!db || !comparisonResult) return
     setIsProcessing(true)
@@ -192,7 +172,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
       const batch = writeBatch(db)
       const timestamp = new Date().toISOString()
       
-      // Actualizar/Crear activos desde el Excel mensual
       comparisonResult.totalExcel.forEach(item => {
         batch.set(doc(db, "nomina_maestra", item.id), { 
           ...item, 
@@ -201,7 +180,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
         }, { merge: true })
       })
 
-      // Marcar como egreso los que ya no están
       comparisonResult.egresos.forEach(item => {
         if (item.id || item.rut) {
           batch.update(doc(db, "nomina_maestra", item.id || item.rut), { 
@@ -254,7 +232,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[95vw] h-[95vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
         
-        {/* Encabezado */}
         <div className="bg-primary px-6 py-4 text-primary-foreground shrink-0 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/10 rounded-xl">
@@ -265,7 +242,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
             </div>
           </div>
           {view === 'manual' && (
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={() => setView('list')}>
+            <Button variant="secondary" size="sm" className="bg-white/10 hover:bg-white/20 text-white border-none" onClick={() => setView('list')}>
               <ChevronLeft className="w-4 h-4 mr-2" /> Volver a Lista
             </Button>
           )}
@@ -330,27 +307,26 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
               </div>
             ) : (
               <>
-                {/* Controles Principales */}
                 <div className="bg-white p-5 rounded-[1.5rem] border shadow-sm space-y-4">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                       <Button 
-                        variant={showUploadArea ? "secondary" : "default"} 
-                        className="gap-2 font-bold rounded-xl h-11 px-6 shadow-sm"
+                        variant="secondary" 
+                        className={cn("gap-2 font-bold rounded-xl h-11 px-6 shadow-sm", showUploadArea ? "bg-primary text-white" : "bg-secondary/20 text-primary border-2 border-secondary/30 hover:bg-secondary/30")}
                         onClick={() => setShowUploadArea(!showUploadArea)}
                       >
                         <Upload className="w-4 h-4" /> {showUploadArea ? "Cerrar Carga" : "Cargar Excel"}
                       </Button>
                       <Button 
-                        variant="outline" 
-                        className="gap-2 font-bold rounded-xl h-11 px-6 border-2"
+                        variant="secondary" 
+                        className="gap-2 font-bold rounded-xl h-11 px-6 bg-secondary/20 text-primary border-2 border-secondary/30 hover:bg-secondary/30"
                         onClick={() => setView('manual')}
                       >
                         <Plus className="w-4 h-4" /> Nuevo Socio
                       </Button>
                       <Button 
                         variant="secondary" 
-                        className="gap-2 font-bold rounded-xl h-11 px-6 shadow-sm"
+                        className="gap-2 font-bold rounded-xl h-11 px-6 shadow-sm bg-primary text-white hover:bg-primary/90"
                         disabled={!monthlyData || isProcessing}
                         onClick={runComparison}
                       >
@@ -380,13 +356,12 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     </div>
                   </div>
 
-                  {/* Área de Carga de Archivos */}
                   {showUploadArea && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t animate-in fade-in slide-in-from-top-4">
                       <div className="p-6 border-2 border-dashed rounded-2xl flex flex-col items-center gap-3 bg-muted/5 hover:bg-muted/10 transition-colors">
                         <input type="file" accept=".xlsx, .xls" className="hidden" ref={baseInputRef} onChange={(e) => handleUpload(e, 'base')} />
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Excel Referencia (Opcional)</span>
-                        <Button variant="outline" className="w-full rounded-xl" onClick={() => baseInputRef.current?.click()}>
+                        <Button variant="secondary" className="w-full rounded-xl bg-slate-100 text-slate-700" onClick={() => baseInputRef.current?.click()}>
                           {baseFileName || "Seleccionar Archivo Base"}
                         </Button>
                         <p className="text-[9px] text-muted-foreground text-center">Si no se carga, se comparará contra los datos actuales de la nube.</p>
@@ -394,7 +369,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       <div className="p-6 border-2 border-dashed border-primary/20 rounded-2xl flex flex-col items-center gap-3 bg-primary/5 hover:bg-primary/10 transition-colors">
                         <input type="file" accept=".xlsx, .xls" className="hidden" ref={monthlyInputRef} onChange={(e) => handleUpload(e, 'monthly')} />
                         <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Excel Mensual (Obligatorio)</span>
-                        <Button variant="default" className="w-full rounded-xl" onClick={() => monthlyInputRef.current?.click()}>
+                        <Button variant="secondary" className="w-full rounded-xl bg-primary text-white" onClick={() => monthlyInputRef.current?.click()}>
                           {monthlyFileName || "Seleccionar Archivo Mensual"}
                         </Button>
                         <p className="text-[9px] text-muted-foreground text-center">Contiene los socios que deben estar activos este mes.</p>
@@ -403,7 +378,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   )}
                 </div>
 
-                {/* Resultados de la Comparación */}
                 {comparisonResult && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in zoom-in-95 duration-300">
                     <div className="bg-emerald-50 border border-emerald-100 rounded-[1.5rem] overflow-hidden">
@@ -447,7 +421,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     <div className="md:col-span-2 bg-primary p-5 rounded-2xl flex items-center justify-between shadow-xl">
                       <div className="text-sm font-bold text-white">¿Sincronizar estos cambios en la nube?</div>
                       <div className="flex gap-2">
-                        <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => setComparisonResult(null)}>Cancelar</Button>
+                        <Button variant="secondary" className="text-white bg-white/10 hover:bg-white/20 border-none" onClick={() => setComparisonResult(null)}>Cancelar</Button>
                         <Button className="bg-secondary text-primary font-black px-8 rounded-xl" onClick={handleApplyUpdate} disabled={isProcessing}>
                           {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                           SINCRONIZAR FIRESTORE
@@ -457,11 +431,10 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   </div>
                 )}
 
-                {/* Lista Maestra (Firestore) */}
                 <div className="bg-white border rounded-[2rem] shadow-sm overflow-hidden">
                   <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
                     <h3 className="text-xs font-black uppercase tracking-widest text-primary/60">Base de Datos Institucional</h3>
-                    <Badge variant="outline" className="font-black">{filteredNomina.length} Registros en Pantalla</Badge>
+                    <Badge variant="outline" className="font-black bg-white border-primary/10">{filteredNomina.length} Registros en Pantalla</Badge>
                   </div>
                   <Table>
                     <TableHeader>
@@ -507,7 +480,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
           </div>
         </ScrollArea>
 
-        {/* Footer Informativo */}
         <DialogFooter className="px-6 py-4 bg-white border-t shrink-0">
           <div className="flex items-center justify-between w-full">
             <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.3em]">

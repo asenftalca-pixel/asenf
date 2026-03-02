@@ -183,7 +183,6 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-none w-screen h-screen m-0 rounded-none border-none shadow-none flex flex-col p-0 bg-background overflow-hidden">
-          {/* Header Principal del Sistema */}
           <div className="bg-primary p-6 text-primary-foreground shrink-0 border-b border-white/10">
             <div className="container mx-auto flex items-center justify-between">
               <div className="flex items-center gap-5">
@@ -207,9 +206,9 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <PlusCircle className="w-5 h-5" /> NUEVA TAREA
                 </Button>
                 <Button 
-                  variant="ghost" 
+                  variant="secondary" 
                   onClick={onClose} 
-                  className="text-white hover:bg-white/10 rounded-xl font-bold h-12 w-12 p-0"
+                  className="bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold h-12 w-12 p-0 border-none"
                 >
                   <X className="w-6 h-6" />
                 </Button>
@@ -217,13 +216,12 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             </div>
           </div>
 
-          {/* Listado de Tareas (Focus Principal) */}
           <div className="flex-1 overflow-auto bg-muted/5 scroll-smooth">
-            <div className="container mx-auto max-w-6xl p-8 space-y-8">
+            <div className="container mx-auto max-6xl p-8 space-y-8">
               
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <Badge className="bg-primary/10 text-primary border-primary/20 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
+                  <Badge className="bg-primary/10 text-primary border-2 border-primary/20 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
                     {tasks.filter(t => !t.completada).length} Tareas Pendientes
                   </Badge>
                 </div>
@@ -317,9 +315,9 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                           <Button 
-                            variant="ghost" 
+                            variant="secondary" 
                             size="icon" 
-                            className="h-10 w-10 text-primary hover:bg-primary/10 rounded-xl" 
+                            className="h-10 w-10 bg-slate-100 text-primary hover:bg-slate-200 rounded-xl" 
                             onClick={() => startEdit(task)}
                           >
                             <Pencil className="w-4 h-4" />
@@ -327,7 +325,7 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-xl">
+                              <Button variant="secondary" size="icon" className="h-10 w-10 bg-rose-50 text-destructive hover:bg-rose-100 rounded-xl">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -371,7 +369,6 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         </DialogContent>
       </Dialog>
 
-      {/* DIÁLOGO DEL FORMULARIO (NUEVA/EDITAR TAREA) */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground relative">
@@ -467,8 +464,8 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                 <div className="flex flex-wrap gap-2">
                   <Button 
-                    variant="outline" 
-                    className="h-11 rounded-xl border-dashed border-2 gap-2 w-full"
+                    variant="secondary" 
+                    className="h-11 rounded-xl border-dashed border-2 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 gap-2 w-full"
                     disabled={isUploading}
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -493,7 +490,7 @@ export function TaskManager({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
           <DialogFooter className="p-8 bg-muted/10 border-t">
             <div className="flex gap-3 w-full">
-              <Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold border-2" onClick={() => setIsFormOpen(false)}>
+              <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>
                 Cancelar
               </Button>
               <Button className="flex-1 h-14 rounded-2xl font-black gap-2 shadow-xl" onClick={handleSaveTask} disabled={isUploading}>

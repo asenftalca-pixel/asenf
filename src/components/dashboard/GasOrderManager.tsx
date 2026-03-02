@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -247,15 +246,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
             </div>
             <div className="flex gap-3">
               <Button 
-                variant="outline" 
-                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                variant="secondary" 
+                className="rounded-xl font-bold gap-2 h-12 px-6 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100" 
                 onClick={handleExportExcel}
               >
                 <FileSpreadsheet className="w-5 h-5" /> EXPORTAR EXCEL
               </Button>
               <Button 
-                variant="outline" 
-                className="rounded-xl font-bold gap-2 h-12 px-6 border-white/20 text-white hover:bg-white/10" 
+                variant="secondary" 
+                className="rounded-xl font-bold gap-2 h-12 px-6 bg-secondary/20 text-primary border-2 border-secondary/30 hover:bg-secondary/30" 
                 onClick={() => setIsConfigOpen(true)}
               >
                 <Settings2 className="w-5 h-5" /> CONFIGURAR COSTOS
@@ -324,8 +323,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                               <div className="flex gap-2 justify-center">
                                 <Button 
                                   size="sm" 
-                                  variant={isChecked ? "secondary" : "outline"} 
-                                  className="rounded-xl font-bold h-9 w-9 p-0" 
+                                  variant={isChecked ? "secondary" : "secondary"} 
+                                  className={cn("rounded-xl font-bold h-9 w-9 p-0", isChecked ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600")} 
                                   onClick={() => handleUpdateStatus(p.id, 'checked')} 
                                   disabled={isChecked}
                                   title="Validar Pago Socio"
@@ -334,7 +333,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                                 </Button>
                                 <Button 
                                   size="sm" 
-                                  className="rounded-xl font-bold h-9 w-9 p-0 shadow-sm" 
+                                  className="rounded-xl font-bold h-9 w-9 p-0 shadow-sm bg-primary text-white" 
                                   onClick={() => handleUpdateStatus(p.id, 'delivered')}
                                   title="Marcar como Entregado"
                                 >
