@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo } from "react"
@@ -13,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -408,7 +407,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <p className="text-[9px] font-bold text-muted-foreground uppercase mt-2">Última cartola ingresada</p>
                 </Card>
 
-                {/* TARJETA DE DEUDA PENDIENTE PROVEEDOR */}
                 <Card className={cn(
                   "p-6 border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center relative overflow-hidden",
                   totalDeudaProveedor > 0 ? "bg-amber-50" : "bg-emerald-50"
@@ -526,7 +524,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                     <Table>
                                       <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 w-16 text-[10px] font-black uppercase">Día</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-center text-[10px] font-black uppercase">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right w-24 text-[10px] font-black uppercase">Acción</TableHead></TableRow></TableHeader>
                                       <TableBody>
-                                        {egresos.map(m => (
+                                        {eggresos.map(m => (
                                           <TableRow key={m.id} className="group hover:bg-rose-50/30">
                                             <TableCell className="px-6 font-bold text-xs text-muted-foreground">{m.fecha?.split("-")[2]}</TableCell>
                                             <TableCell className="px-6 font-black text-primary text-xs uppercase">{m.responsable}</TableCell>
