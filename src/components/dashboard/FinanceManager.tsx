@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo } from "react"
@@ -246,24 +247,38 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       financeSnap.docs.forEach(fDoc => {
         const data = fDoc.data()
+        const docId = fDoc.id
         
-        // 1. Borrar si el pedido ya no existe físicamente
-        if (data.orderId && !validOrderIds.has(data.orderId)) {
-          batch.delete(fDoc.ref)
-          deletedCount++
-        }
+        if (data.orderId) {
+          // 1. Borrar si el pedido ya no existe físicamente
+          if (!validOrderIds.has(data.orderId)) {
+            batch.delete(fDoc.ref)
+            deletedCount++
+            return
+          }
 
-        // 2. Borrar si es categoría antigua 'GAS'/'Gas' y tiene orderId 
-        const cat = String(data.categoria || "").toUpperCase().trim()
-        if (data.orderId && (cat === 'GAS' || cat === 'GAS ')) {
-          batch.delete(fDoc.ref)
-          deletedCount++
+          // 2. BORRADO CRÍTICO DE DUPLICADOS:
+          // Si el registro de finanzas tiene un orderId PERO su docId NO es el oficial 'gas_income_...'
+          // significa que es un duplicado creado por addDoc (ID aleatoria). Debemos borrarlo.
+          if (docId !== `gas_income_${data.orderId}`) {
+            batch.delete(fDoc.ref)
+            deletedCount++
+            return
+          }
+
+          // 3. Borrar si es categoría antigua 'GAS'/'Gas'
+          const cat = String(data.categoria || "").toUpperCase().trim()
+          if (cat === 'GAS' || cat === 'GAS ') {
+            batch.delete(fDoc.ref)
+            deletedCount++
+            return
+          }
         }
       })
 
       if (deletedCount > 0) {
         await batch.commit()
-        toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros duplicados o huérfanos.` })
+        toast({ title: "Limpieza Profunda Completada", description: `Se eliminaron ${deletedCount} registros duplicados o huérfanos para sincerar el saldo.` })
       } else {
         toast({ title: "Sistema Limpio", description: "No se encontraron registros redundantes." })
       }
