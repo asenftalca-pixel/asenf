@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo } from "react"
@@ -27,7 +28,7 @@ const EXPENSE_CATEGORIES = [
   "Aporte socios / Servicios", "Asamblea FENASENF", "Varios"
 ]
 
-const RESPONSABLES = ["Cecilia", "Julia", "Juan Carlos", "Leandro", "Rodrigo"]
+const RESPONSABLES = ["Cecilia", "Julia", "Juan Carlos", "Leandro", "Rodrigo", "Sistema"]
 const CUENTAS = ["Cuenta propia", "Cuenta ASENF"]
 
 export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -46,7 +47,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     monto: 0,
     comprobante: null as string | null,
     responsable: "",
-    cuenta: ""
+    cuenta: "",
+    glosa: ""
   })
 
   const allMovementsQuery = useMemoFirebase(() => {
@@ -161,7 +163,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       monto: 0,
       comprobante: null,
       responsable: "",
-      cuenta: ""
+      cuenta: "",
+      glosa: ""
     })
     setEditingId(null)
   }
@@ -174,7 +177,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       monto: mov.monto,
       comprobante: mov.comprobante || null,
       responsable: mov.responsable,
-      cuenta: mov.cuenta
+      cuenta: mov.cuenta,
+      glosa: mov.glosa || ""
     })
     setEditingId(mov.id)
     setIsFormOpen(true)
@@ -330,6 +334,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                     <TableHead className="font-black text-[10px] uppercase px-6">Responsable</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase px-6">Tipo/Cuenta</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase px-6">Categoría</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase px-6">Detalle</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase px-6 text-right">Monto</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase px-6 text-center">Devolución</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase px-6 text-center">Respaldo</TableHead>
@@ -355,6 +360,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                         </div>
                                       </TableCell>
                                       <TableCell className="px-6 font-black text-primary text-xs uppercase tracking-tight">{mov.categoria}</TableCell>
+                                      <TableCell className="px-6 font-medium text-muted-foreground text-xs">{mov.glosa || "—"}</TableCell>
                                       <TableCell className={cn("px-6 text-right font-black text-sm", mov.tipo === "ingreso" ? "text-emerald-600" : "text-primary")}>
                                         {mov.tipo === "egreso" ? "-" : ""}{formatCLP(mov.monto)}
                                       </TableCell>
@@ -515,6 +521,16 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Glosa / Detalle</Label>
+              <Input 
+                placeholder="Ej: Pago factura luz oficina"
+                className="h-12 rounded-xl bg-muted/30 border-none"
+                value={formData.glosa}
+                onChange={(e) => setFormData({...formData, glosa: e.target.value})}
+              />
             </div>
 
             <div className="space-y-2">
