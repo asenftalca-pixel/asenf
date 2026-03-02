@@ -109,19 +109,21 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!db) return
     try {
+      // Actualización atómica explícita con estado de pago pendiente
       const updates: any = {
         status: newStatus,
         updatedAt: new Date().toISOString()
       }
 
-      if (newStatus === 'checked') {
+      if (newStatus === 'checked' || newStatus === 'revisado') {
         updates['estadoPagoProveedor'] = 'pendiente';
       }
 
-      console.log('GAS_UPDATE_DEBUG: Enviando a Firebase:', updates);
+      console.log('GAS_UPDATE_DEBUG: Enviando actualización atómica a Firebase:', updates);
+      
       await updateDoc(doc(db, "pedidos_socios", id), updates)
 
-      if (newStatus === 'checked') {
+      if (newStatus === 'checked' || newStatus === 'revisado') {
         const order = allPedidos.find(p => p.id === id)
         if (order) {
           const montoBruto = Number(order.totalGeneral || order.Total || order.Valor || 0)
@@ -142,15 +144,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
           toast({ 
             title: "Pago de Socio Registrado", 
-            description: "El monto bruto ha ingresado a finanzas." 
+            description: "El ingreso bruto ha sido añadido al libro diario." 
           })
         }
       }
 
-      toast({ title: "Estado Actualizado", description: `Pedido marcado como ${newStatus}.` })
+      toast({ title: "Estado Actualizado", description: `Pedido marcado como ${newStatus} y deuda activada.` })
     } catch (e: any) {
-      console.error('GAS_ERROR:', e);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar el estado contable." })
+      console.error('GAS_UPDATE_ERROR:', e);
+      alert("Error al actualizar estado: " + e.message);
     }
   }
 

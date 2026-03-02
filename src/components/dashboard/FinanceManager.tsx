@@ -92,7 +92,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { data: pendingOrdersRaw } = useCollection(pendingGasOrdersQuery)
 
   const allMovements = allMovementsRaw || []
-  const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked' || p.status === 'delivered')
+  const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked' || p.status === 'delivered' || p.status === 'revisado')
 
   const filteredPendingOrders = useMemo(() => {
     return pendingOrders
@@ -134,6 +134,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             total += unitCost * (Number(item.cantidad) || 0)
           }
         })
+      } else {
+        // Fallback para pedidos antiguos sin array de items
+        const brand = (order.detalleResumen || "").toLowerCase();
+        if (brand.includes(activeLiqBrand.toLowerCase())) {
+           // Intentar extraer kilos
+           const match = brand.match(/(\d+)kg/i);
+           const kilos = match ? match[1] : "11";
+           const costKey = `${activeLiqBrand.toLowerCase()}_${kilos}`;
+           const unitCost = costsData.values[costKey] || 0;
+           total += unitCost;
+        }
       }
     })
     return total
@@ -172,18 +183,22 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const handleLiquidateSupplier = async () => {
     if (!firestore) return;
 
-    if (debtBySelectedBrand <= 0) {
-      toast({
-        variant: "destructive",
-        title: "No se puede liquidar",
-        description: "La deuda calculada es $0. Verifique que los 'Costos Base Proveedor' estén configurados."
-      });
+    if (filteredPendingOrders.length === 0) {
+      alert("No hay pedidos pendientes para liquidar de la marca " + activeLiqBrand);
       return;
     }
 
-    const confirmMessage = `¿Confirmar pago de ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(debtBySelectedBrand)} a ${activeLiqBrand}? Se procesarán ${filteredPendingOrders.length} pedidos.`;
+    if (debtBySelectedBrand <= 0) {
+      alert("La deuda calculada es $0. Por favor, asegúrate de configurar los 'Costos Base Proveedor' en el botón de arriba.");
+      return;
+    }
+
+    const formattedDebt = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(debtBySelectedBrand);
+    const confirmMessage = `¿Confirmas el pago de ${formattedDebt} al proveedor ${activeLiqBrand}?\n\nEsta acción registrará el egreso contable en finanzas y marcará ${filteredPendingOrders.length} pedidos como PAGADOS.`;
     
     if (!window.confirm(confirmMessage)) return
+    
+    alert('Iniciando proceso de liquidación atómica para ' + filteredPendingOrders.length + ' pedidos de ' + activeLiqBrand);
     
     setIsLiquidating(true)
     try {
@@ -191,6 +206,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       const timestamp = serverTimestamp()
       const today = format(new Date(), "yyyy-MM-dd")
 
+      // 1. Registrar el Egreso Masivo en la Bitácora
       const financeRef = doc(collection(firestore, "finanzas_asenftalca"))
       batch.set(financeRef, {
         tipo: "egreso",
@@ -199,11 +215,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         fecha: today,
         responsable: "Sistema",
         cuenta: "Cuenta ASENF",
-        glosa: `Liquidación de ${filteredPendingOrders.length} pedidos de ${activeLiqBrand}. Pago a proveedor.`,
+        glosa: `Liquidación masiva ${activeLiqBrand}: Pago a proveedor por ${filteredPendingOrders.length} cilindros.`,
         createdAt: timestamp,
         updatedAt: timestamp
       })
 
+      // 2. Actualizar cada pedido a 'pagado'
       filteredPendingOrders.forEach(order => {
         const orderRef = doc(firestore, "pedidos_socios", order.id)
         batch.update(orderRef, {
@@ -214,10 +231,11 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       })
 
       await batch.commit()
-      toast({ title: `Liquidación ${activeLiqBrand} Completada`, description: "Se ha registrado el egreso y actualizado los pedidos a pagado." })
+      alert("¡Éxito! Se ha registrado el egreso y actualizado los registros de deuda.");
+      window.location.reload(); // Recargar para limpiar vistas y sincronizar balance
     } catch (e: any) {
-      console.error('ERROR_LIQUIDACION:', e);
-      toast({ variant: "destructive", title: "Error en liquidación", description: e.message || "No se pudo procesar la liquidación. Verifique permisos." })
+      console.error('ERROR_LIQUIDACION_BATCH:', e);
+      alert("Error crítico durante la liquidación: " + e.message);
     } finally {
       setIsLiquidating(false)
     }
@@ -273,7 +291,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           updatedCount++
         }
 
-        if (orderData.status === 'checked' || orderData.status === 'delivered') {
+        if (orderData.status === 'checked' || orderData.status === 'delivered' || orderData.status === 'revisado') {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : String(orderData.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
@@ -723,7 +741,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         <div className="mt-10 relative z-10">
                           <Button 
                             className="w-full h-16 rounded-2xl bg-secondary text-primary font-black text-base shadow-xl gap-3 hover:scale-[1.02] transition-transform"
-                            disabled={isLiquidating}
+                            disabled={isLiquidating || debtBySelectedBrand === 0}
                             onClick={handleLiquidateSupplier}
                           >
                             {isLiquidating ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
