@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle, ShieldAlert, Sparkles, Check } from "lucide-react"
+import { Wallet, ArrowUpCircle, ArrowDownCircle, PlusCircle, Receipt, Loader2, Save, Camera, History, Landmark, X, User, CreditCard, CheckCircle2, Pencil, Trash2, Calculator, RefreshCw, ArrowUpRight, ArrowDownRight, Settings2, TrendingUp, PiggyBank, Flame, Package, AlertCircle, ShieldAlert, Sparkles, Check, FileText, Paperclip } from "lucide-react"
 import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -32,7 +32,6 @@ const EXPENSE_CATEGORIES = [
 
 const RESPONSABLES = ["Cecilia", "Julia", "Juan Carlos", "Leandro", "Rodrigo", "Sistema"]
 const CUENTAS = ["Cuenta propia", "Cuenta ASENF"]
-const GAS_BRANDS = ["Lipigas", "Abastible", "Gas del Sur"]
 
 export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { firestore } = useFirebase()
@@ -55,10 +54,11 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     tipo: "ingreso" as "ingreso" | "egreso",
     categoria: "",
     monto: 0,
-    comprobante: null as string | null,
+    comprobanteUrl: null as string | null,
     responsable: "",
     cuenta: "",
-    glosa: ""
+    glosa: "",
+    devuelto: false
   })
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -94,7 +94,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const allMovements = allMovementsRaw || []
   const pendingOrders = (pendingOrdersRaw || []).filter(p => p.status === 'checked' || p.status === 'delivered' || p.status === 'revisado')
 
-  // FILTRO: Solo Lipigas usa liquidación masiva (Abastible/Sur son por stock)
   const filteredPendingOrders = useMemo(() => {
     return pendingOrders
       .filter((order: any) => {
@@ -166,10 +165,34 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, comprobanteUrl: reader.result as string }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleToggleDevolucion = async (id: string, currentStatus: boolean) => {
+    if (!firestore) return
+    try {
+      await updateDoc(doc(firestore, "finanzas_asenftalca", id), {
+        devuelto: !currentStatus,
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: !currentStatus ? "Marcado como devuelto" : "Reembolso pendiente" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al actualizar estado" })
+    }
+  }
+
   const handleLiquidateSupplier = async () => {
     if (!firestore) return;
     if (activeLiqBrand.toLowerCase() !== "lipigas") {
-      alert("Abastible y Gas del Sur se gestionan mediante el sistema de inventario. Solo Lipigas requiere liquidación masiva.");
+      alert("Solo Lipigas requiere liquidación masiva.");
       return;
     }
 
@@ -219,23 +242,20 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     setIsSyncing(true)
     try {
       const batch = writeBatch(firestore)
-      const ordersSnap = await getDocs(collection(firestore, "pedidos_socios"))
-      const validOrderIds = new Set(ordersSnap.docs.map(d => d.id))
       const financeSnap = await getDocs(collection(firestore, "finanzas_asenftalca"))
       let deletedCount = 0
 
       financeSnap.docs.forEach(fDoc => {
         const data = fDoc.data()
         const categoryUpper = String(data.categoria || "").toUpperCase().trim()
-        
-        if (categoryUpper === 'GAS' || (data.orderId && !validOrderIds.has(data.orderId))) {
+        if (categoryUpper === 'GAS') {
           batch.delete(fDoc.ref)
           deletedCount++
         }
       })
 
       if (deletedCount > 0) await batch.commit()
-      toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros huérfanos.` })
+      toast({ title: "Limpieza Completada", description: `Se eliminaron ${deletedCount} registros antiguos.` })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error" })
     } finally {
@@ -319,7 +339,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   const resetForm = () => {
-    setFormData({ fecha: format(new Date(), "yyyy-MM-dd"), tipo: "ingreso", categoria: "", monto: 0, comprobante: null, responsable: "", cuenta: "", glosa: "" })
+    setFormData({ 
+      fecha: format(new Date(), "yyyy-MM-dd"), 
+      tipo: "ingreso", 
+      categoria: "", 
+      monto: 0, 
+      comprobanteUrl: null, 
+      responsable: "", 
+      cuenta: "", 
+      glosa: "", 
+      devuelto: false 
+    })
     setEditingId(null)
   }
 
@@ -338,8 +368,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm" onClick={() => { setConfigData({ bankAmount: String(bankData?.bankAmount || ""), initialBankBalance: String(bankData?.initialBankBalance || "") }); setIsConfigOpen(true); }}><Settings2 className="w-5 h-5 mr-2" /> AJUSTES CAJA</Button>
-              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm" onClick={handleSyncPastOrders} disabled={isSyncing}>{isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5 mr-2" />} SINCRONIZAR GAS</Button>
+              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20" onClick={() => { setConfigData({ bankAmount: String(bankData?.bankAmount || ""), initialBankBalance: String(bankData?.initialBankBalance || "") }); setIsConfigOpen(true); }}><Settings2 className="w-5 h-5 mr-2" /> AJUSTES CAJA</Button>
+              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20" onClick={handleSyncPastOrders} disabled={isSyncing}>{isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5 mr-2" />} SINCRONIZAR GAS</Button>
               <Button className="rounded-xl font-black h-12 px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90" onClick={() => { resetForm(); setIsFormOpen(true); }}><PlusCircle className="w-5 h-5 mr-2" /> NUEVO MOVIMIENTO</Button>
             </div>
           </div>
@@ -356,8 +386,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <div className="text-3xl font-black text-secondary-foreground tracking-tighter">{formatCLP(bankData?.bankAmount || 0)}</div>
                 </Card>
                 <Card className={cn("p-6 border-none shadow-xl rounded-[2rem] text-center", pendingOrders.length > 0 ? "bg-amber-50" : "bg-emerald-50")}>
-                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2">Deuda Pendiente (Lipigas)</span>
-                  <div className="text-2xl font-black text-primary">{pendingOrders.filter(p => p.detalleResumen?.toLowerCase().includes("lipigas")).length} Pedidos</div>
+                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2">Pedidos Pendientes Pago</span>
+                  <div className="text-2xl font-black text-primary">{pendingOrders.length} Pendientes</div>
                 </Card>
                 <Card className="p-6 bg-primary text-primary-foreground border-none shadow-xl rounded-[2rem] text-center relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16" /></div>
@@ -386,7 +416,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                             return (
                               <TabsContent key={month} value={month} className="space-y-6">
                                 <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead></TableRow></TableHeader>
+                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead></TableRow></TableHeader>
                                   <TableBody>
                                     {movs.map(m => (
                                       <TableRow key={m.id} className="hover:bg-slate-50/50">
@@ -394,6 +424,25 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                         <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
                                         <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
                                         <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
+                                        <TableCell className="text-center">
+                                          {m.comprobanteUrl ? (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
+                                              <Camera className="w-4 h-4" />
+                                            </Button>
+                                          ) : "—"}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                          {m.cuenta === "Cuenta propia" ? (
+                                            <div className="flex items-center justify-center gap-2">
+                                              <Checkbox 
+                                                checked={!!m.devuelto} 
+                                                onCheckedChange={() => handleToggleDevolucion(m.id, !!m.devuelto)}
+                                                className="h-5 w-5 border-2"
+                                              />
+                                              {m.devuelto && <span className="text-[8px] font-black text-emerald-600 uppercase">Devuelto</span>}
+                                            </div>
+                                          ) : "—"}
+                                        </TableCell>
                                         <TableCell className={cn("px-6 text-right font-black", m.tipo === 'ingreso' ? "text-emerald-600" : "text-rose-600")}>{m.tipo === 'ingreso' ? "+" : "-"}{formatCLP(m.monto)}</TableCell>
                                       </TableRow>
                                     ))}
@@ -462,7 +511,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Inicial 01/01/2026</Label><Input type="number" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.initialBankBalance} onChange={e => setConfigData({...configData, initialBankBalance: e.target.value})} /></div>
             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Real Actual en Banco</Label><Input type="number" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.bankAmount} onChange={e => setConfigData({...configData, bankAmount: e.target.value})} /></div>
           </div>
-          <DialogFooter className="p-8 bg-muted/10 border-t"><Button className="w-full h-14 rounded-2xl font-black text-lg gap-2" onClick={handleSaveConfig} disabled={isSavingBank}>{isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-5 h-5" />} GUARDAR</Button></DialogFooter>
+          <DialogFooter className="p-8 bg-muted/10 border-t"><Button className="w-full h-14 rounded-2xl font-black text-lg gap-2 bg-primary text-white" onClick={handleSaveConfig} disabled={isSavingBank}>{isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-5 h-5" />} GUARDAR</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -471,14 +520,50 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="bg-primary p-8 text-primary-foreground border-b border-white/10 shrink-0"><DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle></div>
           <ScrollArea className="flex-1">
             <div className="p-8 space-y-6">
-              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Fecha</Label><Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Tipo</Label><Select value={formData.tipo} onValueChange={(v:any) => setFormData({...formData, tipo: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent></Select></div></div>
+              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Fecha</Label><Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Tipo</Label><Select value={formData.tipo} onValueChange={(v:any) => setFormData({...formData, tipo: v, categoria: ""})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent></Select></div></div>
               <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Responsable</Label><Select value={formData.responsable} onValueChange={v => setFormData({...formData, responsable: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Cuenta</Label><Select value={formData.cuenta} onValueChange={v => setFormData({...formData, cuenta: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div></div>
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Categoría</Label><Select value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Glosa</Label><Input placeholder="Ej: Pago luz..." className="h-12 rounded-xl" value={formData.glosa} onChange={e => setFormData({...formData, glosa: e.target.value})} /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Glosa / Detalle</Label><Input placeholder="Ej: Pago luz..." className="h-12 rounded-xl" value={formData.glosa} onChange={e => setFormData({...formData, glosa: e.target.value})} /></div>
+              
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Adjuntar Documento (Opcional)</Label>
+                <div className="relative h-24 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden">
+                  {formData.comprobanteUrl ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <Check className="w-6 h-6 text-emerald-600" />
+                      <span className="text-[10px] font-black text-emerald-700 uppercase">Archivo Listo</span>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Camera className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                      <span className="text-[9px] font-black text-muted-foreground uppercase">Hacer clic para subir boleta</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*, application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                </div>
+              </div>
+
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Monto ($)</Label><Input type="number" className="h-14 rounded-2xl text-xl font-black text-primary" value={formData.monto || ""} onChange={e => setFormData({...formData, monto: Number(e.target.value)})} /></div>
             </div>
           </ScrollArea>
-          <DialogFooter className="p-8 bg-muted/10 border-t shrink-0"><div className="flex gap-3 w-full"><Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold" onClick={() => setIsFormOpen(false)}>CANCELAR</Button><Button className="flex-1 h-14 rounded-2xl font-black bg-primary text-white" onClick={handleSaveMovement} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "GUARDAR"}</Button></div></DialogFooter>
+          <DialogFooter className="p-8 bg-muted/10 border-t shrink-0"><div className="flex gap-3 w-full"><Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button><Button className="flex-1 h-14 rounded-2xl font-black bg-primary text-white" onClick={handleSaveMovement} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "GUARDAR"}</Button></div></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL PARA VER COMPROBANTE */}
+      <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2rem] bg-white border-none shadow-2xl">
+          <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
+            <h3 className="font-black uppercase text-sm flex items-center gap-2"><Receipt className="w-5 h-5" /> Respaldo del Movimiento</h3>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedReceipt(null)} className="text-white hover:bg-white/10 rounded-full">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          <div className="p-8 flex items-center justify-center bg-slate-50 min-h-[400px]">
+            {selectedReceipt && (
+              <img src={selectedReceipt} alt="Comprobante" className="max-w-full max-h-[70vh] rounded-xl shadow-lg object-contain" />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
