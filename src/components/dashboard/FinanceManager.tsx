@@ -40,9 +40,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingBank, setIsSavingBank] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [isLiquidating, setIsLiquidating] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
-  const [activeLiqBrand, setActiveLiqBrand] = useState("Lipigas")
   
   const [configData, setConfigData] = useState({
     bankAmount: "",
@@ -74,9 +72,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }, [firestore])
 
   const costsRef = useMemoFirebase(() => {
-    if (!db) return null
-    return doc(db, "settings", "gas_costs")
-  }, [db])
+    if (!firestore) return null
+    return doc(firestore, "settings", "gas_costs")
+  }, [firestore])
 
   const pendingGasOrdersQuery = useMemoFirebase(() => {
     if (!firestore) return null
