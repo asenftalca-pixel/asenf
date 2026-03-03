@@ -248,7 +248,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const data = fDoc.data()
         const docId = fDoc.id
         
-        // 1. Limpieza de registros con categorías obsoletas (GAS / Gas)
         const categoryUpper = String(data.categoria || "").toUpperCase().trim()
         if (categoryUpper === 'GAS' || categoryUpper === 'GAS ') {
           batch.delete(fDoc.ref)
@@ -257,15 +256,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         }
 
         if (data.orderId) {
-          // 2. Borrar si el pedido original ya no existe físicamente
           if (!validOrderIds.has(data.orderId)) {
             batch.delete(fDoc.ref)
             deletedCount++
             return
           }
 
-          // 3. BORRADO CRÍTICO DE DUPLICADOS:
-          // Si el registro de gas no tiene el ID oficial 'gas_income_...', es un duplicado por ID aleatoria.
           if (docId !== `gas_income_${data.orderId}`) {
             batch.delete(fDoc.ref)
             deletedCount++
@@ -307,13 +303,11 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           updatedCount++
         }
 
-        // Solo sincronizar si está aprobado o entregado
         if (['checked', 'delivered', 'revisado', 'entregado'].includes(statusLower)) {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : String(orderData.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
-          // USAR ID FIJO gas_income_... PARA EVITAR DUPLICADOS FÍSICAMENTE
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
           batch.set(financeRef, {
             tipo: "ingreso",
@@ -522,7 +516,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
           <div className="flex-1 overflow-auto bg-muted/5 p-8">
             <div className="container mx-auto max-w-7xl space-y-8">
-              
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] flex flex-col items-center justify-center text-center">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Saldo Digital Neto</span>
@@ -894,75 +887,86 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       </Dialog>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-primary p-8 text-primary-foreground shrink-0">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
+          <div className="bg-primary p-8 text-primary-foreground shrink-0 border-b border-white/10">
             <DialogHeader>
               <div className="flex items-center gap-4">
-                {editingId ? <Pencil className="w-8 h-8 text-secondary" /> : <PlusCircle className="w-8 h-8 text-secondary" />}
-                <DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle>
+                <div className="p-3 bg-white/10 rounded-2xl">
+                  {editingId ? <Pencil className="w-8 h-8 text-secondary" /> : <PlusCircle className="w-8 h-8 text-secondary" />}
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                    {editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}
+                  </DialogTitle>
+                  <p className="text-primary-foreground/60 text-[10px] font-bold uppercase tracking-widest mt-1">Registrar actividad financiera</p>
+                </div>
               </div>
             </DialogHeader>
           </div>
-          <ScrollArea className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Fecha gasto</Label>
-                <Input type="date" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.fecha} onChange={(e) => setFormData({...formData, fecha: e.target.value})} />
+          
+          <ScrollArea className="flex-1">
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Fecha gasto</Label>
+                  <Input type="date" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.fecha} onChange={(e) => setFormData({...formData, fecha: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Tipo</Label>
+                  <Select value={formData.tipo} onValueChange={(v: any) => setFormData({...formData, tipo: v, categoria: ""})}>
+                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl"><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Responsable</Label>
+                  <Select value={formData.responsable} onValueChange={(v) => setFormData({...formData, responsable: v})}>
+                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Quién gasta..." /></SelectTrigger>
+                    <SelectContent className="rounded-xl">{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cuenta</Label>
+                  <Select value={formData.cuenta} onValueChange={(v) => setFormData({...formData, cuenta: v})}>
+                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Origen fondos..." /></SelectTrigger>
+                    <SelectContent className="rounded-xl">{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Tipo</Label>
-                <Select value={formData.tipo} onValueChange={(v: any) => setFormData({...formData, tipo: v, categoria: ""})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl"><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Categoría</Label>
+                <Select value={formData.categoria} onValueChange={(v) => setFormData({...formData, categoria: v})}>
+                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Seleccione categoría..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl">{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Responsable</Label>
-                <Select value={formData.responsable} onValueChange={(v) => setFormData({...formData, responsable: v})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Quién gasta..." /></SelectTrigger>
-                  <SelectContent className="rounded-xl">{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Glosa / Detalle</Label>
+                <Input placeholder="Ej: Pago factura luz oficina" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.glosa} onChange={(e) => setFormData({...formData, glosa: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cuenta</Label>
-                <Select value={formData.cuenta} onValueChange={(v) => setFormData({...formData, cuenta: v})}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Origen fondos..." /></SelectTrigger>
-                  <SelectContent className="rounded-xl">{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Monto ($)</Label>
+                <Input type="number" placeholder="Ej: 50000" className="h-14 rounded-2xl bg-muted/30 border-none text-xl font-black text-primary" value={formData.monto || ""} onChange={(e) => setFormData({...formData, monto: Number(e.target.value)})} />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Categoría</Label>
-              <Select value={formData.categoria} onValueChange={(v) => setFormData({...formData, categoria: v})}>
-                <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none"><SelectValue placeholder="Seleccione categoría..." /></SelectTrigger>
-                <SelectContent className="rounded-xl">{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Glosa / Detalle</Label>
-              <Input placeholder="Ej: Pago factura luz oficina" className="h-12 rounded-xl bg-muted/30 border-none" value={formData.glosa} onChange={(e) => setFormData({...formData, glosa: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Monto ($)</Label>
-              <Input type="number" placeholder="Ej: 50000" className="h-14 rounded-2xl bg-muted/30 border-none text-xl font-black text-primary" value={formData.monto || ""} onChange={(e) => setFormData({...formData, monto: Number(e.target.value)})} />
-            </div>
-            <div className="space-y-2 pb-4">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Comprobante (Foto)</Label>
-              <div className="relative h-24 border-2 border-dashed rounded-2xl flex items-center justify-center bg-muted/20 group hover:bg-muted/40 transition-colors overflow-hidden">
-                {formData.comprobante ? (
-                  <div className="flex items-center gap-3 p-4 w-full">
-                    <img src={formData.comprobante} className="h-16 w-16 rounded object-cover border bg-white" alt="Prev" />
-                    <div className="flex-1"><p className="text-[10px] font-black text-emerald-600 uppercase">✓ Cargada</p></div>
-                  </div>
-                ) : (
-                  <div className="text-center"><Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1" /><span className="text-[9px] font-black text-muted-foreground uppercase">Subir Foto</span></div>
-                )}
-                <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+              <div className="space-y-2 pb-4">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Comprobante (Foto)</Label>
+                <div className="relative h-24 border-2 border-dashed rounded-2xl flex items-center justify-center bg-muted/20 group hover:bg-muted/40 transition-colors overflow-hidden">
+                  {formData.comprobante ? (
+                    <div className="flex items-center gap-3 p-4 w-full">
+                      <img src={formData.comprobante} className="h-16 w-16 rounded object-cover border bg-white" alt="Prev" />
+                      <div className="flex-1"><p className="text-[10px] font-black text-emerald-600 uppercase">✓ Cargada</p></div>
+                    </div>
+                  ) : (
+                    <div className="text-center"><Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1" /><span className="text-[9px] font-black text-muted-foreground uppercase">Subir Foto</span></div>
+                  )}
+                  <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                </div>
               </div>
             </div>
           </ScrollArea>
+
           <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
             <div className="flex gap-3 w-full">
               <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button>
