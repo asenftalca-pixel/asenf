@@ -6,10 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera, Building2, Copy } from "lucide-react"
+import { Flame, ArrowLeft, CheckCircle2, Loader2, ShoppingBag, Weight, Trash2, Plus, ShoppingCart, Send, Camera, Building2, Copy, Boxes } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, runTransaction, doc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
 interface CartItem {
@@ -44,14 +44,8 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     return collection(firestore, 'productos')
   }, [firestore])
 
-  const { data: dataRaw, isLoading: loadingProducts } = useCollection(productosQuery)
-  const productos = dataRaw || []
-
-  useEffect(() => {
-    if (isOpen && productos.length > 0) {
-      console.log(`GAS_DEBUG: Encontrados ${productos.length} documentos en 'productos'`)
-    }
-  }, [isOpen, productos])
+  const { data: productosRaw, isLoading: loadingProducts } = useCollection(productosQuery)
+  const productos = productosRaw || []
 
   const brands = Array.from(new Set(
     productos.map(p => p.Marca || p.Nombre).filter(Boolean)
@@ -61,11 +55,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
   
   const availableWeights = Array.from(new Set(
     filteredProductsByBrand.map(p => String(p.Kilos)).filter(Boolean)
-  )).sort((a, b) => {
-    const numA = parseInt(a) || 0;
-    const numB = parseInt(b) || 0;
-    return numA - numB;
-  })
+  )).sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0))
 
   const handleBrandSelect = (brand: string) => {
     setSelectedBrand(brand)
@@ -84,16 +74,13 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setComprobante(reader.result as string)
-      }
+      reader.onloadend = () => setComprobante(reader.result as string)
       reader.readAsDataURL(file)
     }
   }
 
   const addToCart = () => {
     if (quantity < 1 || !selectedProduct) return
-
     const newItem: CartItem = {
       id: crypto.randomUUID(),
       marca: selectedBrand,
@@ -102,125 +89,84 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       precioUnitario: selectedProduct.Precio || 0,
       total: (selectedProduct.Precio || 0) * quantity
     }
-
     setCart(prev => [...prev, newItem])
     setStep('cart')
-    
-    setSelectedBrand('')
-    setSelectedProduct(null)
-    setQuantity(1)
-
-    toast({
-      title: "Añadido al pedido",
-      description: `${newItem.cantidad} vales de ${newItem.marca} ${newItem.peso}Kg.`
-    })
+    setSelectedBrand(''); setSelectedProduct(null); setQuantity(1)
   }
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id))
-  }
-
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado al portapapeles",
-      description: "Los datos de transferencia han sido copiados."
-    })
-  }
-
-  const handleSubmitOrder = () => {
-    if (!socioName) {
-      toast({ variant: "destructive", title: "Nombre requerido", description: "Por favor, ingrese su nombre." })
-      return
-    }
-
-    if (cart.length === 0) {
-      toast({ variant: "destructive", title: "Pedido vacío", description: "Debe añadir al menos un producto." })
-      return
-    }
-
-    if (!comprobante) {
-      toast({ variant: "destructive", title: "Comprobante requerido", description: "Debe adjuntar el comprobante de pago (obligatorio)." })
-      return
-    }
+  const handleSubmitOrder = async () => {
+    if (!firestore || !socioName || !comprobante || cart.length === 0) return
 
     setIsSubmitting(true)
-
     const totalGeneral = cart.reduce((sum, item) => sum + item.total, 0)
     setFinalTotal(totalGeneral)
     
     const orderData = {
-      socioNombre: socioName,
+      socioName,
       items: cart,
-      totalGeneral: totalGeneral,
-      fecha: serverTimestamp(),
-      createdAt: new Date().toISOString(),
+      totalGeneral,
       status: 'pendent',
       comprobanteUrl: comprobante,
-      detalleResumen: cart.map(item => `${item.cantidad}x ${item.marca} ${item.peso}Kg`).join(", ")
+      detalleResumen: cart.map(item => `${item.cantidad}x ${item.marca} ${item.peso}kg`).join(", "),
+      createdAt: serverTimestamp(),
+      estadoPagoProveedor: 'pendiente'
     }
 
-    addDoc(collection(firestore, 'pedidos_socios'), orderData)
-      .then(() => {
-        setStep('success')
-        setIsSubmitting(false)
-        setCart([])
-        setComprobante(null)
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'pedidos_socios',
-          operation: 'create',
-          requestResourceData: orderData
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        // 1. Verificar y descontar stock para Abastible y Gas del Sur
+        const invDocRef = doc(firestore, "configuracion_gas", "inventory")
+        const invSnap = await transaction.get(invDocRef)
+        const currentInv = invSnap.exists() ? invSnap.data() : {}
+
+        cart.forEach(item => {
+          const brand = item.marca.toLowerCase()
+          if (brand === "abastible" || brand === "gas del sur") {
+            const key = `${brand}_${item.peso}`
+            const currentStock = Number(currentInv[key]) || 0
+            if (currentStock < item.cantidad) {
+              throw new Error(`Stock insuficiente para ${item.marca} ${item.peso}kg. Quedan ${currentStock} vales.`);
+            }
+            currentInv[key] = currentStock - item.cantidad
+          }
         })
-        errorEmitter.emit('permission-error', permissionError)
-        setIsSubmitting(false)
+
+        // 2. Guardar nuevo stock
+        transaction.set(invDocRef, { ...currentInv, updatedAt: serverTimestamp() }, { merge: true })
+
+        // 3. Crear el pedido
+        const newOrderRef = doc(collection(firestore, "pedidos_socios"))
+        transaction.set(newOrderRef, orderData)
       })
+
+      setStep('success')
+      setCart([]); setComprobante(null); setSocioName('')
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const resetDialog = () => {
-    setStep('brand')
-    setSelectedBrand('')
-    setSelectedProduct(null)
-    setQuantity(1)
-    setSocioName('')
-    setComprobante(null)
-    setCart([])
-    setFinalTotal(0)
-    onClose()
+    setStep('brand'); setSelectedBrand(''); setSelectedProduct(null); setQuantity(1); setSocioName(''); setComprobante(null); setCart([]); setFinalTotal(0); onClose()
   }
 
-  const formatCLP = (value: number) => {
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value)
-  }
+  const formatCLP = (v: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(v)
 
-  const totalCart = cart.reduce((sum, item) => sum + item.total, 0)
-
-  const transferData = `ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA
-BANCO SCOTIABANK
-CUENTA CORRIENTE 974728664
-65.110.772-5
-tesoreriaasenftalca@gmail.com`
+  const transferData = `ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA\nBANCO SCOTIABANK\nCUENTA CORRIENTE 974728664\n65.110.772-5\ntesoreriaasenftalca@gmail.com`
 
   return (
     <Dialog open={isOpen} onOpenChange={resetDialog}>
       <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] overflow-y-auto">
         <div className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <Flame className="w-24 h-24" />
-          </div>
+          <div className="absolute top-0 right-0 p-8 opacity-10"><Flame className="w-24 h-24" /></div>
           <DialogHeader className="relative z-10">
             <div className="flex items-center gap-5">
-              <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-                <Flame className="w-8 h-8 text-secondary" />
-              </div>
+              <div className="p-3 bg-white/10 rounded-2xl"><Flame className="w-8 h-8 text-secondary" /></div>
               <div>
-                <DialogTitle className="text-2xl font-headline font-black tracking-tight uppercase">
-                  Vales de Gas
-                </DialogTitle>
-                <DialogDescription className="text-primary-foreground/60 font-medium">
-                  {cart.length > 0 ? `Llevas ${cart.length} productos en tu pedido` : 'Catálogo institucional actualizado'}
-                </DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Vales de Gas</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60 font-medium">Portal de beneficios para socios vigentes.</DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -228,247 +174,125 @@ tesoreriaasenftalca@gmail.com`
 
         <div className="p-8">
           {loadingProducts && step !== 'success' ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="flex flex-col items-center py-12 gap-4">
               <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
-              <p className="text-sm font-bold text-muted-foreground">Cargando catálogo...</p>
+              <p className="text-sm font-bold text-muted-foreground">Consultando catálogo...</p>
             </div>
           ) : (
             <div className="space-y-6">
               {step === 'brand' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Seleccione Marca</span>
-                    </div>
-                    {cart.length > 0 && (
-                      <Button variant="ghost" size="sm" className="font-bold text-primary underline" onClick={() => setStep('cart')}>
-                        Ver Carrito ({cart.length})
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {brands.length > 0 ? brands.map((brand) => (
-                      <Button 
-                        key={brand}
-                        variant="outline"
-                        className="h-20 rounded-2xl border-2 hover:border-primary hover:bg-slate-50 flex justify-between px-8 group transition-all"
-                        onClick={() => handleBrandSelect(brand)}
-                      >
-                        <span className="text-xl font-black text-primary tracking-tight">{brand}</span>
-                        <ArrowLeft className="w-5 h-5 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </Button>
-                    )) : (
-                      <div className="text-center py-10 text-muted-foreground font-medium italic">
-                        No se encontraron productos disponibles en el catálogo.
-                      </div>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 gap-3 animate-in fade-in duration-300">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Seleccione Marca</p>
+                  {brands.map((brand) => (
+                    <Button 
+                      key={brand} variant="outline" className="h-20 rounded-2xl border-2 hover:border-primary flex justify-between px-8 group transition-all"
+                      onClick={() => handleBrandSelect(brand)}
+                    >
+                      <span className="text-xl font-black text-primary">{brand}</span>
+                      <ArrowLeft className="w-5 h-5 rotate-180 opacity-0 group-hover:opacity-100 transition-all" />
+                    </Button>
+                  ))}
                 </div>
               )}
 
               {step === 'weight' && (
-                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                  <Button variant="ghost" className="gap-2 p-0 h-auto font-bold text-muted-foreground hover:bg-transparent" onClick={() => setStep('brand')}>
-                    <ArrowLeft className="w-4 h-4" /> Volver a Marcas
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <Weight className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Formatos ({selectedBrand})</span>
-                  </div>
+                <div className="space-y-4 animate-in slide-in-from-right-4">
+                  <Button variant="ghost" className="gap-2 p-0 h-auto font-bold text-muted-foreground" onClick={() => setStep('brand')}><ArrowLeft className="w-4 h-4" /> Volver</Button>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Formato Kilos ({selectedBrand})</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {availableWeights.map((weight) => {
-                      const prod = filteredProductsByBrand.find(p => String(p.Kilos) === weight);
-                      const price = prod?.Precio || 0;
-                      return (
-                        <Button 
-                          key={weight}
-                          variant="outline"
-                          className="h-24 rounded-xl border-2 flex flex-col items-center justify-center gap-1 group hover:border-primary transition-all"
-                          onClick={() => handleWeightSelect(weight)}
-                        >
-                          <span className="font-black text-lg">{weight} Kg</span>
-                          {price > 0 && <span className="text-[10px] font-bold text-emerald-600">{formatCLP(price)}</span>}
-                        </Button>
-                      )
-                    })}
+                    {availableWeights.map((weight) => (
+                      <Button 
+                        key={weight} variant="outline" className="h-24 rounded-xl border-2 flex flex-col gap-1 hover:border-primary"
+                        onClick={() => handleWeightSelect(weight)}
+                      >
+                        <span className="font-black text-lg">{weight} Kg</span>
+                      </Button>
+                    ))}
                   </div>
                 </div>
               )}
 
               {step === 'quantity' && (
-                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                  <Button variant="ghost" className="gap-2 p-0 h-auto font-bold text-muted-foreground hover:bg-transparent" onClick={() => setStep('weight')}>
-                    <ArrowLeft className="w-4 h-4" /> Volver a Pesos
-                  </Button>
-                  <div className="text-center space-y-1 py-4">
-                    <p className="text-xs font-bold text-muted-foreground uppercase">Formato Seleccionado</p>
+                <div className="space-y-6 animate-in slide-in-from-right-4">
+                  <Button variant="ghost" className="gap-2 p-0 h-auto font-bold text-muted-foreground" onClick={() => setStep('weight')}><ArrowLeft className="w-4 h-4" /> Volver</Button>
+                  <div className="text-center py-4 bg-muted/20 rounded-2xl">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Seleccionado</p>
                     <p className="text-2xl font-black text-primary">{selectedBrand} — {selectedProduct?.Kilos}Kg</p>
-                    <p className="text-sm font-bold text-emerald-600">Precio unitario: {formatCLP(selectedProduct?.Precio || 0)}</p>
                   </div>
                   <div className="flex flex-col items-center gap-6">
-                    <div className="flex items-center gap-6">
-                      <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                      <span className="text-4xl font-black w-12 text-center">{quantity}</span>
-                      <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => setQuantity(quantity + 1)}>+</Button>
+                    <div className="flex items-center gap-8">
+                      <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl border-2" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                      <span className="text-5xl font-black">{quantity}</span>
+                      <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl border-2" onClick={() => setQuantity(quantity + 1)}>+</Button>
                     </div>
-                    <div className="w-full pt-4 border-t border-dashed">
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="text-xs font-black uppercase text-muted-foreground">Total por este item</span>
-                        <span className="text-xl font-black text-primary">{formatCLP((selectedProduct?.Precio || 0) * quantity)}</span>
-                      </div>
-                      <Button className="w-full h-14 rounded-2xl font-bold text-base shadow-xl gap-2" onClick={addToCart}>
-                        <Plus className="w-5 h-5" /> Añadir al Pedido
-                      </Button>
-                    </div>
+                    <Button className="w-full h-16 rounded-2xl font-black text-lg shadow-xl gap-2 bg-primary" onClick={addToCart}>
+                      <Plus className="w-6 h-6" /> AÑADIR AL PEDIDO
+                    </Button>
                   </div>
                 </div>
               )}
 
               {step === 'cart' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Pedido</span>
-                    <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs font-bold gap-1" onClick={() => setStep('brand')}>
-                      <Plus className="w-3 h-3" /> Añadir otro
-                    </Button>
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Resumen de Vales</p>
+                    <Button variant="ghost" size="sm" className="text-primary font-black" onClick={() => setStep('brand')}>+ AÑADIR MÁS</Button>
                   </div>
-
-                  <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2 border-dashed group transition-colors hover:bg-slate-100">
-                        <div className="space-y-1">
-                          <p className="font-black text-primary text-sm uppercase">{item.marca} {item.peso}Kg</p>
-                          <p className="text-xs font-bold text-muted-foreground">Cantidad: <span className="text-primary">{item.cantidad}</span> x {formatCLP(item.precioUnitario)}</p>
+                  <div className="space-y-3">
+                    {cart.map(item => (
+                      <div key={item.id} className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed flex items-center justify-between">
+                        <div>
+                          <p className="font-black text-primary text-sm uppercase">{item.marca} {item.peso}kg</p>
+                          <p className="text-[10px] font-bold text-muted-foreground">{item.cantidad} unidades x {formatCLP(item.precioUnitario)}</p>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="font-black text-emerald-600 text-sm">{formatCLP(item.total)}</span>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => removeFromCart(item.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <span className="font-black text-emerald-600">{formatCLP(item.total)}</span>
+                          <Button variant="ghost" size="icon" className="text-rose-500" onClick={() => setCart(cart.filter(i => i.id !== item.id))}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     ))}
-                    {cart.length === 0 && (
-                      <div className="text-center py-10 space-y-4">
-                        <ShoppingCart className="w-12 h-12 text-muted-foreground/20 mx-auto" />
-                        <p className="text-sm font-medium text-muted-foreground italic">El carrito está vacío</p>
-                        <Button onClick={() => setStep('brand')} className="rounded-xl font-bold h-10">Explorar Catálogo</Button>
-                      </div>
-                    )}
                   </div>
 
-                  {cart.length > 0 && (
-                    <div className="space-y-6 pt-4 border-t border-dashed">
-                      <div className="flex justify-between items-center px-2">
-                        <span className="text-xs font-black uppercase text-muted-foreground">Total General</span>
-                        <span className="text-2xl font-black text-emerald-600">{formatCLP(totalCart)}</span>
-                      </div>
-
-                      {/* DATOS DE TRANSFERENCIA - BLOQUE ÚNICO */}
-                      <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-primary/10 space-y-3 animate-in slide-in-from-bottom-2 duration-500">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-primary" />
-                            <p className="text-[10px] font-black uppercase text-primary tracking-widest">Datos para Transferencia</p>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-[10px] font-bold gap-1 hover:bg-primary/5 text-primary"
-                            onClick={() => handleCopyText(transferData)}
-                          >
-                            <Copy className="w-3 h-3" /> Copiar Todo
-                          </Button>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200 select-all cursor-text">
-                          <p className="text-[11px] font-black text-slate-700 leading-relaxed uppercase">
-                            ASOCIACIÓN DE ENFERMEROS Y ENFERMERAS DEL HOSPITAL REGIONAL DE TALCA<br/>
-                            BANCO SCOTIABANK<br/>
-                            CUENTA CORRIENTE 974728664<br/>
-                            65.110.772-5<br/>
-                            <span className="lowercase">tesoreriaasenftalca@gmail.com</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="socioName" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                            Nombre del Socio Solicitante
-                          </Label>
-                          <Input 
-                            id="socioName" 
-                            placeholder="Ingrese su nombre completo" 
-                            className="h-12 rounded-xl border-2"
-                            value={socioName}
-                            onChange={(e) => setSocioName(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                            Comprobante de Pago (Foto/Archivo) <span className="text-rose-500">*</span>
-                          </Label>
-                          <div className="relative h-28 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/30 group hover:bg-muted/50 transition-colors overflow-hidden">
-                            {comprobante ? (
-                              <div className="flex items-center gap-3 p-4 w-full">
-                                <div className="h-16 w-16 relative rounded-md overflow-hidden bg-white border">
-                                  <img src={comprobante} alt="Comprobante" className="object-cover h-full w-full" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-xs font-bold text-emerald-600">✓ Archivo cargado correctamente</p>
-                                  <p className="text-[10px] text-muted-foreground">Haga clic para cambiar el archivo</p>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-center">
-                                <Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Subir Comprobante (Obligatorio)</span>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
-                          </div>
-                          {!comprobante && (
-                            <p className="text-[10px] text-rose-500 font-bold px-1 animate-pulse">
-                              * Se requiere adjuntar el comprobante para habilitar la confirmación.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <Button 
-                        className="w-full h-14 rounded-2xl font-bold text-base shadow-xl bg-primary gap-3"
-                        disabled={isSubmitting || !socioName || !comprobante}
-                        onClick={handleSubmitOrder}
-                      >
-                        {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className="w-5 h-5" />}
-                        Confirmar Pedido Institucional
-                      </Button>
+                  <div className="bg-primary/5 p-6 rounded-[2rem] border-2 border-dashed border-primary/10 space-y-4">
+                    <div className="flex items-center justify-between text-primary">
+                      <div className="flex items-center gap-2"><Building2 className="w-4 h-4"/><p className="text-[10px] font-black uppercase">Datos Transferencia</p></div>
+                      <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black" onClick={() => {navigator.clipboard.writeText(transferData); toast({title:"Copiado"})}}><Copy className="w-3 h-3 mr-1"/> COPIAR</Button>
                     </div>
-                  )}
+                    <p className="text-[10px] font-bold text-primary/70 leading-relaxed uppercase">SCOTIABANK • Cta Corriente 974728664 • 65.110.772-5 • tesoreriaasenftalca@gmail.com</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombre Completo del Socio</Label>
+                      <Input placeholder="Ej: Maria Lopez..." className="h-12 rounded-xl border-2" value={socioName} onChange={e => setSocioName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Comprobante de Pago</Label>
+                      <div className="relative h-24 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden">
+                        {comprobante ? <img src={comprobante} className="h-full w-full object-contain" /> : <div className="text-center"><Camera className="w-6 h-6 mx-auto mb-1 text-muted-foreground" /><span className="text-[9px] font-black text-muted-foreground uppercase">SUBIR FOTO</span></div>}
+                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                      </div>
+                    </div>
+                    <Button 
+                      className="w-full h-16 rounded-2xl font-black text-lg shadow-xl bg-primary gap-2"
+                      disabled={isSubmitting || !socioName || !comprobante}
+                      onClick={handleSubmitOrder}
+                    >
+                      {isSubmitting ? <Loader2 className="animate-spin w-6 h-6" /> : <Send className="w-6 h-6" />}
+                      ENVIAR PEDIDO (${new Intl.NumberFormat('es-CL').format(cart.reduce((s,i)=>s+i.total,0))})
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {step === 'success' && (
                 <div className="py-12 text-center space-y-6 animate-in zoom-in-95 duration-500">
-                  <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-10 h-10" />
-                  </div>
+                  <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce"><CheckCircle2 className="w-12 h-12" /></div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-black text-primary uppercase">¡Pedido Recibido!</h3>
-                    <p className="text-muted-foreground font-medium">Hemos registrado su solicitud y comprobante exitosamente.</p>
+                    <h3 className="text-3xl font-black text-primary uppercase">¡Pedido Recibido!</h3>
+                    <p className="text-muted-foreground font-medium">Validaremos su comprobante y procesaremos sus vales.</p>
                   </div>
-                  <div className="bg-slate-50 p-6 rounded-xl border space-y-3">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resumen Final</p>
-                    <div className="text-xl font-black text-primary">
-                      {formatCLP(finalTotal)}
-                    </div>
-                    <p className="text-[10px] italic text-slate-400">La directiva validará su pago y procesará los vales.</p>
-                  </div>
-                  <Button className="w-full h-14 rounded-xl font-bold" variant="outline" onClick={resetDialog}>
-                    Cerrar y Volver al Inicio
-                  </Button>
+                  <Button className="w-full h-14 rounded-2xl font-black bg-primary text-white" onClick={resetDialog}>VOLVER AL INICIO</Button>
                 </div>
               )}
             </div>
