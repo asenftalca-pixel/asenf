@@ -93,10 +93,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const allMovements = allMovementsRaw || []
   // Solo liquidamos pedidos que el socio ya pagó (checked/delivered)
   const pendingOrders = (pendingOrdersRaw || []).filter(p => 
-    String(p.status).toLowerCase() === 'checked' || 
-    String(p.status).toLowerCase() === 'delivered' || 
-    String(p.status).toLowerCase() === 'revisado' ||
-    String(p.status).toLowerCase() === 'entregado'
+    ['checked', 'delivered', 'revisado', 'entregado'].includes(String(p.status).toLowerCase())
   )
 
   const saldoCalculado = useMemo(() => {
@@ -138,23 +135,27 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
-  // Lógica de Liquidación por Marca
+  // Lógica de Liquidación: EXCLUIR ABASTIBLE Y GAS DEL SUR (Ya pagados al cargar stock)
   const liquidationSummary = useMemo(() => {
     const brands: Record<string, { totalDebt: number, orders: any[] }> = {}
     
     pendingOrders.forEach(order => {
       if (Array.isArray(order.items)) {
         order.items.forEach((item: any) => {
-          const brand = (item.marca || "Desconocida").toLowerCase().trim()
+          const brandName = (item.marca || "Desconocida").toLowerCase().trim()
+          
+          // SALTAR MARCAS QUE TIENEN INVENTARIO PROPIO
+          if (brandName.includes("abastible") || brandName.includes("sur")) return;
+
           const weight = String(item.peso || "").replace(/\D/g, "")
-          const costKey = `${brand}_${weight}`
+          const costKey = `${brandName}_${weight}`
           const unitCost = costsData?.values?.[costKey] || 0
           const itemDebt = unitCost * (Number(item.cantidad) || 0)
           
-          if (!brands[brand]) brands[brand] = { totalDebt: 0, orders: [] }
-          brands[brand].totalDebt += itemDebt
-          if (!brands[brand].orders.some(o => o.id === order.id)) {
-            brands[brand].orders.push(order)
+          if (!brands[brandName]) brands[brandName] = { totalDebt: 0, orders: [] }
+          brands[brandName].totalDebt += itemDebt
+          if (!brands[brandName].orders.some(o => o.id === order.id)) {
+            brands[brandName].orders.push(order)
           }
         })
       }
@@ -339,7 +340,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         
         if (['checked', 'delivered', 'revisado', 'entregado'].includes(statusLower)) {
           const monto = Number(orderData.totalGeneral || 0)
-          const socio = orderData.socioName || orderData.socioNombre || "Socio"
+          const socio = orderData.socioNombre || orderData.socioName || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.createdAt ? format(new Date(orderData.createdAt.toDate ? orderData.createdAt.toDate() : orderData.createdAt), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
 
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
@@ -401,6 +402,30 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   const formatCLP = (v: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(v)
+
+  async function handleUpdateOrderStatus(id: string, newStatus: string) {
+    if (!firestore) return
+    try {
+      await updateDoc(doc(firestore, "pedidos_socios", id), {
+        estadoPagoProveedor: newStatus,
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "Estado actualizado" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error" })
+    }
+  }
+
+  async function handleDeleteOrder(id: string) {
+    if (!firestore || !window.confirm("¿Eliminar este registro de pedido de la base de datos?")) return
+    try {
+      await deleteDoc(doc(firestore, "pedidos_socios", id))
+      await deleteDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${id}`))
+      toast({ title: "Registro eliminado de raíz" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error al borrar" })
+    }
+  }
 
   return (
     <>
@@ -581,7 +606,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                           <div className="p-3 bg-amber-500 rounded-2xl text-white"><Package className="w-6 h-6" /></div>
                           <div>
                             <h4 className="text-sm font-black uppercase text-amber-900 tracking-tight">Liquidación de Suministros (Lipigas)</h4>
-                            <p className="text-xs text-amber-700">Deudas pendientes con proveedores por pedidos de socios ya recaudados.</p>
+                            <p className="text-xs text-amber-700">Deudas con proveedores externos. Abastible y Gas del Sur se pagan al cargar stock.</p>
                           </div>
                         </div>
                         <Button 
@@ -615,12 +640,12 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                 <TableBody>
                                   {data.orders.map(o => (
                                     <TableRow key={o.id}>
-                                      <TableCell className="text-xs font-bold">{o.socioNombre || "Socio"}</TableCell>
+                                      <TableCell className="text-xs font-bold">{o.socioNombre || o.socioName || o.Nombre || "Socio"}</TableCell>
                                       <TableCell className="text-xs text-muted-foreground">{o.detalleResumen}</TableCell>
                                       <TableCell className="text-right text-xs font-black text-emerald-600">+{formatCLP(o.totalGeneral)}</TableCell>
                                       <TableCell className="text-center">
                                         <div className="flex justify-center gap-1">
-                                          <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 rounded-full" title="Marcar como saldado individual" onClick={() => handleUpdateStatus(o.id, 'pagado')}>
+                                          <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 rounded-full" title="Marcar como saldado" onClick={() => handleUpdateOrderStatus(o.id, 'pagado')}>
                                             <CheckCircle2 className="w-3.5 h-3.5" />
                                           </Button>
                                           <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500 hover:bg-rose-50 rounded-full" title="Eliminar fantasma" onClick={() => handleDeleteOrder(o.id)}>
@@ -695,30 +720,4 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       </Dialog>
     </>
   )
-
-  // Funciones auxiliares locales para acciones de liquidación
-  async function handleUpdateStatus(id: string, newStatus: string) {
-    if (!firestore) return
-    try {
-      await updateDoc(doc(firestore, "pedidos_socios", id), {
-        estadoPagoProveedor: newStatus,
-        updatedAt: serverTimestamp()
-      })
-      toast({ title: "Estado actualizado" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" })
-    }
-  }
-
-  async function handleDeleteOrder(id: string) {
-    if (!firestore || !window.confirm("¿Eliminar este registro de pedido de la base de datos?")) return
-    try {
-      await deleteDoc(doc(firestore, "pedidos_socios", id))
-      // También intentar borrar el registro financiero si existe
-      await deleteDoc(doc(firestore, "finanzas_asenftalca", `gas_income_${id}`))
-      toast({ title: "Registro eliminado de raíz" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error al borrar" })
-    }
-  }
 }

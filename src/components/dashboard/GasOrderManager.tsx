@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -30,6 +30,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isSavingCosts, setIsSavingCosts] = useState(false)
   const [isLoadStockOpen, setIsLoadStockOpen] = useState(false)
   const [isProcessingStock, setIsProcessingStock] = useState(false)
+  const [editingOrderName, setEditingOrderName] = useState<{id: string, name: string} | null>(null)
 
   // Formulario para cargar stock
   const [stockForm, setStockForm] = useState({
@@ -83,7 +84,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       })
       .map((p: any) => ({
         ...p,
-        nombreNormalizado: p.socioNombre || p.Nombre || p.Socio || 'Nombre no encontrado',
+        nombreNormalizado: p.socioNombre || p.socioName || p.Nombre || p.Socio || 'Nombre no encontrado',
         detalleNormalizado: p.detalleResumen || p.Marca || 'Sin detalle',
         valorNormalizado: Number(p.totalGeneral || p.Total || p.Valor || 0),
         estadoNormalizado: (p.status || 'pendent').toLowerCase(),
@@ -97,6 +98,20 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       })
   }, [allPedidosAll])
 
+  const handleUpdateName = async () => {
+    if (!db || !editingOrderName) return
+    try {
+      await updateDoc(doc(db, "pedidos_socios", editingOrderName.id), {
+        socioNombre: editingOrderName.name,
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "Nombre actualizado" })
+      setEditingOrderName(null)
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error" })
+    }
+  }
+
   const handleCargarStock = async () => {
     if (!db || stockForm.cantidad <= 0 || stockForm.costoTotal <= 0) {
       toast({ variant: "destructive", title: "Error", description: "Ingrese cantidad y costo válido." })
@@ -106,10 +121,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     setIsProcessingStock(true)
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Normalizar marca para llave única
         const brandKey = stockForm.marca.toLowerCase().trim().includes("abastible") ? "abastible" : "gas del sur"
-        
-        // 2. Actualizar Inventario
         const invDoc = await transaction.get(doc(db, "configuracion_gas", "inventory"))
         const currentInv = invDoc.exists() ? invDoc.data() : {}
         const key = `${brandKey}_${stockForm.peso.replace(/\D/g, "")}`
@@ -121,7 +133,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           updatedAt: serverTimestamp()
         }, { merge: true })
 
-        // 3. Registrar Egreso en Finanzas
         const financeRef = doc(collection(db, "finanzas_asenftalca"))
         transaction.set(financeRef, {
           tipo: "egreso",
@@ -163,7 +174,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         const order = allPedidosAll.find(p => p.id === id)
         if (order) {
           const montoBruto = Number(order.totalGeneral || order.Total || order.Valor || 0)
-          const socio = order.socioNombre || order.Nombre || order.Socio || 'Socio'
+          const socio = order.socioNombre || order.socioName || order.Nombre || order.Socio || 'Socio'
           const orderDate = order.fecha ? (typeof order.fecha.toDate === 'function' ? format(order.fecha.toDate(), "yyyy-MM-dd") : String(order.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
           
           await setDoc(doc(db, "finanzas_asenftalca", `gas_income_${id}`), {
@@ -193,7 +204,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       const order = allPedidosAll.find(p => p.id === id)
       
       await runTransaction(db, async (transaction) => {
-        // Devolver stock si aplica
         if (order && Array.isArray(order.items)) {
           const invDocRef = doc(db, "configuracion_gas", "inventory")
           const invSnap = await transaction.get(invDocRef)
@@ -201,9 +211,9 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           if (invSnap.exists()) {
             const currentInv = invSnap.data()
             order.items.forEach((item: any) => {
-              const brand = (item.marca || "").toLowerCase().trim()
-              if (brand.includes("abastible") || brand.includes("sur")) {
-                const targetBrandKey = brand.includes("abastible") ? "abastible" : "gas del sur"
+              const brandName = (item.marca || "").toLowerCase().trim()
+              if (brandName.includes("abastible") || brandName.includes("sur")) {
+                const targetBrandKey = brandName.includes("abastible") ? "abastible" : "gas del sur"
                 const key = `${targetBrandKey}_${String(item.peso || "").replace(/\D/g, "")}`
                 currentInv[key] = (Number(currentInv[key]) || 0) + (Number(item.cantidad) || 0)
               }
@@ -243,7 +253,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     if (!allPedidosAll.length) return
     const data = allPedidosAll.map(p => ({
       Fecha: p.fecha ? (p.fecha.toDate ? p.fecha.toDate().toLocaleDateString() : p.fecha) : 'S/F',
-      Socio: p.socioNombre || 'Socio',
+      Socio: p.socioNombre || p.socioName || p.Nombre || 'Socio',
       Detalle: p.detalleResumen || 'Sin detalle',
       Total: p.totalGeneral || 0,
       Estado: p.status || 'Pendiente'
@@ -254,7 +264,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     XLSX.writeFile(wb, `Pedidos_Gas_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
   }
 
-  const brands = ["lipigas", "abastible", "gas del sur"]
   const weights = ["5", "11", "15", "45"]
 
   return (
@@ -299,7 +308,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           <ScrollArea className="flex-1 bg-muted/5">
             <div className="p-8 space-y-8">
               
-              {/* DASHBOARD DE STOCK */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {["Abastible", "Gas del Sur"].map(brand => {
                   const brandKey = brand.toLowerCase().includes("abastible") ? "abastible" : "gas del sur"
@@ -329,7 +337,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 })}
               </div>
 
-              {/* TABLA DE PEDIDOS */}
               <div className="bg-white border rounded-[2.5rem] shadow-sm overflow-hidden">
                 <div className="px-8 py-5 border-b bg-slate-50/50 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary/40">Listado de Pedidos en Curso</h3>
@@ -355,7 +362,12 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                       return (
                         <TableRow key={p.id} className={cn("group transition-colors", isChecked ? "bg-emerald-50/40" : "hover:bg-primary/5")}>
                           <TableCell className="px-8 py-5">
-                            <div className="text-sm font-bold text-primary uppercase tracking-tight">{p.nombreNormalizado}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-bold text-primary uppercase tracking-tight">{p.nombreNormalizado}</div>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setEditingOrderName({id: p.id, name: p.nombreNormalizado})}>
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                            </div>
                             <div className="text-[10px] font-medium text-muted-foreground">{p.fechaObjeto ? format(p.fechaObjeto, "dd MMM, HH:mm", { locale: es }) : "S/F"}</div>
                           </TableCell>
                           <TableCell>
@@ -429,7 +441,25 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: COMPROBANTE */}
+      <Dialog open={!!editingOrderName} onOpenChange={() => setEditingOrderName(null)}>
+        <DialogContent className="sm:max-w-[400px] rounded-[2rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="font-black uppercase">Corregir Nombre Socio</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Label className="text-[10px] font-black uppercase text-muted-foreground">Nombre Completo</Label>
+            <Input 
+              value={editingOrderName?.name || ""} 
+              onChange={(e) => setEditingOrderName(prev => prev ? {...prev, name: e.target.value} : null)}
+              className="rounded-xl border-2 h-12"
+            />
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-12 rounded-xl font-black" onClick={handleUpdateName}>GUARDAR CAMBIOS</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2rem] bg-white border-none shadow-2xl">
           <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
@@ -446,7 +476,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: CARGAR STOCK */}
       <Dialog open={isLoadStockOpen} onOpenChange={setIsLoadStockOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
           <div className="bg-primary p-8 text-primary-foreground relative">
@@ -525,7 +554,6 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: CONFIGURAR COSTOS */}
       <Dialog open={isCostConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground">
@@ -541,7 +569,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           </div>
           <ScrollArea className="max-h-[60vh] p-8">
             <div className="space-y-8">
-              {brands.map(brand => (
+              {["lipigas", "abastible", "gas del sur"].map(brand => (
                 <div key={brand} className="space-y-4">
                   <h4 className="text-xs font-black uppercase text-primary tracking-widest border-b pb-2">{brand}</h4>
                   <div className="grid grid-cols-2 gap-4">
