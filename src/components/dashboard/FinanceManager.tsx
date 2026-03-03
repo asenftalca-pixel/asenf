@@ -248,24 +248,25 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         const data = fDoc.data()
         const docId = fDoc.id
         
+        // 1. Limpieza de registros con categorías obsoletas (GAS / Gas)
+        const categoryUpper = String(data.categoria || "").toUpperCase().trim()
+        if (categoryUpper === 'GAS' || categoryUpper === 'GAS ') {
+          batch.delete(fDoc.ref)
+          deletedCount++
+          return
+        }
+
         if (data.orderId) {
-          // 1. Borrar si el pedido ya no existe físicamente
+          // 2. Borrar si el pedido original ya no existe físicamente
           if (!validOrderIds.has(data.orderId)) {
             batch.delete(fDoc.ref)
             deletedCount++
             return
           }
 
-          // 2. BORRADO CRÍTICO DE DUPLICADOS:
+          // 3. BORRADO CRÍTICO DE DUPLICADOS:
+          // Si el registro de gas no tiene el ID oficial 'gas_income_...', es un duplicado por ID aleatoria.
           if (docId !== `gas_income_${data.orderId}`) {
-            batch.delete(fDoc.ref)
-            deletedCount++
-            return
-          }
-
-          // 3. Borrar si es categoría antigua 'GAS'/'Gas'
-          const cat = String(data.categoria || "").toUpperCase().trim()
-          if (cat === 'GAS' || cat === 'GAS ') {
             batch.delete(fDoc.ref)
             deletedCount++
             return
@@ -275,7 +276,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       if (deletedCount > 0) {
         await batch.commit()
-        toast({ title: "Limpieza Profunda Completada", description: `Se eliminaron ${deletedCount} registros duplicados o huérfanos para sincerar el saldo.` })
+        toast({ title: "Limpieza Profunda Completada", description: `Se eliminaron ${deletedCount} registros duplicados u obsoletos para sincerar el saldo.` })
       } else {
         toast({ title: "Sistema Limpio", description: "No se encontraron registros redundantes." })
       }
@@ -299,18 +300,20 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       querySnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data()
         const orderId = orderDoc.id
+        const statusLower = String(orderData.status || "").toLowerCase()
         
         if (orderData.estadoPagoProveedor === undefined || orderData.estadoPagoProveedor === null) {
           batch.update(orderDoc.ref, { 'estadoPagoProveedor': 'pendiente' })
           updatedCount++
         }
 
-        if (orderData.status === 'checked' || orderData.status === 'delivered' || orderData.status === 'revisado') {
+        // Solo sincronizar si está aprobado o entregado
+        if (['checked', 'delivered', 'revisado', 'entregado'].includes(statusLower)) {
           const monto = Number(orderData.totalGeneral || orderData.Total || orderData.Valor || 0)
           const socio = orderData.socioNombre || orderData.Nombre || orderData.Socio || "Socio"
           const fechaOrder = orderData.fecha ? (typeof orderData.fecha.toDate === 'function' ? format(orderData.fecha.toDate(), "yyyy-MM-dd") : String(orderData.fecha).split('T')[0]) : format(new Date(), "yyyy-MM-dd")
 
-          // USAR ID FIJO gas_income_... PARA EVITAR DUPLICADOS
+          // USAR ID FIJO gas_income_... PARA EVITAR DUPLICADOS FÍSICAMENTE
           const financeRef = doc(firestore, "finanzas_asenftalca", `gas_income_${orderId}`)
           batch.set(financeRef, {
             tipo: "ingreso",
