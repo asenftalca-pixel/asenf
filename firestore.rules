@@ -54,6 +54,13 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rules for gas inventory configuration.
+     */
+    match /configuracion_gas/{docId} {
+      allow read, write: if true;
+    }
+
+    /**
      * @description Rules for application settings (finances, gas costs).
      */
     match /settings/{docId} {
