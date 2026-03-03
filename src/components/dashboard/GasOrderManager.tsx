@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -30,6 +30,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isSavingCosts, setIsSavingCosts] = useState(false)
   const [isLoadStockOpen, setIsLoadStockOpen] = useState(false)
   const [isProcessingStock, setIsProcessingStock] = useState(false)
+  const [isSyncingStock, setIsSyncingStock] = useState(false)
   const [editingOrderName, setEditingOrderName] = useState<{id: string, name: string} | null>(null)
 
   // Formulario para cargar stock
@@ -153,6 +154,49 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       toast({ variant: "destructive", title: "Error", description: e.message })
     } finally {
       setIsProcessingStock(false)
+    }
+  }
+
+  const handleSyncStockManual = async () => {
+    if (!db || !window.confirm("¿Deseas descontar manualmente del stock los pedidos de Abastible/Gas del Sur que están en curso? Usa esto solo si el stock no se descontó automáticamente.")) return
+    
+    setIsSyncingStock(true)
+    try {
+      await runTransaction(db, async (transaction) => {
+        const invDocRef = doc(db, "configuracion_gas", "inventory")
+        const invSnap = await transaction.get(invDocRef)
+        if (!invSnap.exists()) throw new Error("Documento de inventario no encontrado.");
+        
+        const currentInv = invSnap.data()
+        let count = 0
+
+        pedidos.forEach((order: any) => {
+          if (Array.isArray(order.items)) {
+            order.items.forEach((item: any) => {
+              const brandName = (item.marca || "").toLowerCase().trim()
+              if (brandName.includes("abastible") || brandName.includes("sur")) {
+                const targetBrandKey = brandName.includes("abastible") ? "abastible" : "gas del sur"
+                const key = `${targetBrandKey}_${String(item.peso || "").replace(/\D/g, "")}`
+                const qty = Number(item.cantidad) || 0
+                
+                if (currentInv[key] !== undefined) {
+                  currentInv[key] = Math.max(0, (Number(currentInv[key]) || 0) - qty)
+                  count++
+                }
+              }
+            })
+          }
+        })
+
+        if (count > 0) {
+          transaction.set(invDocRef, { ...currentInv, updatedAt: serverTimestamp() }, { merge: true })
+        }
+      })
+      toast({ title: "Sincronización Exitosa", description: "Se ha ajustado el stock según los pedidos en curso." })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error en Sincronización", description: e.message })
+    } finally {
+      setIsSyncingStock(false)
     }
   }
 
@@ -318,7 +362,16 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           <Boxes className="w-6 h-6 text-primary opacity-20" />
                           <h3 className="text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
                         </div>
-                        <Badge className="bg-primary/5 text-primary border-none font-bold uppercase text-[9px] px-3">Stock Activo</Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary/5 text-primary hover:bg-primary/10 gap-2"
+                          onClick={handleSyncStockManual}
+                          disabled={isSyncingStock}
+                        >
+                          {isSyncingStock ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                          Sincronizar con Pendientes
+                        </Button>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {weights.map(w => {
@@ -374,7 +427,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                             <span className="text-sm font-black text-primary truncate max-w-[250px] inline-block">{p.detalleNormalizado}</span>
                             {isAbastibleOrSur && (
                               <div className="text-[8px] font-black text-emerald-600 uppercase mt-1 flex items-center gap-1">
-                                <Boxes className="w-2.5 h-2.5" /> Stock Descontado
+                                <Boxes className="w-2.5 h-2.5" /> Stock Comprometido
                               </div>
                             )}
                           </TableCell>
