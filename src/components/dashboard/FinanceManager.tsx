@@ -412,51 +412,130 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                           </TabsList>
                           {monthsList.map(month => {
                             const movs = movementsByMonth[month];
-                            const monthTotal = movs.reduce((acc, m) => m.tipo === 'ingreso' ? acc + m.monto : acc - m.monto, 0);
+                            const ingresos = movs.filter(m => m.tipo === 'ingreso');
+                            const egresos = movs.filter(m => m.tipo === 'egreso');
+                            
+                            const totalIngresos = ingresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                            const totalEgresos = egresos.reduce((acc, m) => acc + (Number(m.monto) || 0), 0);
+                            const monthResult = totalIngresos - totalEgresos;
+
                             return (
-                              <TabsContent key={month} value={month} className="space-y-6">
-                                <Table>
-                                  <TableHeader><TableRow className="bg-slate-50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead></TableRow></TableHeader>
-                                  <TableBody>
-                                    {movs.map(m => (
-                                      <TableRow key={m.id} className="hover:bg-slate-50/50">
-                                        <TableCell className="px-6 text-xs font-bold text-muted-foreground">{m.fecha}</TableCell>
-                                        <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
-                                        <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
-                                        <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
-                                        <TableCell className="text-center">
-                                          {m.comprobanteUrl ? (
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
-                                              <Camera className="w-4 h-4" />
-                                            </Button>
-                                          ) : "—"}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          {m.cuenta === "Cuenta propia" ? (
-                                            <div className="flex items-center justify-center gap-2">
-                                              <Checkbox 
-                                                checked={!!m.devuelto} 
-                                                onCheckedChange={() => handleToggleDevolucion(m.id, !!m.devuelto)}
-                                                className="h-5 w-5 border-2"
-                                              />
-                                              {m.devuelto && <span className="text-[8px] font-black text-emerald-600 uppercase">Devuelto</span>}
-                                            </div>
-                                          ) : "—"}
-                                        </TableCell>
-                                        <TableCell className={cn("px-6 text-right font-black", m.tipo === 'ingreso' ? "text-emerald-600" : "text-rose-600")}>{m.tipo === 'ingreso' ? "+" : "-"}{formatCLP(m.monto)}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                                <div className={cn("p-6 rounded-2xl flex items-center justify-between border-2 border-dashed", monthTotal >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100")}>
-                                  <span className="font-black uppercase text-xs text-primary">Resultado Mensual ({month}):</span>
-                                  <span className={cn("text-2xl font-black", monthTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatCLP(monthTotal)}</span>
+                              <TabsContent key={month} value={month} className="space-y-8">
+                                {/* SECCIÓN INGRESOS */}
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-3 px-2">
+                                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                                      <ArrowUpCircle className="w-5 h-5" />
+                                    </div>
+                                    <h4 className="text-sm font-black uppercase text-emerald-700 tracking-wider">Ingresos del Mes</h4>
+                                  </div>
+                                  <div className="border rounded-2xl overflow-hidden">
+                                    <Table>
+                                      <TableHeader><TableRow className="bg-emerald-50/50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                        {ingresos.length > 0 ? ingresos.map(m => (
+                                          <TableRow key={m.id} className="hover:bg-emerald-50/20">
+                                            <TableCell className="px-6 text-xs font-bold text-muted-foreground">{m.fecha}</TableCell>
+                                            <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
+                                            <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
+                                            <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
+                                            <TableCell className="text-center">
+                                              {m.comprobanteUrl ? (
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
+                                                  <Camera className="w-4 h-4" />
+                                                </Button>
+                                              ) : "—"}
+                                            </TableCell>
+                                            <TableCell className="px-6 text-right font-black text-emerald-600">+{formatCLP(m.monto)}</TableCell>
+                                          </TableRow>
+                                        )) : (
+                                          <TableRow><TableCell colSpan={6} className="h-20 text-center italic text-muted-foreground text-xs">Sin ingresos registrados.</TableCell></TableRow>
+                                        )}
+                                        <TableRow className="bg-emerald-50/30">
+                                          <TableCell colSpan={5} className="px-6 text-right font-black uppercase text-[10px] text-emerald-700">Subtotal Ingresos:</TableCell>
+                                          <TableCell className="px-6 text-right font-black text-emerald-700">{formatCLP(totalIngresos)}</TableCell>
+                                        </TableRow>
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+
+                                {/* SECCIÓN EGRESOS */}
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-3 px-2">
+                                    <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
+                                      <ArrowDownCircle className="w-5 h-5" />
+                                    </div>
+                                    <h4 className="text-sm font-black uppercase text-rose-700 tracking-wider">Egresos del Mes</h4>
+                                  </div>
+                                  <div className="border rounded-2xl overflow-hidden">
+                                    <Table>
+                                      <TableHeader><TableRow className="bg-rose-50/50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                        {egresos.length > 0 ? egresos.map(m => (
+                                          <TableRow key={m.id} className="hover:bg-rose-50/20">
+                                            <TableCell className="px-6 text-xs font-bold text-muted-foreground">{m.fecha}</TableCell>
+                                            <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
+                                            <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
+                                            <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
+                                            <TableCell className="text-center">
+                                              {m.comprobanteUrl ? (
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
+                                                  <Camera className="w-4 h-4" />
+                                                </Button>
+                                              ) : "—"}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                              {m.cuenta === "Cuenta propia" ? (
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <Checkbox 
+                                                    checked={!!m.devuelto} 
+                                                    onCheckedChange={() => handleToggleDevolucion(m.id, !!m.devuelto)}
+                                                    className="h-5 w-5 border-2"
+                                                  />
+                                                  {m.devuelto && <span className="text-[8px] font-black text-emerald-600 uppercase">Devuelto</span>}
+                                                </div>
+                                              ) : "—"}
+                                            </TableCell>
+                                            <TableCell className="px-6 text-right font-black text-rose-600">-{formatCLP(m.monto)}</TableCell>
+                                          </TableRow>
+                                        )) : (
+                                          <TableRow><TableCell colSpan={7} className="h-20 text-center italic text-muted-foreground text-xs">Sin egresos registrados.</TableCell></TableRow>
+                                        )}
+                                        <TableRow className="bg-rose-50/30">
+                                          <TableCell colSpan={6} className="px-6 text-right font-black uppercase text-[10px] text-rose-700">Subtotal Egresos:</TableCell>
+                                          <TableCell className="px-6 text-right font-black text-rose-700">{formatCLP(totalEgresos)}</TableCell>
+                                        </TableRow>
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+
+                                {/* RESULTADO MENSUAL */}
+                                <div className={cn("p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed", monthResult >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200")}>
+                                  <div className="flex items-center gap-4">
+                                    <div className={cn("p-4 rounded-2xl", monthResult >= 0 ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
+                                      {monthResult >= 0 ? <TrendingUp className="w-8 h-8" /> : <TrendingUp className="w-8 h-8 rotate-180" />}
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Resultado Mensual {month}</p>
+                                      <h3 className={cn("text-3xl font-black tracking-tighter", monthResult >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                        {formatCLP(monthResult)}
+                                      </h3>
+                                    </div>
+                                  </div>
+                                  <div className="text-right hidden md:block">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado de Caja</p>
+                                    <Badge className={cn("px-4 py-1.5 rounded-full font-black text-[10px] uppercase", monthResult >= 0 ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-rose-100 text-rose-700 border-rose-200")}>
+                                      {monthResult >= 0 ? "Superávit Operativo" : "Déficit Mensual"}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </TabsContent>
                             )
                           })}
                         </Tabs>
-                      ) : <div className="h-40 flex items-center justify-center italic text-muted-foreground">Sin registros.</div>
+                      ) : <div className="h-40 flex items-center justify-center italic text-muted-foreground">Sin registros financieros.</div>
                     )}
                   </div>
                 </TabsContent>
