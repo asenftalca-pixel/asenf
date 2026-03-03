@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo } from "react"
@@ -258,8 +257,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           }
 
           // 2. BORRADO CRÍTICO DE DUPLICADOS:
-          // Si el registro de finanzas tiene un orderId PERO su docId NO es el oficial 'gas_income_...'
-          // significa que es un duplicado creado por addDoc (ID aleatoria). Debemos borrarlo.
           if (docId !== `gas_income_${data.orderId}`) {
             batch.delete(fDoc.ref)
             deletedCount++

@@ -16,7 +16,7 @@ import { collection, doc, updateDoc } from "firebase/firestore"
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import jsPDF from "jsPDF"
+import jsPDF from "jspdf"
 
 export default function AdminSociosPage() {
   const [searchTerm, setSearchTerm] = useState("")
