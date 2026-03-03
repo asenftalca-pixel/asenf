@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -105,10 +106,13 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     setIsProcessingStock(true)
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Actualizar Inventario
+        // 1. Normalizar marca para llave única
+        const brandKey = stockForm.marca.toLowerCase().trim().includes("abastible") ? "abastible" : "gas del sur"
+        
+        // 2. Actualizar Inventario
         const invDoc = await transaction.get(doc(db, "configuracion_gas", "inventory"))
         const currentInv = invDoc.exists() ? invDoc.data() : {}
-        const key = `${stockForm.marca.toLowerCase()}_${stockForm.peso}`
+        const key = `${brandKey}_${stockForm.peso.replace(/\D/g, "")}`
         const newTotal = (Number(currentInv[key]) || 0) + Number(stockForm.cantidad)
         
         transaction.set(doc(db, "configuracion_gas", "inventory"), {
@@ -117,7 +121,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           updatedAt: serverTimestamp()
         }, { merge: true })
 
-        // 2. Registrar Egreso en Finanzas
+        // 3. Registrar Egreso en Finanzas
         const financeRef = doc(collection(db, "finanzas_asenftalca"))
         transaction.set(financeRef, {
           tipo: "egreso",
@@ -191,17 +195,20 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
       await runTransaction(db, async (transaction) => {
         // Devolver stock si aplica
         if (order && Array.isArray(order.items)) {
-          const invDoc = await transaction.get(doc(db, "configuracion_gas", "inventory"))
-          if (invDoc.exists()) {
-            const currentInv = invDoc.data()
+          const invDocRef = doc(db, "configuracion_gas", "inventory")
+          const invSnap = await transaction.get(invDocRef)
+          
+          if (invSnap.exists()) {
+            const currentInv = invSnap.data()
             order.items.forEach((item: any) => {
-              const brand = (item.marca || "").toLowerCase()
-              if (brand === "abastible" || brand === "gas del sur") {
-                const key = `${brand}_${String(item.peso || "").replace(/\D/g, "")}`
+              const brand = (item.marca || "").toLowerCase().trim()
+              if (brand.includes("abastible") || brand.includes("sur")) {
+                const targetBrandKey = brand.includes("abastible") ? "abastible" : "gas del sur"
+                const key = `${targetBrandKey}_${String(item.peso || "").replace(/\D/g, "")}`
                 currentInv[key] = (Number(currentInv[key]) || 0) + (Number(item.cantidad) || 0)
               }
             })
-            transaction.set(doc(db, "configuracion_gas", "inventory"), currentInv, { merge: true })
+            transaction.set(invDocRef, currentInv, { merge: true })
           }
         }
         
@@ -294,29 +301,32 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               
               {/* DASHBOARD DE STOCK */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {["Abastible", "Gas del Sur"].map(brand => (
-                  <Card key={brand} className="p-6 bg-white rounded-[2rem] border-none shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b pb-4">
-                      <div className="flex items-center gap-3">
-                        <Boxes className="w-6 h-6 text-primary opacity-20" />
-                        <h3 className="text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
+                {["Abastible", "Gas del Sur"].map(brand => {
+                  const brandKey = brand.toLowerCase().includes("abastible") ? "abastible" : "gas del sur"
+                  return (
+                    <Card key={brand} className="p-6 bg-white rounded-[2rem] border-none shadow-sm space-y-4">
+                      <div className="flex items-center justify-between border-b pb-4">
+                        <div className="flex items-center gap-3">
+                          <Boxes className="w-6 h-6 text-primary opacity-20" />
+                          <h3 className="text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
+                        </div>
+                        <Badge className="bg-primary/5 text-primary border-none font-bold uppercase text-[9px] px-3">Stock Activo</Badge>
                       </div>
-                      <Badge className="bg-primary/5 text-primary border-none font-bold uppercase text-[9px] px-3">Stock Activo</Badge>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {weights.map(w => {
-                        const count = inventoryData?.[`${brand.toLowerCase()}_${w}`] || 0
-                        return (
-                          <div key={w} className="flex flex-col items-center p-3 rounded-2xl bg-muted/30 border border-muted/50">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase mb-1">{w}kg</span>
-                            <span className={cn("text-2xl font-black tracking-tighter", count > 0 ? "text-primary" : "text-rose-300")}>{count}</span>
-                            <span className="text-[8px] font-bold text-muted-foreground/40 uppercase">Vales</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </Card>
-                ))}
+                      <div className="grid grid-cols-4 gap-2">
+                        {weights.map(w => {
+                          const count = inventoryData?.[`${brandKey}_${w}`] || 0
+                          return (
+                            <div key={w} className="flex flex-col items-center p-3 rounded-2xl bg-muted/30 border border-muted/50">
+                              <span className="text-[10px] font-black text-muted-foreground uppercase mb-1">{w}kg</span>
+                              <span className={cn("text-2xl font-black tracking-tighter", count > 0 ? "text-primary" : "text-rose-300")}>{count}</span>
+                              <span className="text-[8px] font-bold text-muted-foreground/40 uppercase">Vales</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </Card>
+                  )
+                })}
               </div>
 
               {/* TABLA DE PEDIDOS */}

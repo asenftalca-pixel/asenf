@@ -102,7 +102,7 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
     setFinalTotal(totalGeneral)
     
     const orderData = {
-      socioName,
+      socioNombre: socioName, // Estandarizado para reportes
       items: cart,
       totalGeneral,
       status: 'pendent',
@@ -114,27 +114,33 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
 
     try {
       await runTransaction(firestore, async (transaction) => {
-        // 1. Verificar y descontar stock para Abastible y Gas del Sur
+        // 1. Obtener inventario actual
         const invDocRef = doc(firestore, "configuracion_gas", "inventory")
         const invSnap = await transaction.get(invDocRef)
         const currentInv = invSnap.exists() ? invSnap.data() : {}
 
+        // 2. Procesar cada item del carrito para descuento de stock (Solo Abastible y Gas del Sur)
         cart.forEach(item => {
-          const brand = item.marca.toLowerCase()
-          if (brand === "abastible" || brand === "gas del sur") {
-            const key = `${brand}_${item.peso}`
+          const brandNormalized = item.marca.toLowerCase().trim()
+          const weightNumeric = item.peso.replace(/\D/g, "")
+          
+          if (brandNormalized.includes("abastible") || brandNormalized.includes("sur")) {
+            // Normalizar llave para que coincida con el dashboard (abastible_11, etc)
+            const targetBrandKey = brandNormalized.includes("abastible") ? "abastible" : "gas del sur"
+            const key = `${targetBrandKey}_${weightNumeric}`
+            
             const currentStock = Number(currentInv[key]) || 0
             if (currentStock < item.cantidad) {
-              throw new Error(`Stock insuficiente para ${item.marca} ${item.peso}kg. Quedan ${currentStock} vales.`);
+              throw new Error(`Stock insuficiente para ${item.marca} ${item.peso}kg. Quedan ${currentStock} unidades.`);
             }
             currentInv[key] = currentStock - item.cantidad
           }
         })
 
-        // 2. Guardar nuevo stock
+        // 3. Guardar nuevo estado del stock
         transaction.set(invDocRef, { ...currentInv, updatedAt: serverTimestamp() }, { merge: true })
 
-        // 3. Crear el pedido
+        // 4. Crear el registro del pedido
         const newOrderRef = doc(collection(firestore, "pedidos_socios"))
         transaction.set(newOrderRef, orderData)
       })
@@ -142,7 +148,8 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       setStep('success')
       setCart([]); setComprobante(null); setSocioName('')
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message })
+      console.error("Error en pedido de gas:", e)
+      toast({ variant: "destructive", title: "Error en el Pedido", description: e.message || "No se pudo procesar la transacción." })
     } finally {
       setIsSubmitting(false)
     }

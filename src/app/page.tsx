@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -10,6 +11,8 @@ import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnou
 import { GasRequestDialog } from '@/components/dashboard/GasRequestDialog'
 import { AppWindow, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useFirebase } from '@/firebase'
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login'
 
 export default function Home() {
   const [isCertificateOpen, setIsCertificateOpen] = useState(false)
@@ -18,6 +21,14 @@ export default function Home() {
   const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
   const [isGasOpen, setIsGasOpen] = useState(false)
   const router = useRouter()
+  const { auth } = useFirebase()
+
+  // Autenticación automática para interactuar con Firestore (Stock/Pedidos)
+  useEffect(() => {
+    if (auth) {
+      initiateAnonymousSignIn(auth)
+    }
+  }, [auth])
 
   useEffect(() => {
     const timer = setTimeout(() => {
