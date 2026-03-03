@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -369,6 +369,16 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex gap-2 justify-center">
+                              {p.comprobanteUrl && (
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary" 
+                                  className="rounded-xl h-10 w-10 p-0 shadow-sm bg-slate-100 text-primary hover:bg-slate-200" 
+                                  onClick={() => setSelectedReceipt(p.comprobanteUrl)}
+                                >
+                                  <Camera className="w-5 h-5" />
+                                </Button>
+                              )}
                               <Button 
                                 size="sm" 
                                 variant="secondary" 
@@ -406,6 +416,23 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: COMPROBANTE */}
+      <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2rem] bg-white border-none shadow-2xl">
+          <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
+            <h3 className="font-black uppercase text-sm">Comprobante de Pago</h3>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedReceipt(null)} className="text-white hover:bg-white/10 rounded-full">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          <div className="p-8 flex items-center justify-center bg-slate-50 min-h-[400px]">
+            {selectedReceipt && (
+              <img src={selectedReceipt} alt="Comprobante" className="max-w-full max-h-[70vh] rounded-xl shadow-lg object-contain" />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
