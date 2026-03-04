@@ -26,6 +26,8 @@
         "nombre": { "type": "string" },
         "rut": { "type": "string" },
         "sexo": { "type": "string" },
+        "telefono": { "type": "string" },
+        "email": { "type": "string" },
         "servicio": { "type": "string" },
         "establecimiento": { "type": "string" },
         "firmaUrl": { "type": "string" },

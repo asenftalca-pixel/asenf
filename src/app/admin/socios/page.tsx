@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -194,12 +195,14 @@ export default function AdminSociosPage() {
   const exportToExcel = () => {
     if (!members || members.length === 0) return
 
-    const headers = ["Nombre", "RUT", "Estado", "Sexo", "Servicio", "Establecimiento", "Fecha Solicitud"]
+    const headers = ["Nombre", "RUT", "Estado", "Sexo", "Teléfono", "Email", "Servicio", "Establecimiento", "Fecha Solicitud"]
     const rows = members.map(m => [
       m.nombre,
       m.rut,
       m.processed ? "Tramitado" : "Pendiente",
       m.sexo,
+      m.telefono || "N/A",
+      m.email || "N/A",
       m.servicio,
       m.establecimiento,
       m.fecha
@@ -282,7 +285,7 @@ export default function AdminSociosPage() {
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="font-black text-xs uppercase tracking-widest p-6 w-16">Tramitar</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Socio</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-widest">RUT</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-widest">Contacto</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Fecha Recibida</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest">Servicio / Unidad</TableHead>
                 <TableHead className="font-black text-xs uppercase tracking-widest text-right">Documento</TableHead>
@@ -312,10 +315,12 @@ export default function AdminSociosPage() {
                     />
                   </TableCell>
                   <TableCell className={cn("font-bold text-primary", member.processed && "line-through")}>
-                    {member.nombre}
+                    <div>{member.nombre}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">{member.rut}</div>
                   </TableCell>
                   <TableCell className={cn("font-medium", member.processed && "line-through")}>
-                    {member.rut}
+                    <div className="text-xs">{member.email}</div>
+                    <div className="text-[10px] font-black">{member.telefono}</div>
                   </TableCell>
                   <TableCell className={cn("font-bold text-primary", member.processed && "line-through")}>
                     {member.fecha}

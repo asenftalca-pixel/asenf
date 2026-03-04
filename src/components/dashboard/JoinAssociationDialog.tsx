@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -5,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Camera, CheckCircle2, Loader2, FileDown, ArrowLeft, FileText } from "lucide-react"
+import { UserPlus, Camera, CheckCircle2, Loader2, FileDown, ArrowLeft, FileText, Phone, Mail } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -33,6 +34,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     nombre: '',
     rut: '',
     sexo: '',
+    telefono: '',
+    email: '',
     servicio: '',
     establecimiento: '',
     firma: null as string | null,
@@ -94,6 +97,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         nombre: formData.nombre,
         rut: formData.rut,
         sexo: formData.sexo,
+        telefono: formData.telefono,
+        email: formData.email,
         servicio: formData.servicio,
         establecimiento: formData.establecimiento,
         firmaUrl: formData.firma,
@@ -128,6 +133,8 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       nombre: '',
       rut: '',
       sexo: '',
+      telefono: '',
+      email: '',
       servicio: '',
       establecimiento: '',
       firma: null,
@@ -170,7 +177,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       });
       
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 25; // Margen de 25mm para cumplimiento estético y técnico
+      const margin = 25; 
       const contentWidth = pageWidth - (margin * 2);
       let y = 20;
 
@@ -205,7 +212,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       
       const mainText = `Yo, ${savedData.nombre}, Rut: ${savedData.rut}, Sexo: ${savedData.sexo}, desempeñándome como profesional de enfermería en el servicio de ${savedData.servicio} de ${savedData.establecimiento}, solicito formalmente mi incorporación a la Asociación de Enfermeras y Enfermeros ASENF Talca.`;
       
-      // Dividir texto para asegurar que se mantenga dentro de los bordes (márgenes)
       const splitText = doc.splitTextToSize(mainText, contentWidth);
       doc.text(splitText, margin, y, { align: 'justify' });
       y += (splitText.length * 8) + 10;
@@ -316,6 +322,18 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                     </Select>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="telefono" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Teléfono</Label>
+                    <Input id="telefono" name="telefono" placeholder="+569..." required className="rounded-xl border-2 h-12" value={formData.telefono} onChange={handleInputChange} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Email</Label>
+                    <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" required className="rounded-xl border-2 h-12" value={formData.email} onChange={handleInputChange} />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="servicio" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Servicio / Unidad</Label>
