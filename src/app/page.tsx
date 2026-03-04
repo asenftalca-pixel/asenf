@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -30,12 +29,15 @@ export default function Home() {
     }
   }, [auth])
 
+  // Desactivado temporalmente: Ventana emergente de convocatoria
+  /*
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsAssemblyOpen(true)
     }, 500)
     return () => clearTimeout(timer)
   }, [])
+  */
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-certificate') {
