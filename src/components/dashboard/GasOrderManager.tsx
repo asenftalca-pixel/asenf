@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw, RotateCcw } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -90,7 +90,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         valorNormalizado: Number(p.totalGeneral || p.Total || p.Valor || 0),
         estadoNormalizado: (p.status || 'pendent').toLowerCase(),
         comprobanteUrl: p.comprobanteUrl || null,
-        fechaObjeto: parseSafeDate(p.createdAt || p.fecha || p.Fecha)
+        fechaObjeto: parseSafeDate(p.createdAt || p.fecha || p.Fecha),
+        stock_procesado: !!p.stock_procesado
       }))
       .sort((a: any, b: any) => {
         const timeA = a.fechaObjeto ? a.fechaObjeto.getTime() : 0
@@ -157,8 +158,30 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     }
   }
 
+  const handleResetInventario = async () => {
+    if (!db || !window.confirm("¿CONFIRMAR RESET TOTAL? Esta acción pondrá todos los contadores de stock en CERO. Úsalo para ingresar el stock físico real ahora.")) return
+    setIsSyncingStock(true)
+    try {
+      const invDocRef = doc(db, "configuracion_gas", "inventory")
+      const emptyInv: Record<string, number> = {}
+      const brands = ["abastible", "gas del sur"]
+      const wList = ["5", "11", "15", "45"]
+      brands.forEach(b => {
+        wList.forEach(w => {
+          emptyInv[`${b}_${w}`] = 0
+        })
+      })
+      await setDoc(invDocRef, { ...emptyInv, updatedAt: serverTimestamp() }, { merge: true })
+      toast({ title: "Inventario Reseteado", description: "Todos los contadores están en cero. Ahora puede cargar el stock real." })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message })
+    } finally {
+      setIsSyncingStock(false)
+    }
+  }
+
   const handleSyncStockManual = async () => {
-    if (!db || !window.confirm("¿Deseas descontar manualmente del stock los pedidos de Abastible/Gas del Sur que están en curso? Usa esto solo si el stock no se descontó automáticamente.")) return
+    if (!db || !window.confirm("¿Deseas descontar del stock los pedidos pendientes que NO han sido procesados? (Evita descuentos duplicados)")) return
     
     setIsSyncingStock(true)
     try {
@@ -171,7 +194,10 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         let count = 0
 
         pedidos.forEach((order: any) => {
+          if (order.stock_procesado) return; // YA FUE PROCESADO, SALTAR
+
           if (Array.isArray(order.items)) {
+            let affected = false;
             order.items.forEach((item: any) => {
               const brandName = (item.marca || "").toLowerCase().trim()
               if (brandName.includes("abastible") || brandName.includes("sur")) {
@@ -181,10 +207,15 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 
                 if (currentInv[key] !== undefined) {
                   currentInv[key] = Math.max(0, (Number(currentInv[key]) || 0) - qty)
-                  count++
+                  affected = true;
                 }
               }
             })
+            
+            if (affected) {
+              transaction.update(doc(db, "pedidos_socios", order.id), { stock_procesado: true });
+              count++
+            }
           }
         })
 
@@ -192,7 +223,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           transaction.set(invDocRef, { ...currentInv, updatedAt: serverTimestamp() }, { merge: true })
         }
       })
-      toast({ title: "Sincronización Exitosa", description: "Se ha ajustado el stock según los pedidos en curso." })
+      toast({ title: "Sincronización Exitosa", description: "Se procesaron pedidos pendientes de stock." })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error en Sincronización", description: e.message })
     } finally {
@@ -242,13 +273,14 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   }
 
   const handleDeleteOrder = async (id: string) => {
-    if (!db || !window.confirm("¿Eliminar pedido? Si es Abastible/Gas del Sur, se devolverá el stock.")) return
+    if (!db || !window.confirm("¿Eliminar pedido? Si el stock fue descontado, se devolverá al inventario automáticamente.")) return
     
     try {
       const order = allPedidosAll.find(p => p.id === id)
       
       await runTransaction(db, async (transaction) => {
-        if (order && Array.isArray(order.items)) {
+        // Solo devolver si stock_procesado es true para evitar inflar el stock
+        if (order && order.stock_procesado && Array.isArray(order.items)) {
           const invDocRef = doc(db, "configuracion_gas", "inventory")
           const invSnap = await transaction.get(invDocRef)
           
@@ -259,7 +291,9 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               if (brandName.includes("abastible") || brandName.includes("sur")) {
                 const targetBrandKey = brandName.includes("abastible") ? "abastible" : "gas del sur"
                 const key = `${targetBrandKey}_${String(item.peso || "").replace(/\D/g, "")}`
-                currentInv[key] = (Number(currentInv[key]) || 0) + (Number(item.cantidad) || 0)
+                if (currentInv[key] !== undefined) {
+                  currentInv[key] = (Number(currentInv[key]) || 0) + (Number(item.cantidad) || 0)
+                }
               }
             })
             transaction.set(invDocRef, currentInv, { merge: true })
@@ -270,7 +304,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         transaction.delete(doc(db, "finanzas_asenftalca", `gas_income_${id}`))
       })
 
-      toast({ title: "Pedido Eliminado", description: "Stock devuelto y contabilidad limpia." })
+      toast({ title: "Pedido Eliminado", description: "Stock devuelto (si correspondía) y contabilidad limpia." })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message })
     }
@@ -362,16 +396,28 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           <Boxes className="w-6 h-6 text-primary opacity-20" />
                           <h3 className="text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary/5 text-primary hover:bg-primary/10 gap-2"
-                          onClick={handleSyncStockManual}
-                          disabled={isSyncingStock}
-                        >
-                          {isSyncingStock ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                          Sincronizar con Pendientes
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary/5 text-primary hover:bg-primary/10 gap-2"
+                            onClick={handleSyncStockManual}
+                            disabled={isSyncingStock}
+                          >
+                            {isSyncingStock ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            Sincronizar
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-rose-50 text-rose-600 hover:bg-rose-100 gap-2"
+                            onClick={handleResetInventario}
+                            disabled={isSyncingStock}
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Reset
+                          </Button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {weights.map(w => {
@@ -426,8 +472,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           <TableCell>
                             <span className="text-sm font-black text-primary truncate max-w-[250px] inline-block">{p.detalleNormalizado}</span>
                             {isAbastibleOrSur && (
-                              <div className="text-[8px] font-black text-emerald-600 uppercase mt-1 flex items-center gap-1">
-                                <Boxes className="w-2.5 h-2.5" /> Stock Comprometido
+                              <div className={cn("text-[8px] font-black uppercase mt-1 flex items-center gap-1", p.stock_procesado ? "text-emerald-600" : "text-amber-600 animate-pulse")}>
+                                <Boxes className="w-2.5 h-2.5" /> {p.stock_procesado ? "Stock Descontado" : "Pendiente Procesar"}
                               </div>
                             )}
                           </TableCell>

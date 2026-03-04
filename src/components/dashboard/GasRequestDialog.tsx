@@ -109,7 +109,8 @@ export function GasRequestDialog({ isOpen, onClose }: GasRequestDialogProps) {
       comprobanteUrl: comprobante,
       detalleResumen: cart.map(item => `${item.cantidad}x ${item.marca} ${item.peso}kg`).join(", "),
       createdAt: serverTimestamp(),
-      estadoPagoProveedor: 'pendiente'
+      estadoPagoProveedor: 'pendiente',
+      stock_procesado: true // Marcar como procesado desde el origen para evitar dobles descuentos
     }
 
     try {
