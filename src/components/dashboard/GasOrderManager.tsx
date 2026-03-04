@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw, RotateCcw } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
@@ -38,7 +39,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     marca: "Abastible",
     peso: "11",
     cantidad: 0,
-    costoTotal: 0
+    costoTotal: 0,
+    registrarFinanzas: true
   })
 
   // Consultas Firestore
@@ -115,8 +117,13 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   }
 
   const handleCargarStock = async () => {
-    if (!db || stockForm.cantidad <= 0 || stockForm.costoTotal <= 0) {
-      toast({ variant: "destructive", title: "Error", description: "Ingrese cantidad y costo válido." })
+    if (!db || stockForm.cantidad <= 0) {
+      toast({ variant: "destructive", title: "Error", description: "Ingrese cantidad válida." })
+      return
+    }
+
+    if (stockForm.registrarFinanzas && stockForm.costoTotal <= 0) {
+      toast({ variant: "destructive", title: "Costo requerido", description: "Si registra en finanzas, el costo debe ser mayor a cero." })
       return
     }
 
@@ -135,22 +142,27 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           updatedAt: serverTimestamp()
         }, { merge: true })
 
-        const financeRef = doc(collection(db, "finanzas_asenftalca"))
-        transaction.set(financeRef, {
-          tipo: "egreso",
-          categoria: "Costo Proveedor Gas",
-          monto: Number(stockForm.costoTotal),
-          fecha: format(new Date(), "yyyy-MM-dd"),
-          responsable: "Sistema",
-          cuenta: "Cuenta ASENF",
-          glosa: `Compra Stock: ${stockForm.cantidad} vales ${stockForm.marca} ${stockForm.peso}kg`,
-          createdAt: serverTimestamp()
-        })
+        if (stockForm.registrarFinanzas) {
+          const financeRef = doc(collection(db, "finanzas_asenftalca"))
+          transaction.set(financeRef, {
+            tipo: "egreso",
+            categoria: "Costo Proveedor Gas",
+            monto: Number(stockForm.costoTotal),
+            fecha: format(new Date(), "yyyy-MM-dd"),
+            responsable: "Sistema",
+            cuenta: "Cuenta ASENF",
+            glosa: `Compra Stock: ${stockForm.cantidad} vales ${stockForm.marca} ${stockForm.peso}kg`,
+            createdAt: serverTimestamp()
+          })
+        }
       })
 
-      toast({ title: "Stock Cargado", description: "Se actualizó el inventario y se registró el egreso." })
+      toast({ 
+        title: stockForm.registrarFinanzas ? "Stock y Egreso Guardado" : "Ajuste de Stock Realizado", 
+        description: stockForm.registrarFinanzas ? "Se actualizó el inventario y se registró el egreso." : "Se modificó el inventario sin afectar finanzas."
+      })
       setIsLoadStockOpen(false)
-      setStockForm({ ...stockForm, cantidad: 0, costoTotal: 0 })
+      setStockForm({ ...stockForm, cantidad: 0, costoTotal: 0, registrarFinanzas: true })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message })
     } finally {
@@ -584,7 +596,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="p-3 bg-secondary rounded-2xl"><PlusCircle className="w-8 h-8 text-primary" /></div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase">Abastecimiento Stock</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/60">Carga vales comprados para Abastible o Gas del Sur.</DialogDescription>
+                  <DialogDescription className="text-primary-foreground/60">Carga vales o ajusta inventario sin afectar finanzas.</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
@@ -627,16 +639,38 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Costo Total Pagado ($)</Label>
-              <Input 
-                type="number" 
-                className="h-12 rounded-xl bg-muted/30 border-none font-black text-rose-600 text-lg" 
-                placeholder="Ej: 150000"
-                value={stockForm.costoTotal || ""} 
-                onChange={(e) => setStockForm({...stockForm, costoTotal: Number(e.target.value)})}
-              />
-              <p className="text-[9px] text-muted-foreground italic px-1">Este monto se registrará como Egreso en Finanzas inmediatamente.</p>
+            <div className="p-4 bg-muted/20 rounded-2xl border-2 border-dashed space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-primary" />
+                  <Label className="text-[10px] font-black uppercase text-primary">Contabilidad</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase">{stockForm.registrarFinanzas ? "SÍ" : "NO"}</span>
+                  <Switch 
+                    checked={stockForm.registrarFinanzas}
+                    onCheckedChange={(v) => setStockForm({...stockForm, registrarFinanzas: v})}
+                  />
+                </div>
+              </div>
+              
+              {stockForm.registrarFinanzas ? (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Costo Total Pagado ($)</Label>
+                  <Input 
+                    type="number" 
+                    className="h-12 rounded-xl bg-white border-none font-black text-rose-600 text-lg" 
+                    placeholder="Ej: 150000"
+                    value={stockForm.costoTotal || ""} 
+                    onChange={(e) => setStockForm({...stockForm, costoTotal: Number(e.target.value)})}
+                  />
+                  <p className="text-[8px] text-rose-500 font-bold uppercase px-1">Este monto se registrará como Egreso en Finanzas.</p>
+                </div>
+              ) : (
+                <p className="text-[9px] text-muted-foreground font-medium italic px-1 animate-in fade-in">
+                  Modo Corrección: Solo se actualizarán los números del inventario. No se generará ningún movimiento financiero.
+                </p>
+              )}
             </div>
           </div>
 
@@ -647,7 +681,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               disabled={isProcessingStock}
             >
               {isProcessingStock ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-              CONFIRMAR COMPRA Y STOCK
+              {stockForm.registrarFinanzas ? "CONFIRMAR COMPRA Y STOCK" : "SOLO AJUSTAR INVENTARIO"}
             </Button>
           </DialogFooter>
         </DialogContent>
