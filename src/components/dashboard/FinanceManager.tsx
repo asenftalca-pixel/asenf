@@ -18,7 +18,7 @@ import { useFirebase, useCollection, useDoc, useMemoFirebase, errorEmitter, Fire
 import { collection, doc, addDoc, setDoc, query, orderBy, updateDoc, deleteDoc, serverTimestamp, getDocs, where, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 
 const INCOME_CATEGORIES = ["Cuota social", "Venta Gas", "Copago fiesta", "Otros"]
@@ -120,13 +120,23 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     const grouped: Record<string, any[]> = {}
     allMovements.forEach(mov => {
       try {
+        if (!mov.fecha) {
+          if (!grouped["Sin Fecha"]) grouped["Sin Fecha"] = []
+          grouped["Sin Fecha"].push(mov)
+          return
+        }
         const date = parseISO(mov.fecha)
+        if (!isValid(date)) {
+          if (!grouped["Fecha Inválida"]) grouped["Fecha Inválida"] = []
+          grouped["Fecha Inválida"].push(mov)
+          return
+        }
         const monthYear = format(date, "MMMM yyyy", { locale: es })
         if (!grouped[monthYear]) grouped[monthYear] = []
         grouped[monthYear].push(mov)
       } catch (e) {
-        if (!grouped["Sin Fecha"]) grouped["Sin Fecha"] = []
-        grouped["Sin Fecha"].push(mov)
+        if (!grouped["Error en Fecha"]) grouped["Error en Fecha"] = []
+        grouped["Error en Fecha"].push(mov)
       }
     })
     return grouped
@@ -286,7 +296,10 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   const handleSaveMovement = async () => {
-    if (!firestore || !formData.categoria || !formData.responsable || !formData.cuenta || formData.monto <= 0) return
+    if (!firestore || !formData.categoria || !formData.responsable || !formData.cuenta || formData.monto <= 0) {
+      toast({ variant: "destructive", title: "Campos incompletos", description: "Verifique monto y campos obligatorios." });
+      return
+    }
     setIsSubmitting(true)
     
     const dataToSave = { 
@@ -487,7 +500,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     </TabsList>
 
                     {monthsList.map(month => {
-                      const movs = movementsByMonth[month];
+                      const movs = movementsByMonth[month] || [];
                       const ingresos = movs.filter(m => m.tipo === 'ingreso');
                       const egresos = movs.filter(m => m.tipo === 'egreso');
                       
@@ -698,8 +711,8 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground relative"><div className="absolute top-0 right-0 p-8 opacity-10"><Settings2 className="w-24 h-24" /></div><DialogHeader><div className="flex items-center gap-5"><div className="p-3 bg-secondary rounded-2xl"><Settings2 className="w-8 h-8 text-primary" /></div><DialogTitle className="text-2xl font-black uppercase">Caja</DialogTitle></div></DialogHeader></div>
           <div className="p-8 space-y-6">
-            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Inicial 01/01/2026</Label><Input type="number" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.initialBankBalance} onChange={e => setConfigData({...configData, initialBankBalance: e.target.value})} /></div>
-            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Real Actual en Banco</Label><Input type="number" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.bankAmount} onChange={e => setConfigData({...configData, bankAmount: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Inicial 01/01/2026</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.initialBankBalance} onChange={e => setConfigData({...configData, initialBankBalance: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Real Actual en Banco</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.bankAmount} onChange={e => setConfigData({...configData, bankAmount: e.target.value})} /></div>
           </div>
           <DialogFooter className="p-8 bg-muted/10 border-t"><Button className="w-full h-14 rounded-2xl font-black text-lg gap-2 bg-primary text-white" onClick={handleSaveConfig} disabled={isSavingBank}>{isSavingBank ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-5 h-5" />} GUARDAR</Button></DialogFooter>
         </DialogContent>
@@ -710,15 +723,98 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <div className="bg-primary p-8 text-primary-foreground border-b border-white/10 shrink-0"><DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle></div>
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="p-8 space-y-6">
-              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Fecha</Label><Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Tipo</Label><Select value={formData.tipo} onValueChange={(v:any) => setFormData({...formData, tipo: v, categoria: ""})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent></Select></div></div>
-              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Responsable</Label><Select value={formData.responsable} onValueChange={v => setFormData({...formData, responsable: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Cuenta</Label><Select value={formData.cuenta} onValueChange={v => setFormData({...formData, cuenta: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Categoría</Label><Select value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Glosa / Detalle</Label><Input placeholder="Ej: Pago luz..." className="h-12 rounded-xl" value={formData.glosa} onChange={e => setFormData({...formData, glosa: e.target.value})} /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Adjuntar Documento (Opcional)</Label><div className="relative h-24 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden">{formData.comprobanteUrl ? <div className="flex flex-col items-center gap-1"><Check className="w-6 h-6 text-emerald-600" /><span className="text-[10px] font-black text-emerald-700 uppercase">Archivo Listo</span></div> : <div className="text-center"><Camera className="w-6 h-6 mx-auto mb-1 text-muted-foreground" /><span className="text-[9px] font-black text-muted-foreground uppercase">Hacer clic para subir boleta</span></div>}<input type="file" accept="image/*, application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} /></div></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Monto ($)</Label><Input type="number" className="h-14 rounded-2xl text-xl font-black text-primary" value={formData.monto || ""} onChange={e => setFormData({...formData, monto: Number(e.target.value)})} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase">Fecha</Label>
+                  <Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase">Tipo</Label>
+                  <Select value={formData.tipo} onValueChange={(v:any) => setFormData({...formData, tipo: v, categoria: ""})}>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase">Responsable</Label>
+                  <Select value={formData.responsable} onValueChange={v => setFormData({...formData, responsable: v})}>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase">Cuenta</Label>
+                  <Select value={formData.cuenta} onValueChange={v => setFormData({...formData, cuenta: v})}>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase">Categoría</Label>
+                <Select value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase">Glosa / Detalle</Label>
+                <Input 
+                  placeholder="Ej: Pago luz..." 
+                  className="h-12 rounded-xl" 
+                  value={formData.glosa} 
+                  onChange={e => setFormData({...formData, glosa: e.target.value})} 
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Adjuntar Documento (Opcional)</Label>
+                <div className="relative h-24 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden">
+                  {formData.comprobanteUrl ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <Check className="w-6 h-6 text-emerald-600" />
+                      <span className="text-[10px] font-black text-emerald-700 uppercase">Archivo Listo</span>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Camera className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                      <span className="text-[9px] font-black text-muted-foreground uppercase">Hacer clic para subir boleta</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*, application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase">Monto ($)</Label>
+                <Input 
+                  type="number" 
+                  inputMode="numeric" 
+                  pattern="[0-9]*" 
+                  className="h-14 rounded-2xl text-xl font-black text-primary" 
+                  value={formData.monto || ""} 
+                  onChange={e => setFormData({...formData, monto: Number(e.target.value)})} 
+                />
+              </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="p-8 bg-muted/10 border-t shrink-0"><div className="flex gap-3 w-full"><Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button><Button className="flex-1 h-14 rounded-2xl font-black bg-primary text-white" onClick={handleSaveMovement} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "GUARDAR"}</Button></div></DialogFooter>
+          <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
+            <div className="flex gap-3 w-full">
+              <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button>
+              <Button className="flex-1 h-14 rounded-2xl font-black bg-primary text-white" onClick={handleSaveMovement} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "GUARDAR"}
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
