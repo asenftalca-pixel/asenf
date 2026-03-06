@@ -423,49 +423,67 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[95vw] h-[95vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-          <div className="bg-primary p-8 text-primary-foreground shrink-0 flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <div className="p-3 bg-secondary rounded-2xl"><Wallet className="w-8 h-8 text-primary" /></div>
+          <div className="bg-primary p-6 md:p-8 text-primary-foreground shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-4 md:gap-5">
+              <div className="p-3 bg-secondary rounded-2xl shrink-0"><Wallet className="w-6 h-6 md:w-8 md:h-8 text-primary" /></div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase">Centro Financiero ASENF</DialogTitle>
-                <DialogDescription className="text-primary-foreground/60">Bitácora de flujos y utilidad acumulada.</DialogDescription>
+                <DialogTitle className="text-xl md:text-2xl font-black uppercase leading-tight">Centro Financiero ASENF</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60 text-xs md:text-sm">Bitácora de flujos y utilidad acumulada.</DialogDescription>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20" onClick={() => { setConfigData({ bankAmount: String(bankData?.bankAmount || ""), initialBankBalance: String(bankData?.initialBankBalance || "") }); setIsConfigOpen(true); }}><Settings2 className="w-5 h-5 mr-2" /> AJUSTES CAJA</Button>
-              <Button variant="secondary" className="rounded-xl font-bold h-12 px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20" onClick={handleSyncPastOrders} disabled={isSyncing}>{isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5 mr-2" />} SINCRONIZAR GAS</Button>
-              <Button className="rounded-xl font-black h-12 px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90" onClick={() => { resetForm(); setIsFormOpen(true); }}><PlusCircle className="w-5 h-5 mr-2" /> NUEVO MOVIMIENTO</Button>
+            <div className="flex flex-wrap gap-2 md:gap-3 w-full lg:w-auto">
+              <Button 
+                variant="secondary" 
+                className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20 text-xs md:text-sm" 
+                onClick={() => { setConfigData({ bankAmount: String(bankData?.bankAmount || ""), initialBankBalance: String(bankData?.initialBankBalance || "") }); setIsConfigOpen(true); }}
+              >
+                <Settings2 className="w-4 h-4 md:w-5 md:h-5 mr-2" /> AJUSTES CAJA
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 shadow-sm bg-primary/10 border-none text-white hover:bg-white/20 text-xs md:text-sm" 
+                onClick={handleSyncPastOrders} 
+                disabled={isSyncing}
+              >
+                {isSyncing ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2" />} SINCRONIZAR GAS
+              </Button>
+              <Button 
+                className="flex-1 lg:flex-none rounded-xl font-black h-11 md:h-12 px-4 md:px-6 shadow-lg bg-secondary text-primary hover:bg-secondary/90 text-xs md:text-sm" 
+                onClick={() => { resetForm(); setIsFormOpen(true); }}
+              >
+                <PlusCircle className="w-4 h-4 md:w-5 md:h-5 mr-2" /> NUEVO MOVIMIENTO
+              </Button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto bg-muted/5 p-8">
+          <div className="flex-1 overflow-auto bg-muted/5 p-4 md:p-8">
             <div className="container mx-auto max-7xl space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] text-center">
-                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2">Saldo Digital Neto</span>
-                  <div className="text-3xl font-black text-primary tracking-tighter">{formatCLP(saldoCalculado)}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                <Card className="p-4 md:p-6 bg-white border-none shadow-xl rounded-[1.5rem] md:rounded-[2rem] text-center">
+                  <span className="text-[9px] md:text-[10px] font-black uppercase text-muted-foreground block mb-1 md:mb-2">Saldo Digital Neto</span>
+                  <div className="text-xl md:text-3xl font-black text-primary tracking-tighter">{formatCLP(saldoCalculado)}</div>
                 </Card>
-                <Card className="p-6 bg-white border-none shadow-xl rounded-[2rem] text-center">
-                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2">Saldo en Banco</span>
-                  <div className="text-3xl font-black text-secondary-foreground tracking-tighter">{formatCLP(bankData?.bankAmount || 0)}</div>
+                <Card className="p-4 md:p-6 bg-white border-none shadow-xl rounded-[1.5rem] md:rounded-[2rem] text-center">
+                  <span className="text-[9px] md:text-[10px] font-black uppercase text-muted-foreground block mb-1 md:mb-2">Saldo en Banco</span>
+                  <div className="text-xl md:text-3xl font-black text-secondary-foreground tracking-tighter">{formatCLP(bankData?.bankAmount || 0)}</div>
                 </Card>
-                <Card className={cn("p-6 border-none shadow-xl rounded-[2rem] text-center", pendingOrders.length > 0 ? "bg-amber-50" : "bg-emerald-50")}>
-                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2">Pedidos Pendientes Pago</span>
-                  <div className="text-2xl font-black text-primary">{pendingOrders.length} Pendientes</div>
+                <Card className={cn("p-4 md:p-6 border-none shadow-xl rounded-[1.5rem] md:rounded-[2rem] text-center", pendingOrders.length > 0 ? "bg-amber-50" : "bg-emerald-50")}>
+                  <span className="text-[9px] md:text-[10px] font-black uppercase text-muted-foreground block mb-1 md:mb-2">Pedidos Pendientes Pago</span>
+                  <div className="text-xl md:text-2xl font-black text-primary">{pendingOrders.length} Pendientes</div>
                 </Card>
-                <Card className="p-6 bg-primary text-primary-foreground border-none shadow-xl rounded-[2rem] text-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16" /></div>
-                  <span className="text-[10px] font-black uppercase text-primary-foreground/60 block mb-2">Utilidad Total Gas</span>
-                  <div className="text-3xl font-black text-secondary tracking-tighter">{formatCLP(utilityGas.utilidad)}</div>
+                <Card className="p-4 md:p-6 bg-primary text-primary-foreground border-none shadow-xl rounded-[1.5rem] md:rounded-[2rem] text-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-12 h-12 md:w-16 md:h-16" /></div>
+                  <span className="text-[9px] md:text-[10px] font-black uppercase text-primary-foreground/60 block mb-1 md:mb-2">Utilidad Total Gas</span>
+                  <div className="text-xl md:text-3xl font-black text-secondary tracking-tighter">{formatCLP(utilityGas.utilidad)}</div>
                 </Card>
               </div>
 
-              <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border p-6">
+              <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-xl overflow-hidden border p-4 md:p-6">
                 {loadingMovements ? <div className="h-60 flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin opacity-20" /></div> : (
-                  <Tabs defaultValue={monthsList[0]} className="space-y-8">
+                  <Tabs defaultValue={monthsList[0]} className="space-y-6 md:space-y-8">
                     <TabsList className="bg-muted/20 p-1 flex flex-wrap gap-1 h-auto rounded-xl">
-                      {monthsList.map(m => <TabsTrigger key={m} value={m} className="rounded-lg px-4 py-2 text-xs font-black uppercase">{m}</TabsTrigger>)}
-                      <TabsTrigger value="liquidacion" className="rounded-lg px-4 py-2 text-xs font-black uppercase bg-amber-500/10 text-amber-700 data-[state=active]:bg-amber-500 data-[state=active]:text-white ml-auto">Liquidación Gas</TabsTrigger>
+                      {monthsList.map(m => <TabsTrigger key={m} value={m} className="rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase">{m}</TabsTrigger>)}
+                      <TabsTrigger value="liquidacion" className="rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase bg-amber-500/10 text-amber-700 data-[state=active]:bg-amber-500 data-[state=active]:text-white sm:ml-auto">Liquidación Gas</TabsTrigger>
                     </TabsList>
 
                     {monthsList.map(month => {
@@ -478,22 +496,22 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       const monthResult = totalIngresos - totalEgresos;
 
                       return (
-                        <TabsContent key={month} value={month} className="space-y-8">
+                        <TabsContent key={month} value={month} className="space-y-6 md:space-y-8">
                           <div className="space-y-4">
                             <div className="flex items-center gap-3 px-2">
                               <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><ArrowUpCircle className="w-5 h-5" /></div>
-                              <h4 className="text-sm font-black uppercase text-emerald-700 tracking-wider">Ingresos del Mes</h4>
+                              <h4 className="text-xs md:text-sm font-black uppercase text-emerald-700 tracking-wider">Ingresos del Mes</h4>
                             </div>
-                            <div className="border rounded-2xl overflow-hidden">
+                            <div className="border rounded-2xl overflow-x-auto">
                               <Table>
-                                <TableHeader><TableRow className="bg-emerald-50/50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Acciones</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow className="bg-emerald-50/50"><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Fecha</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Responsable</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Categoría</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Detalle</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase text-center whitespace-nowrap">Adjunto</TableHead><TableHead className="px-4 md:px-6 text-right text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Monto</TableHead><TableHead className="px-4 md:px-6 text-right text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Acciones</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                   {ingresos.length > 0 ? ingresos.map(m => (
                                     <TableRow key={m.id} className="hover:bg-emerald-50/20 group">
-                                      <TableCell className="px-6 text-xs font-bold text-muted-foreground">{m.fecha}</TableCell>
-                                      <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
-                                      <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
-                                      <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-bold text-muted-foreground whitespace-nowrap">{m.fecha}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-black uppercase whitespace-nowrap">{m.responsable}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-bold whitespace-nowrap">{m.categoria}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs text-muted-foreground min-w-[150px]">{m.glosa || "—"}</TableCell>
                                       <TableCell className="text-center">
                                         {m.comprobanteUrl ? (
                                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
@@ -501,9 +519,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                           </Button>
                                         ) : "—"}
                                       </TableCell>
-                                      <TableCell className="px-6 text-right font-black text-emerald-600">+{formatCLP(m.monto)}</TableCell>
-                                      <TableCell className="text-right px-6">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <TableCell className="px-4 md:px-6 text-right font-black text-emerald-600 whitespace-nowrap">+{formatCLP(m.monto)}</TableCell>
+                                      <TableCell className="text-right px-4 md:px-6">
+                                        <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-full" onClick={() => handleEditMovement(m)}>
                                             <Pencil className="w-3.5 h-3.5" />
                                           </Button>
@@ -516,7 +534,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                   )) : (
                                     <TableRow><TableCell colSpan={7} className="h-20 text-center italic text-muted-foreground text-xs">Sin ingresos registrados.</TableCell></TableRow>
                                   )}
-                                  <TableRow className="bg-emerald-50/30"><TableCell colSpan={5} className="px-6 text-right font-black uppercase text-[10px] text-emerald-700">Subtotal Ingresos:</TableCell><TableCell className="px-6 text-right font-black text-emerald-700">{formatCLP(totalIngresos)}</TableCell><TableCell /></TableRow>
+                                  <TableRow className="bg-emerald-50/30"><TableCell colSpan={5} className="px-4 md:px-6 text-right font-black uppercase text-[9px] md:text-[10px] text-emerald-700">Subtotal Ingresos:</TableCell><TableCell className="px-4 md:px-6 text-right font-black text-emerald-700">{formatCLP(totalIngresos)}</TableCell><TableCell /></TableRow>
                                 </TableBody>
                               </Table>
                             </div>
@@ -525,18 +543,18 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                           <div className="space-y-4">
                             <div className="flex items-center gap-3 px-2">
                               <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><ArrowDownCircle className="w-5 h-5" /></div>
-                              <h4 className="text-sm font-black uppercase text-rose-700 tracking-wider">Egresos del Mes</h4>
+                              <h4 className="text-xs md:text-sm font-black uppercase text-rose-700 tracking-wider">Egresos del Mes</h4>
                             </div>
-                            <div className="border rounded-2xl overflow-hidden">
+                            <div className="border rounded-2xl overflow-x-auto">
                               <Table>
-                                <TableHeader><TableRow className="bg-rose-50/50"><TableHead className="px-6 text-[10px] font-black uppercase">Fecha</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Responsable</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Categoría</TableHead><TableHead className="px-6 text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Adjunto</TableHead><TableHead className="px-6 text-[10px] font-black uppercase text-center">Devolución</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Monto</TableHead><TableHead className="px-6 text-right text-[10px] font-black uppercase">Acciones</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow className="bg-rose-50/50"><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Fecha</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Responsable</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Categoría</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Detalle</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase text-center whitespace-nowrap">Adjunto</TableHead><TableHead className="px-4 md:px-6 text-[9px] md:text-[10px] font-black uppercase text-center whitespace-nowrap">Devolución</TableHead><TableHead className="px-4 md:px-6 text-right text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Monto</TableHead><TableHead className="px-4 md:px-6 text-right text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap">Acciones</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                   {egresos.length > 0 ? egresos.map(m => (
                                     <TableRow key={m.id} className="hover:bg-rose-50/20 group">
-                                      <TableCell className="px-6 text-xs font-bold text-muted-foreground">{m.fecha}</TableCell>
-                                      <TableCell className="px-6 text-xs font-black uppercase">{m.responsable}</TableCell>
-                                      <TableCell className="px-6 text-xs font-bold">{m.categoria}</TableCell>
-                                      <TableCell className="px-6 text-xs text-muted-foreground">{m.glosa || "—"}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-bold text-muted-foreground whitespace-nowrap">{m.fecha}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-black uppercase whitespace-nowrap">{m.responsable}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs font-bold whitespace-nowrap">{m.categoria}</TableCell>
+                                      <TableCell className="px-4 md:px-6 text-xs text-muted-foreground min-w-[150px]">{m.glosa || "—"}</TableCell>
                                       <TableCell className="text-center">
                                         {m.comprobanteUrl ? (
                                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/5 text-primary hover:bg-primary/10" onClick={() => setSelectedReceipt(m.comprobanteUrl)}>
@@ -552,9 +570,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                           </div>
                                         ) : "—"}
                                       </TableCell>
-                                      <TableCell className="px-6 text-right font-black text-rose-600">-{formatCLP(m.monto)}</TableCell>
-                                      <TableCell className="text-right px-6">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <TableCell className="px-4 md:px-6 text-right font-black text-rose-600 whitespace-nowrap">-{formatCLP(m.monto)}</TableCell>
+                                      <TableCell className="text-right px-4 md:px-6">
+                                        <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-full" onClick={() => handleEditMovement(m)}>
                                             <Pencil className="w-3.5 h-3.5" />
                                           </Button>
@@ -567,43 +585,43 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                                   )) : (
                                     <TableRow><TableCell colSpan={8} className="h-20 text-center italic text-muted-foreground text-xs">Sin egresos registrados.</TableCell></TableRow>
                                   )}
-                                  <TableRow className="bg-rose-50/30"><TableCell colSpan={6} className="px-6 text-right font-black uppercase text-[10px] text-rose-700">Subtotal Egresos:</TableCell><TableCell className="px-6 text-right font-black text-rose-700">{formatCLP(totalEgresos)}</TableCell><TableCell /></TableRow>
+                                  <TableRow className="bg-rose-50/30"><TableCell colSpan={6} className="px-4 md:px-6 text-right font-black uppercase text-[9px] md:text-[10px] text-rose-700">Subtotal Egresos:</TableCell><TableCell className="px-4 md:px-6 text-right font-black text-rose-700">{formatCLP(totalEgresos)}</TableCell><TableCell /></TableRow>
                                 </TableBody>
                               </Table>
                             </div>
                           </div>
 
-                          <div className={cn("p-8 rounded-[2rem] flex items-center justify-between border-4 border-dashed", monthResult >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200")}>
+                          <div className={cn("p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-4 border-4 border-dashed", monthResult >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200")}>
                             <div className="flex items-center gap-4">
-                              <div className={cn("p-4 rounded-2xl", monthResult >= 0 ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
-                                {monthResult >= 0 ? <TrendingUp className="w-8 h-8" /> : <TrendingUp className="w-8 h-8 rotate-180" />}
+                              <div className={cn("p-3 md:p-4 rounded-2xl", monthResult >= 0 ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
+                                {monthResult >= 0 ? <TrendingUp className="w-6 h-6 md:w-8 md:h-8" /> : <TrendingUp className="w-6 h-6 md:w-8 md:h-8 rotate-180" />}
                               </div>
                               <div>
-                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Resultado Mensual {month}</p>
-                                <h3 className={cn("text-3xl font-black tracking-tighter", monthResult >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatCLP(monthResult)}</h3>
+                                <p className="text-[9px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">Resultado Mensual {month}</p>
+                                <h3 className={cn("text-2xl md:text-3xl font-black tracking-tighter", monthResult >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatCLP(monthResult)}</h3>
                               </div>
                             </div>
-                            <div className="text-right hidden md:block">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado de Caja</p>
-                              <Badge className={cn("px-4 py-1.5 rounded-full font-black text-[10px] uppercase", monthResult >= 0 ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-rose-100 text-rose-700 border-rose-200")}>{monthResult >= 0 ? "Superávit Operativo" : "Déficit Mensual"}</Badge>
+                            <div className="text-right">
+                              <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado de Caja</p>
+                              <Badge className={cn("px-3 md:px-4 py-1.5 rounded-full font-black text-[9px] md:text-[10px] uppercase", monthResult >= 0 ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-rose-100 text-rose-700 border-rose-200")}>{monthResult >= 0 ? "Superávit Operativo" : "Déficit Mensual"}</Badge>
                             </div>
                           </div>
                         </TabsContent>
                       )
                     })}
 
-                    <TabsContent value="liquidacion" className="space-y-8">
-                      <div className="p-6 bg-amber-50 border-2 border-dashed border-amber-200 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6">
+                    <TabsContent value="liquidacion" className="space-y-6 md:space-y-8">
+                      <div className="p-4 md:p-6 bg-amber-50 border-2 border-dashed border-amber-200 rounded-[1.5rem] md:rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
                           <div className="p-3 bg-amber-500 rounded-2xl text-white"><Package className="w-6 h-6" /></div>
                           <div>
-                            <h4 className="text-sm font-black uppercase text-amber-900 tracking-tight">Liquidación de Suministros (Lipigas)</h4>
-                            <p className="text-xs text-amber-700">Deudas con proveedores externos. Abastible y Gas del Sur se pagan al cargar stock.</p>
+                            <h4 className="text-xs md:text-sm font-black uppercase text-amber-900 tracking-tight">Liquidación de Suministros (Lipigas)</h4>
+                            <p className="text-[10px] md:text-xs text-amber-700">Deudas con proveedores externos. Abastible y Gas del Sur se pagan al cargar stock.</p>
                           </div>
                         </div>
                         <Button 
                           variant="secondary" 
-                          className="rounded-xl font-black bg-white text-amber-600 hover:bg-amber-100 border-none shadow-sm h-12 px-6"
+                          className="w-full md:w-auto rounded-xl font-black bg-white text-amber-600 hover:bg-amber-100 border-none shadow-sm h-11 md:h-12 px-6"
                           onClick={handleCleanGhosts}
                           disabled={isCleaning}
                         >
@@ -614,28 +632,28 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
                       <div className="grid grid-cols-1 gap-6">
                         {Object.entries(liquidationSummary).length > 0 ? Object.entries(liquidationSummary).map(([brand, data]) => (
-                          <div key={brand} className="bg-white border rounded-[2rem] shadow-sm overflow-hidden p-8 space-y-6">
-                            <div className="flex items-center justify-between border-b pb-4">
+                          <div key={brand} className="bg-white border rounded-[1.5rem] md:rounded-[2rem] shadow-sm overflow-hidden p-6 md:p-8 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-4">
                               <div className="flex items-center gap-3">
                                 <Flame className="w-6 h-6 text-orange-500" />
-                                <h3 className="text-xl font-black text-primary uppercase">{brand}</h3>
+                                <h3 className="text-lg md:text-xl font-black text-primary uppercase">{brand}</h3>
                               </div>
-                              <div className="text-right">
-                                <p className="text-[10px] font-black text-muted-foreground uppercase">Deuda Total Estimada</p>
-                                <p className="text-2xl font-black text-rose-600">{formatCLP(data.totalDebt)}</p>
+                              <div className="sm:text-right">
+                                <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase">Deuda Total Estimada</p>
+                                <p className="text-xl md:text-2xl font-black text-rose-600">{formatCLP(data.totalDebt)}</p>
                               </div>
                             </div>
 
-                            <ScrollArea className="h-48">
+                            <ScrollArea className="h-48 border rounded-xl bg-muted/5">
                               <Table>
-                                <TableHeader><TableRow><TableHead className="text-[10px] font-black uppercase">Socio</TableHead><TableHead className="text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="text-[10px] font-black uppercase text-right">Recaudado</TableHead><TableHead className="text-[10px] font-black uppercase text-center">Acciones</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow className="bg-muted/10"><TableHead className="text-[9px] md:text-[10px] font-black uppercase px-4">Socio</TableHead><TableHead className="text-[9px] md:text-[10px] font-black uppercase">Detalle</TableHead><TableHead className="text-[9px] md:text-[10px] font-black uppercase text-right">Recaudado</TableHead><TableHead className="text-[9px] md:text-[10px] font-black uppercase text-center px-4">Acciones</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                   {data.orders.map(o => (
-                                    <TableRow key={o.id}>
-                                      <TableCell className="text-xs font-bold">{o.socioNombre || o.socioName || o.Nombre || "Socio"}</TableCell>
-                                      <TableCell className="text-xs text-muted-foreground">{o.detalleResumen}</TableCell>
-                                      <TableCell className="text-right text-xs font-black text-emerald-600">+{formatCLP(o.totalGeneral)}</TableCell>
-                                      <TableCell className="text-center">
+                                    <TableRow key={o.id} className="hover:bg-muted/20">
+                                      <TableCell className="text-[11px] md:text-xs font-bold px-4">{o.socioNombre || o.socioName || o.Nombre || "Socio"}</TableCell>
+                                      <TableCell className="text-[11px] md:text-xs text-muted-foreground truncate max-w-[150px]">{o.detalleResumen}</TableCell>
+                                      <TableCell className="text-right text-[11px] md:text-xs font-black text-emerald-600">+{formatCLP(o.totalGeneral)}</TableCell>
+                                      <TableCell className="text-center px-4">
                                         <div className="flex justify-center gap-1">
                                           <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 rounded-full" title="Marcar como saldado" onClick={() => handleUpdateOrderStatus(o.id, 'pagado')}>
                                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -652,7 +670,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                             </ScrollArea>
 
                             <Button 
-                              className="w-full h-14 rounded-2xl font-black text-lg gap-2 bg-primary text-white shadow-xl hover:scale-[1.01] transition-transform"
+                              className="w-full h-14 rounded-2xl font-black text-base md:text-lg gap-2 bg-primary text-white shadow-xl hover:scale-[1.01] transition-transform"
                               onClick={() => handleLiquidarMarca(brand, data.totalDebt, data.orders)}
                               disabled={isSyncing}
                             >
@@ -661,9 +679,9 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                             </Button>
                           </div>
                         )) : (
-                          <div className="h-60 flex flex-col items-center justify-center text-muted-foreground/40 space-y-4 bg-muted/10 rounded-[3rem] border-4 border-dashed">
-                            <CheckCircle2 className="w-16 h-16 opacity-20" />
-                            <p className="font-black uppercase text-sm tracking-widest">Sin deudas con proveedores pendientes</p>
+                          <div className="h-60 flex flex-col items-center justify-center text-muted-foreground/40 space-y-4 bg-muted/10 rounded-[2rem] md:rounded-[3rem] border-4 border-dashed">
+                            <CheckCircle2 className="w-12 h-12 md:w-16 md:h-16 opacity-20" />
+                            <p className="font-black uppercase text-[10px] md:text-sm tracking-widest text-center px-6">Sin deudas con proveedores pendientes</p>
                           </div>
                         )}
                       </div>
@@ -677,7 +695,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       </Dialog>
 
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-primary p-8 text-primary-foreground relative"><div className="absolute top-0 right-0 p-8 opacity-10"><Settings2 className="w-24 h-24" /></div><DialogHeader><div className="flex items-center gap-5"><div className="p-3 bg-secondary rounded-2xl"><Settings2 className="w-8 h-8 text-primary" /></div><DialogTitle className="text-2xl font-black uppercase">Caja</DialogTitle></div></DialogHeader></div>
           <div className="p-8 space-y-6">
             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Saldo Inicial 01/01/2026</Label><Input type="number" className="h-12 rounded-xl bg-muted/30 border-none font-black" value={configData.initialBankBalance} onChange={e => setConfigData({...configData, initialBankBalance: e.target.value})} /></div>

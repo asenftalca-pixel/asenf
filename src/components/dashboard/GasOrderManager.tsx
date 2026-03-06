@@ -360,74 +360,74 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[95vw] h-[95vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-          <div className="bg-primary p-8 text-primary-foreground shrink-0 flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <div className="p-3 bg-secondary rounded-2xl">
-                <Flame className="w-8 h-8 text-primary" />
+          <div className="bg-primary p-6 md:p-8 text-primary-foreground shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-4 md:gap-5">
+              <div className="p-3 bg-secondary rounded-2xl shrink-0">
+                <Flame className="w-6 h-6 md:w-8 md:h-8 text-primary" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Suministros e Inventario Gas</DialogTitle>
-                <DialogDescription className="text-primary-foreground/60">Gestión de stock propio y liquidación de deudas externas.</DialogDescription>
+                <DialogTitle className="text-xl md:text-2xl font-black uppercase tracking-tight">Suministros e Inventario Gas</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60 text-xs md:text-sm">Gestión de stock propio y liquidación de deudas externas.</DialogDescription>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3 w-full lg:w-auto">
               <Button 
                 variant="secondary" 
-                className="rounded-xl font-black h-12 px-6 bg-secondary text-primary hover:bg-secondary/90 shadow-lg gap-2" 
+                className="flex-1 lg:flex-none rounded-xl font-black h-11 md:h-12 px-4 md:px-6 bg-secondary text-primary hover:bg-secondary/90 shadow-lg gap-2 text-xs md:text-sm" 
                 onClick={() => setIsLoadStockOpen(true)}
               >
-                <PlusCircle className="w-5 h-5" /> CARGAR STOCK
+                <PlusCircle className="w-4 h-4 md:w-5 md:h-5" /> CARGAR STOCK
               </Button>
               <Button 
                 variant="secondary" 
-                className="rounded-xl font-bold h-12 px-6 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100" 
+                className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100 text-xs md:text-sm" 
                 onClick={handleExportExcel}
               >
-                <FileSpreadsheet className="w-5 h-5" /> EXPORTAR EXCEL
+                <FileSpreadsheet className="w-4 h-4 md:w-5 md:h-5" /> EXPORTAR EXCEL
               </Button>
               <Button 
                 variant="secondary" 
-                className="rounded-xl font-bold h-12 px-6 bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200" 
+                className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200 text-xs md:text-sm" 
                 onClick={() => setIsConfigOpen(true)}
               >
-                <Settings2 className="w-5 h-5" /> CONFIGURAR COSTOS
+                <Settings2 className="w-4 h-4 md:w-5 md:h-5" /> CONFIGURAR COSTOS
               </Button>
             </div>
           </div>
 
           <ScrollArea className="flex-1 bg-muted/5">
-            <div className="p-8 space-y-8">
+            <div className="p-4 md:p-8 space-y-8">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {["Abastible", "Gas del Sur"].map(brand => {
                   const brandKey = brand.toLowerCase().includes("abastible") ? "abastible" : "gas del sur"
                   return (
-                    <Card key={brand} className="p-6 bg-white rounded-[2rem] border-none shadow-sm space-y-4">
+                    <Card key={brand} className="p-4 md:p-6 bg-white rounded-[1.5rem] md:rounded-[2rem] border-none shadow-sm space-y-4">
                       <div className="flex items-center justify-between border-b pb-4">
                         <div className="flex items-center gap-3">
-                          <Boxes className="w-6 h-6 text-primary opacity-20" />
-                          <h3 className="text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
+                          <Boxes className="w-5 h-5 md:w-6 md:h-6 text-primary opacity-20" />
+                          <h3 className="text-base md:text-lg font-black text-primary uppercase tracking-tight">Inventario {brand}</h3>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 md:gap-2">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary/5 text-primary hover:bg-primary/10 gap-2"
+                            className="h-7 md:h-8 px-2 md:px-3 rounded-lg text-[8px] md:text-[9px] font-black uppercase bg-primary/5 text-primary hover:bg-primary/10 gap-1 md:gap-2"
                             onClick={handleSyncStockManual}
                             disabled={isSyncingStock}
                           >
                             {isSyncingStock ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                            Sincronizar
+                            <span className="hidden sm:inline">Sincronizar</span>
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-rose-50 text-rose-600 hover:bg-rose-100 gap-2"
+                            className="h-7 md:h-8 px-2 md:px-3 rounded-lg text-[8px] md:text-[9px] font-black uppercase bg-rose-50 text-rose-600 hover:bg-rose-100 gap-1 md:gap-2"
                             onClick={handleResetInventario}
                             disabled={isSyncingStock}
                           >
                             <RotateCcw className="w-3 h-3" />
-                            Reset
+                            <span className="hidden sm:inline">Reset</span>
                           </Button>
                         </div>
                       </div>
@@ -435,10 +435,10 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                         {weights.map(w => {
                           const count = inventoryData?.[`${brandKey}_${w}`] || 0
                           return (
-                            <div key={w} className="flex flex-col items-center p-3 rounded-2xl bg-muted/30 border border-muted/50">
-                              <span className="text-[10px] font-black text-muted-foreground uppercase mb-1">{w}kg</span>
-                              <span className={cn("text-2xl font-black tracking-tighter", count > 0 ? "text-primary" : "text-rose-300")}>{count}</span>
-                              <span className="text-[8px] font-bold text-muted-foreground/40 uppercase">Vales</span>
+                            <div key={w} className="flex flex-col items-center p-2 md:p-3 rounded-xl md:rounded-2xl bg-muted/30 border border-muted/50">
+                              <span className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">{w}kg</span>
+                              <span className={cn("text-xl md:text-2xl font-black tracking-tighter", count > 0 ? "text-primary" : "text-rose-300")}>{count}</span>
+                              <span className="text-[7px] md:text-[8px] font-bold text-muted-foreground/40 uppercase">Vales</span>
                             </div>
                           )
                         })}
@@ -448,104 +448,106 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 })}
               </div>
 
-              <div className="bg-white border rounded-[2.5rem] shadow-sm overflow-hidden">
-                <div className="px-8 py-5 border-b bg-slate-50/50 flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary/40">Listado de Pedidos en Curso</h3>
+              <div className="bg-white border rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm overflow-hidden">
+                <div className="px-4 md:px-8 py-4 md:py-5 border-b bg-slate-50/50 flex items-center justify-between">
+                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-primary/40">Listado de Pedidos en Curso</h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 font-bold">{pedidos.length} Pendientes</Badge>
+                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 font-bold text-[10px]">{pedidos.length} Pendientes</Badge>
                   </div>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="font-black text-[10px] uppercase px-8 h-14">Socio / Fecha</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase">Detalle del Pedido</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase text-right">Monto $</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase text-center">Estado</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase text-center">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pedidos.map((p: any) => {
-                      const isChecked = p.estadoNormalizado === 'checked' || p.estadoNormalizado === 'revisado'
-                      const isAbastibleOrSur = p.detalleNormalizado.toLowerCase().includes("abastible") || p.detalleNormalizado.toLowerCase().includes("gas del sur")
-                      
-                      return (
-                        <TableRow key={p.id} className={cn("group transition-colors", isChecked ? "bg-emerald-50/40" : "hover:bg-primary/5")}>
-                          <TableCell className="px-8 py-5">
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-bold text-primary uppercase tracking-tight">{p.nombreNormalizado}</div>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setEditingOrderName({id: p.id, name: p.nombreNormalizado})}>
-                                <Pencil className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="text-[10px] font-medium text-muted-foreground">{p.fechaObjeto ? format(p.fechaObjeto, "dd MMM, HH:mm", { locale: es }) : "S/F"}</div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm font-black text-primary truncate max-w-[250px] inline-block">{p.detalleNormalizado}</span>
-                            {isAbastibleOrSur && (
-                              <div className={cn("text-[8px] font-black uppercase mt-1 flex items-center gap-1", p.stock_procesado ? "text-emerald-600" : "text-amber-600 animate-pulse")}>
-                                <Boxes className="w-2.5 h-2.5" /> {p.stock_procesado ? "Stock Descontado" : "Pendiente Procesar"}
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="font-black text-[9px] md:text-[10px] uppercase px-4 md:px-8 h-12 md:h-14">Socio / Fecha</TableHead>
+                        <TableHead className="font-black text-[9px] md:text-[10px] uppercase">Detalle del Pedido</TableHead>
+                        <TableHead className="font-black text-[9px] md:text-[10px] uppercase text-right">Monto $</TableHead>
+                        <TableHead className="font-black text-[9px] md:text-[10px] uppercase text-center">Estado</TableHead>
+                        <TableHead className="font-black text-[9px] md:text-[10px] uppercase text-center">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pedidos.map((p: any) => {
+                        const isChecked = p.estadoNormalizado === 'checked' || p.estadoNormalizado === 'revisado'
+                        const isAbastibleOrSur = p.detalleNormalizado.toLowerCase().includes("abastible") || p.detalleNormalizado.toLowerCase().includes("gas del sur")
+                        
+                        return (
+                          <TableRow key={p.id} className={cn("group transition-colors", isChecked ? "bg-emerald-50/40" : "hover:bg-primary/5")}>
+                            <TableCell className="px-4 md:px-8 py-4 md:py-5">
+                              <div className="flex items-center gap-2">
+                                <div className="text-xs md:text-sm font-bold text-primary uppercase tracking-tight">{p.nombreNormalizado}</div>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={() => setEditingOrderName({id: p.id, name: p.nombreNormalizado})}>
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
                               </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="font-black text-primary text-base">${new Intl.NumberFormat('es-CL').format(p.valorNormalizado)}</div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className={cn(
-                              "rounded-lg text-[9px] font-black uppercase px-3 py-1 border-2",
-                              isChecked ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"
-                            )}>
-                              {isChecked ? "Socio Pagó" : "Pendiente Pago"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex gap-2 justify-center">
-                              {p.comprobanteUrl && (
+                              <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground">{p.fechaObjeto ? format(p.fechaObjeto, "dd MMM, HH:mm", { locale: es }) : "S/F"}</div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-xs md:text-sm font-black text-primary truncate max-w-[150px] md:max-w-[250px] inline-block">{p.detalleNormalizado}</span>
+                              {isAbastibleOrSur && (
+                                <div className={cn("text-[8px] font-black uppercase mt-1 flex items-center gap-1", p.stock_procesado ? "text-emerald-600" : "text-amber-600 animate-pulse")}>
+                                  <Boxes className="w-2.5 h-2.5" /> {p.stock_procesado ? "Stock Descontado" : "Pendiente Procesar"}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="font-black text-primary text-sm md:text-base">${new Intl.NumberFormat('es-CL').format(p.valorNormalizado)}</div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className={cn(
+                                "rounded-lg text-[8px] md:text-[9px] font-black uppercase px-2 md:px-3 py-1 border-2",
+                                isChecked ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"
+                              )}>
+                                {isChecked ? "Socio Pagó" : "Pendiente"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex gap-1 md:gap-2 justify-center">
+                                {p.comprobanteUrl && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="secondary" 
+                                    className="rounded-xl h-8 w-8 md:h-10 md:w-10 p-0 shadow-sm bg-slate-100 text-primary hover:bg-slate-200" 
+                                    onClick={() => setSelectedReceipt(p.comprobanteUrl)}
+                                  >
+                                    <Camera className="w-4 h-4 md:w-5 md:h-5" />
+                                  </Button>
+                                )}
                                 <Button 
                                   size="sm" 
                                   variant="secondary" 
-                                  className="rounded-xl h-10 w-10 p-0 shadow-sm bg-slate-100 text-primary hover:bg-slate-200" 
-                                  onClick={() => setSelectedReceipt(p.comprobanteUrl)}
+                                  className={cn("rounded-xl h-8 w-8 md:h-10 md:w-10 p-0 shadow-sm transition-all", isChecked ? "bg-emerald-100 text-emerald-700 opacity-50" : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600")} 
+                                  onClick={() => handleUpdateStatus(p.id, 'checked')} 
+                                  disabled={isChecked}
                                 >
-                                  <Camera className="w-5 h-5" />
+                                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
                                 </Button>
-                              )}
-                              <Button 
-                                size="sm" 
-                                variant="secondary" 
-                                className={cn("rounded-xl h-10 w-10 p-0 shadow-sm transition-all", isChecked ? "bg-emerald-100 text-emerald-700 opacity-50" : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600")} 
-                                onClick={() => handleUpdateStatus(p.id, 'checked')} 
-                                disabled={isChecked}
-                              >
-                                <CheckCircle className="w-5 h-5" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="rounded-xl h-10 w-10 p-0 shadow-md bg-primary text-white hover:bg-primary/90" 
-                                onClick={() => handleUpdateStatus(p.id, 'delivered')}
-                              >
-                                <Truck className="w-5 h-5" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="rounded-xl h-10 w-10 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50" 
-                                onClick={() => handleDeleteOrder(p.id)}
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {pedidos.length === 0 && !loading && (
-                      <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground/40 italic font-bold">No hay pedidos pendientes en la base de datos.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                                <Button 
+                                  size="sm" 
+                                  className="rounded-xl h-8 w-8 md:h-10 md:w-10 p-0 shadow-md bg-primary text-white hover:bg-primary/90" 
+                                  onClick={() => handleUpdateStatus(p.id, 'delivered')}
+                                >
+                                  <Truck className="w-4 h-4 md:w-5 md:h-5" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="rounded-xl h-8 w-8 md:h-10 md:w-10 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50" 
+                                  onClick={() => handleDeleteOrder(p.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                      {pedidos.length === 0 && !loading && (
+                        <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground/40 italic font-bold">No hay pedidos pendientes en la base de datos.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -596,7 +598,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="p-3 bg-secondary rounded-2xl"><PlusCircle className="w-8 h-8 text-primary" /></div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase">Abastecimiento Stock</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/60">Carga vales o ajusta inventario sin afectar finanzas.</DialogDescription>
+                  <DialogDescription className="text-primary-foreground/60 font-medium text-xs">Carga vales o ajusta inventario sin afectar finanzas.</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
@@ -695,7 +697,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="p-3 bg-secondary rounded-2xl"><Settings2 className="w-8 h-8 text-primary" /></div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase">Costos Base Proveedor</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/60">Utilizado para calcular deuda en marcas sin stock (Lipigas).</DialogDescription>
+                  <DialogDescription className="text-primary-foreground/60 text-xs font-medium">Utilizado para calcular deuda en marcas sin stock (Lipigas).</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
