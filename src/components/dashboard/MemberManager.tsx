@@ -161,7 +161,13 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     setIsProcessing(true)
     const referenceData = baseData || currentNomina
     const ingresos = monthlyData.filter(newItem => !referenceData.some(ref => normalizeRut(ref.rut) === newItem.rut))
-    const egresos = referenceData.filter(refItem => !monthlyData.some(monthly => monthly.rut === normalizeRut(refItem.rut)))
+    const egresos = referenceData.filter(refItem => {
+      const rutRef = normalizeRut(refItem.rut)
+      // Solo considerar bajas a aquellos que están activos actualmente
+      if (refItem.status === 'egreso') return false
+      return !monthlyData.some(monthly => monthly.rut === rutRef)
+    })
+    
     setComparisonResult({ ingresos, egresos, totalExcel: monthlyData })
     setIsProcessing(false)
   }
@@ -171,28 +177,31 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     setIsProcessing(true)
     try {
       const timestamp = new Date().toISOString()
+      
+      // Lista de RUTs que vienen en el Excel (Activos)
+      const activosRuts = new Set(comparisonResult.totalExcel.map(i => i.rut))
+      // Lista de RUTs que deben marcarse como baja
+      const bajasRuts = new Set(comparisonResult.egresos.map(i => i.rut))
+
       const totalOperations = [...comparisonResult.totalExcel, ...comparisonResult.egresos]
       
-      // Procesar en lotes de 50 para evitar límites de Firestore y errores de timeout
       const chunkSize = 50
       for (let i = 0; i < totalOperations.length; i += chunkSize) {
         const batch = writeBatch(db)
         const chunk = totalOperations.slice(i, i + chunkSize)
         
         chunk.forEach(item => {
-          if (!item.rut) return // Ignorar si no hay RUT
+          if (!item.rut) return
           
-          const isEgreso = comparisonResult.egresos.some(e => e.rut === item.rut)
           const docRef = doc(db, "nomina_maestra", item.rut)
           
-          if (isEgreso) {
-            // Usar set con merge para marcar la baja, garantiza que el documento se cree si no existe
+          if (bajasRuts.has(item.rut)) {
             batch.set(docRef, { 
               status: "egreso", 
-              fechaEgreso: timestamp 
+              fechaEgreso: timestamp,
+              ultimaActualizacion: timestamp
             }, { merge: true })
           } else {
-            // Usar set con merge para actualizar o crear el socio activo
             batch.set(docRef, { 
               ...item, 
               status: "activo", 
@@ -208,7 +217,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
       resetProcess()
     } catch (error: any) {
       console.error("Error al sincronizar nómina:", error)
-      toast({ variant: "destructive", title: "Error en la Sincronización", description: "Hubo un problema al escribir en la base de datos." })
+      toast({ variant: "destructive", title: "Error en la Sincronización", description: error.message })
     } finally {
       setIsProcessing(false)
     }
@@ -401,7 +410,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                           <UserPlus className="w-4 h-4" /> Altas / Nuevos Ingresos ({comparisonResult.ingresos.length})
                         </span>
                       </div>
-                      <ScrollArea className="max-h-40 p-4">
+                      <ScrollArea className="max-h-[400px] p-4">
                         <div className="space-y-2">
                           {comparisonResult.ingresos.map(i => (
                             <div key={i.rut} className="p-3 bg-white rounded-xl border border-emerald-100 text-xs shadow-sm flex justify-between">
@@ -420,7 +429,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                           <UserMinus className="w-4 h-4" /> Bajas / Egresos ({comparisonResult.egresos.length})
                         </span>
                       </div>
-                      <ScrollArea className="max-h-40 p-4">
+                      <ScrollArea className="max-h-[400px] p-4">
                         <div className="space-y-2">
                           {comparisonResult.egresos.map(e => (
                             <div key={e.rut} className="p-3 bg-white rounded-xl border border-rose-100 text-xs shadow-sm flex justify-between">
@@ -452,7 +461,6 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     <Badge variant="outline" className="font-black bg-white border-primary/10">{filteredNomina.length} Registros en Pantalla</Badge>
                   </div>
                   
-                  {/* CONTENEDOR CON SCROLL DEDICADO PARA LA TABLA */}
                   <div className="overflow-auto max-h-[500px]">
                     <Table>
                       <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
