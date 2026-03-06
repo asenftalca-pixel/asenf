@@ -182,10 +182,12 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
       comparisonResult.egresos.forEach(item => {
         if (item.id || item.rut) {
-          batch.update(doc(db, "nomina_maestra", item.id || item.rut), { 
+          // Usamos set con merge en lugar de update para evitar el error "No document to update"
+          // si el documento no existe aún en Firestore.
+          batch.set(doc(db, "nomina_maestra", item.id || item.rut), { 
             status: "egreso", 
             fechaEgreso: timestamp 
-          })
+          }, { merge: true })
         }
       })
 
@@ -193,6 +195,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
       toast({ title: "Sincronización Exitosa", description: "La base de datos se ha actualizado correctamente." })
       resetProcess()
     } catch (error: any) {
+      console.error("Error al sincronizar nómina:", error)
       toast({ variant: "destructive", title: "Error", description: error.message })
     } finally {
       setIsProcessing(false)
