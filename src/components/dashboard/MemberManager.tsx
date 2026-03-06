@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * MemberManager - Sistema de Gestión de Nóminas y Socios.
+ * Optimizado con procesamiento por lotes y scroll dedicado.
  */
 export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const db = useFirestore()
@@ -52,7 +53,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     return query(collection(db, "nomina_maestra"), orderBy("nombre", "asc"))
   }, [db])
 
-  const { data: currentNominaRaw } = useCollection(nominaQuery)
+  const { data: currentNominaRaw, isLoading: loadingNomina } = useCollection(nominaQuery)
   const currentNomina = currentNominaRaw || []
 
   const filteredNomina = useMemo(() => {
@@ -169,34 +170,45 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
     if (!db || !comparisonResult) return
     setIsProcessing(true)
     try {
-      const batch = writeBatch(db)
       const timestamp = new Date().toISOString()
+      const totalOperations = [...comparisonResult.totalExcel, ...comparisonResult.egresos]
       
-      comparisonResult.totalExcel.forEach(item => {
-        batch.set(doc(db, "nomina_maestra", item.id), { 
-          ...item, 
-          status: "activo", 
-          ultimaActualizacion: timestamp 
-        }, { merge: true })
-      })
+      // Procesar en lotes de 50 para evitar límites de Firestore y errores de timeout
+      const chunkSize = 50
+      for (let i = 0; i < totalOperations.length; i += chunkSize) {
+        const batch = writeBatch(db)
+        const chunk = totalOperations.slice(i, i + chunkSize)
+        
+        chunk.forEach(item => {
+          if (!item.rut) return // Ignorar si no hay RUT
+          
+          const isEgreso = comparisonResult.egresos.some(e => e.rut === item.rut)
+          const docRef = doc(db, "nomina_maestra", item.rut)
+          
+          if (isEgreso) {
+            // Usar set con merge para marcar la baja, garantiza que el documento se cree si no existe
+            batch.set(docRef, { 
+              status: "egreso", 
+              fechaEgreso: timestamp 
+            }, { merge: true })
+          } else {
+            // Usar set con merge para actualizar o crear el socio activo
+            batch.set(docRef, { 
+              ...item, 
+              status: "activo", 
+              ultimaActualizacion: timestamp 
+            }, { merge: true })
+          }
+        })
+        
+        await batch.commit()
+      }
 
-      comparisonResult.egresos.forEach(item => {
-        if (item.id || item.rut) {
-          // Usamos set con merge en lugar de update para evitar el error "No document to update"
-          // si el documento no existe aún en Firestore.
-          batch.set(doc(db, "nomina_maestra", item.id || item.rut), { 
-            status: "egreso", 
-            fechaEgreso: timestamp 
-          }, { merge: true })
-        }
-      })
-
-      await batch.commit()
       toast({ title: "Sincronización Exitosa", description: "La base de datos se ha actualizado correctamente." })
       resetProcess()
     } catch (error: any) {
       console.error("Error al sincronizar nómina:", error)
-      toast({ variant: "destructive", title: "Error", description: error.message })
+      toast({ variant: "destructive", title: "Error en la Sincronización", description: "Hubo un problema al escribir en la base de datos." })
     } finally {
       setIsProcessing(false)
     }
@@ -241,7 +253,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
               <Files className="w-5 h-5 text-secondary" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-black tracking-tight uppercase">Gestión de Nóminas Maestra</DialogTitle>
+              <DialogTitle className="text-lg font-black tracking-tight uppercase">Gestión de Nómina Maestra</DialogTitle>
             </div>
           </div>
           {view === 'manual' && (
@@ -434,49 +446,60 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   </div>
                 )}
 
-                <div className="bg-white border rounded-[2rem] shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
+                <div className="bg-white border rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
+                  <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between shrink-0">
                     <h3 className="text-xs font-black uppercase tracking-widest text-primary/60">Base de Datos Institucional</h3>
                     <Badge variant="outline" className="font-black bg-white border-primary/10">{filteredNomina.length} Registros en Pantalla</Badge>
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/10">
-                        <TableHead className="font-black text-[10px] uppercase px-6">Funcionario / Establecimiento</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6">RUT</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6 text-center">Estado</TableHead>
-                        <TableHead className="font-black text-[10px] uppercase px-6 text-right">Acción</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredNomina.map((item) => (
-                        <TableRow key={item.id} className={cn("group hover:bg-primary/5", item.status === 'egreso' && "opacity-60")}>
-                          <TableCell className="px-6 py-4">
-                            <div className="text-sm font-bold text-primary">{item.nombre}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-black">{item.establecimiento}</div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs px-6 font-bold">{item.rut}</TableCell>
-                          <TableCell className="text-center px-6">
-                            <Badge variant={item.status === 'egreso' ? 'destructive' : 'default'} className="rounded-lg text-[9px] font-black uppercase">
-                              {item.status === 'egreso' ? 'Baja' : 'Activo'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right px-6">
-                            <Button variant="ghost" size="icon" className="hover:text-rose-500 rounded-full h-8 w-8" onClick={() => deleteDoc(doc(db, "nomina_maestra", item.id))}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
+                  
+                  {/* CONTENEDOR CON SCROLL DEDICADO PARA LA TABLA */}
+                  <div className="overflow-auto max-h-[500px]">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                        <TableRow className="bg-muted/10">
+                          <TableHead className="font-black text-[10px] uppercase px-6 h-12">Funcionario / Establecimiento</TableHead>
+                          <TableHead className="font-black text-[10px] uppercase px-6 h-12">RUT</TableHead>
+                          <TableHead className="font-black text-[10px] uppercase px-6 h-12 text-center">Estado</TableHead>
+                          <TableHead className="font-black text-[10px] uppercase px-6 h-12 text-right">Acción</TableHead>
                         </TableRow>
-                      ))}
-                      {filteredNomina.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-60 text-center text-muted-foreground/50 italic font-medium">
-                            No se encontraron registros que coincidan con la búsqueda.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {loadingNomina ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-40 text-center">
+                              <Loader2 className="w-8 h-8 animate-spin mx-auto opacity-20" />
+                              <p className="text-[10px] font-black uppercase text-muted-foreground mt-2">Accediendo a Cloud Firestore...</p>
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredNomina.map((item) => (
+                          <TableRow key={item.id} className={cn("group hover:bg-primary/5", item.status === 'egreso' && "opacity-60")}>
+                            <TableCell className="px-6 py-4">
+                              <div className="text-sm font-bold text-primary">{item.nombre}</div>
+                              <div className="text-[10px] text-muted-foreground uppercase font-black">{item.establecimiento}</div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs px-6 font-bold">{item.rut}</TableCell>
+                            <TableCell className="text-center px-6">
+                              <Badge variant={item.status === 'egreso' ? 'destructive' : 'default'} className="rounded-lg text-[9px] font-black uppercase">
+                                {item.status === 'egreso' ? 'Baja' : 'Activo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right px-6">
+                              <Button variant="ghost" size="icon" className="hover:text-rose-500 rounded-full h-8 w-8" onClick={() => deleteDoc(doc(db, "nomina_maestra", item.id))}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!loadingNomina && filteredNomina.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-60 text-center text-muted-foreground/50 italic font-medium">
+                              No se encontraron registros que coincidan con la búsqueda.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </>
             )}
@@ -485,7 +508,7 @@ export function MemberManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
         <DialogFooter className="px-6 py-4 bg-white border-t shrink-0">
           <div className="flex items-center justify-between w-full">
-            <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.3em]">
+            <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.2em]">
               SISTEMA ESTRATÉGICO FENASENF &copy; {new Date().getFullYear()}
             </p>
             <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
