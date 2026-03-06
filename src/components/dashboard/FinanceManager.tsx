@@ -91,7 +91,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { data: pendingOrdersRaw } = useCollection(pendingGasOrdersQuery)
 
   const allMovements = allMovementsRaw || []
-  // Solo liquidamos pedidos que el socio ya pagó (checked/delivered)
   const pendingOrders = (pendingOrdersRaw || []).filter(p => 
     ['checked', 'delivered', 'revisado', 'entregado'].includes(String(p.status).toLowerCase())
   )
@@ -135,7 +134,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const monthsList = useMemo(() => Object.keys(movementsByMonth), [movementsByMonth])
 
-  // Lógica de Liquidación: EXCLUIR ABASTIBLE Y GAS DEL SUR (Ya pagados al cargar stock)
   const liquidationSummary = useMemo(() => {
     const brands: Record<string, { totalDebt: number, orders: any[] }> = {}
     
@@ -144,7 +142,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         order.items.forEach((item: any) => {
           const brandName = (item.marca || "Desconocida").toLowerCase().trim()
           
-          // SALTAR MARCAS QUE TIENEN INVENTARIO PROPIO
           if (brandName.includes("abastible") || brandName.includes("sur")) return;
 
           const weight = String(item.peso || "").replace(/\D/g, "")
@@ -173,7 +170,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       const timestamp = serverTimestamp()
       const fechaHoy = format(new Date(), "yyyy-MM-dd")
 
-      // 1. Crear el Egreso en Finanzas
       const financeRef = doc(collection(firestore, "finanzas_asenftalca"))
       batch.set(financeRef, {
         tipo: "egreso",
@@ -187,7 +183,6 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         updatedAt: timestamp
       })
 
-      // 2. Marcar pedidos como pagados al proveedor
       orders.forEach(order => {
         const orderRef = doc(firestore, "pedidos_socios", order.id)
         batch.update(orderRef, {
@@ -214,20 +209,17 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       const batch = writeBatch(firestore)
       let cleaned = 0
 
-      // Categorías a unificar
       const oldCategories = ["GAS", "Gas", "Gas "]
       
       snapshot.docs.forEach(docSnap => {
         const data = docSnap.data()
         const id = docSnap.id
         
-        // 1. Eliminar duplicados con ID aleatoria si es un ingreso de gas
         if (data.categoria === "Venta Gas" || oldCategories.includes(data.categoria)) {
           if (!id.startsWith('gas_income_') && data.orderId) {
             batch.delete(docSnap.ref)
             cleaned++
           }
-          // 2. Unificar nombre de categoría
           if (oldCategories.includes(data.categoria)) {
             batch.update(docSnap.ref, { categoria: "Venta Gas" })
           }
@@ -698,7 +690,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
           <div className="bg-primary p-8 text-primary-foreground border-b border-white/10 shrink-0"><DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle></div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 overflow-y-auto">
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Fecha</Label><Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Tipo</Label><Select value={formData.tipo} onValueChange={(v:any) => setFormData({...formData, tipo: v, categoria: ""})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ingreso">Ingreso (+)</SelectItem><SelectItem value="egreso">Egreso (-)</SelectItem></SelectContent></Select></div></div>
               <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Responsable</Label><Select value={formData.responsable} onValueChange={v => setFormData({...formData, responsable: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase">Cuenta</Label><Select value={formData.cuenta} onValueChange={v => setFormData({...formData, cuenta: v})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div></div>
