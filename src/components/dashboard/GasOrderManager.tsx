@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw, RotateCcw } from "lucide-react"
+import { Flame, CheckCircle, Truck, Calendar, User, ShoppingBag, DollarSign, Loader2, Check, Hash, Package, Download, Receipt, X, ZoomIn, Settings2, Save, AlertCircle, Clock, Trash2, FileSpreadsheet, PlusCircle, ArrowUpCircle, Boxes, Camera, Pencil, RefreshCw, RotateCcw, History, Search } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, doc, updateDoc, query, setDoc, serverTimestamp, deleteDoc, runTransaction, addDoc } from "firebase/firestore"
 import { format, isValid } from "date-fns"
@@ -30,9 +30,11 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isCostConfigOpen, setIsConfigOpen] = useState(false)
   const [isSavingCosts, setIsSavingCosts] = useState(false)
   const [isLoadStockOpen, setIsLoadStockOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isProcessingStock, setIsProcessingStock] = useState(false)
   const [isSyncingStock, setIsSyncingStock] = useState(false)
   const [editingOrderName, setEditingOrderName] = useState<{id: string, name: string} | null>(null)
+  const [historySearch, setHistorySearch] = useState("")
 
   // Formulario para cargar stock
   const [stockForm, setStockForm] = useState({
@@ -101,6 +103,27 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         return timeB - timeA
       })
   }, [allPedidosAll])
+
+  const historyPedidos = useMemo(() => {
+    return allPedidosAll
+      .filter((p: any) => {
+        const estado = (p.status || "").toString().toLowerCase()
+        return estado === 'delivered' || estado === 'entregado'
+      })
+      .map((p: any) => ({
+        ...p,
+        nombreNormalizado: p.socioNombre || p.socioName || p.Nombre || p.Socio || 'Nombre no encontrado',
+        detalleNormalizado: p.detalleResumen || 'Sin detalle',
+        fechaEntrega: parseSafeDate(p.updatedAt || p.fecha),
+        fechaPedido: parseSafeDate(p.createdAt || p.fecha)
+      }))
+      .filter(p => p.nombreNormalizado.toLowerCase().includes(historySearch.toLowerCase()))
+      .sort((a, b) => {
+        const timeA = a.fechaEntrega ? a.fechaEntrega.getTime() : 0
+        const timeB = b.fechaEntrega ? b.fechaEntrega.getTime() : 0
+        return timeB - timeA
+      })
+  }, [allPedidosAll, historySearch])
 
   const handleUpdateName = async () => {
     if (!db || !editingOrderName) return
@@ -380,6 +403,13 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </Button>
               <Button 
                 variant="secondary" 
+                className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 bg-primary/10 text-white border-2 border-white/20 hover:bg-white/10 gap-2 text-xs md:text-sm" 
+                onClick={() => setIsHistoryOpen(true)}
+              >
+                <History className="w-4 h-4 md:w-5 md:h-5" /> HISTORIAL DE ENTREGAS
+              </Button>
+              <Button 
+                variant="secondary" 
                 className="flex-1 lg:flex-none rounded-xl font-bold h-11 md:h-12 px-4 md:px-6 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100 text-xs md:text-sm" 
                 onClick={handleExportExcel}
               >
@@ -477,7 +507,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                               <div className="flex items-center gap-2">
                                 <div className="text-xs md:text-sm font-bold text-primary uppercase tracking-tight">{p.nombreNormalizado}</div>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={() => setEditingOrderName({id: p.id, name: p.nombreNormalizado})}>
-                                  <Pencil className="w-3 h-3" />
+                                  <Pencil className="w-3.5 h-3.5" />
                                 </Button>
                               </div>
                               <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground">{p.fechaObjeto ? format(p.fechaObjeto, "dd MMM, HH:mm", { locale: es }) : "S/F"}</div>
@@ -551,6 +581,94 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO HISTORIAL DE ENTREGAS */}
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="sm:max-w-[90vw] h-[85vh] flex flex-col rounded-[2.5rem] p-0 overflow-hidden bg-white border-none shadow-2xl">
+          <div className="bg-primary p-6 md:p-8 text-primary-foreground shrink-0 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/10 rounded-2xl">
+                <History className="w-6 h-6 md:w-8 md:h-8 text-secondary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl md:text-2xl font-black uppercase">Historial de Despachos</DialogTitle>
+                <DialogDescription className="text-primary-foreground/60">Pedidos entregados y finalizados exitosamente.</DialogDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative w-48 md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                <Input 
+                  placeholder="Buscar socio..." 
+                  className="pl-9 h-10 rounded-xl border-none bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/20"
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                />
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsHistoryOpen(false)} className="text-white hover:bg-white/10 rounded-full">
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+          </div>
+
+          <ScrollArea className="flex-1 bg-muted/5">
+            <div className="p-6 md:p-10">
+              <div className="bg-white border rounded-[2rem] shadow-sm overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-black text-[10px] uppercase px-8 h-14">Socio</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase">Detalle Pedido</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase text-center">Fecha Pedido</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase text-center">Fecha Entrega</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase text-right px-8">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyPedidos.map((p: any) => (
+                      <TableRow key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <TableCell className="px-8 py-4">
+                          <div className="font-bold text-primary uppercase text-sm">{p.nombreNormalizado}</div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-medium text-muted-foreground">{p.detalleNormalizado}</span>
+                        </TableCell>
+                        <TableCell className="text-center text-xs font-medium text-slate-400">
+                          {p.fechaPedido ? format(p.fechaPedido, "dd/MM/yyyy HH:mm", { locale: es }) : "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-bold text-[10px]">
+                            {p.fechaEntrega ? format(p.fechaEntrega, "dd/MM/yyyy HH:mm", { locale: es }) : "Finalizado"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right px-8 font-black text-primary">
+                          ${new Intl.NumberFormat('es-CL').format(p.totalGeneral || 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {historyPedidos.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-60 text-center text-muted-foreground/40 italic font-bold">
+                          No hay registros de entregas finalizadas.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="p-6 bg-white border-t shrink-0 flex items-center justify-between">
+            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <Truck className="w-4 h-4" /> Total Histórico: {historyPedidos.length} Pedidos Despachados
+            </div>
+            <div className="text-[10px] font-black text-primary/40 uppercase tracking-widest">
+              Base de Datos Central ASENF Activa
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
