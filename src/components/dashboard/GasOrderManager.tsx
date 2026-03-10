@@ -35,6 +35,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isSyncingStock, setIsSyncingStock] = useState(false)
   const [editingOrderName, setEditingOrderName] = useState<{id: string, name: string} | null>(null)
   const [historySearch, setHistorySearch] = useState("")
+  const [activeSearch, setActiveSearch] = useState("")
 
   // Formulario para cargar stock
   const [stockForm, setStockForm] = useState({
@@ -97,12 +98,13 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         fechaObjeto: parseSafeDate(p.createdAt || p.fecha || p.Fecha),
         stock_procesado: !!p.stock_procesado
       }))
+      .filter((p: any) => p.nombreNormalizado.toLowerCase().includes(activeSearch.toLowerCase()))
       .sort((a: any, b: any) => {
         const timeA = a.fechaObjeto ? a.fechaObjeto.getTime() : 0
         const timeB = b.fechaObjeto ? b.fechaObjeto.getTime() : 0
         return timeB - timeA
       })
-  }, [allPedidosAll])
+  }, [allPedidosAll, activeSearch])
 
   const historyPedidos = useMemo(() => {
     return allPedidosAll
@@ -479,10 +481,19 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               </div>
 
               <div className="bg-white border rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm overflow-hidden">
-                <div className="px-4 md:px-8 py-4 md:py-5 border-b bg-slate-50/50 flex items-center justify-between">
+                <div className="px-4 md:px-8 py-4 md:py-5 border-b bg-slate-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
                   <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-primary/40">Listado de Pedidos en Curso</h3>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 font-bold text-[10px]">{pedidos.length} Pendientes</Badge>
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="relative w-full md:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Buscar por nombre..." 
+                        className="pl-9 h-9 rounded-xl border-none bg-muted/40 text-xs font-medium focus-visible:ring-primary/20"
+                        value={activeSearch}
+                        onChange={(e) => setActiveSearch(e.target.value)}
+                      />
+                    </div>
+                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 font-bold text-[10px] shrink-0">{pedidos.length} Pendientes</Badge>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -573,7 +584,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                         )
                       })}
                       {pedidos.length === 0 && !loading && (
-                        <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground/40 italic font-bold">No hay pedidos pendientes en la base de datos.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground/40 italic font-bold">No hay pedidos que coincidan con la búsqueda.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -695,9 +706,7 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2rem] bg-white border-none shadow-2xl">
           <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
             <h3 className="font-black uppercase text-sm">Comprobante de Pago</h3>
-            <Button variant="ghost" size="icon" onClick={() => setSelectedReceipt(null)} className="text-white hover:bg-white/10 rounded-full">
-              <X className="w-5 h-5" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedReceipt(null)} className="text-white hover:bg-white/10 rounded-full"><X className="w-5 h-5" /></Button>
           </div>
           <div className="p-8 flex items-center justify-center bg-slate-50 min-h-[400px]">
             {selectedReceipt && (
@@ -753,6 +762,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
               <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cantidad de Vales</Label>
               <Input 
                 type="number" 
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="h-12 rounded-xl bg-muted/30 border-none font-black text-primary text-lg" 
                 value={stockForm.cantidad || ""} 
                 onChange={(e) => setStockForm({...stockForm, cantidad: Number(e.target.value)})}
@@ -779,6 +790,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                   <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Costo Total Pagado ($)</Label>
                   <Input 
                     type="number" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="h-12 rounded-xl bg-white border-none font-black text-rose-600 text-lg" 
                     placeholder="Ej: 150000"
                     value={stockForm.costoTotal || ""} 
@@ -833,6 +846,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                           <Label className="text-[10px] font-bold uppercase text-muted-foreground">{weight} Kg</Label>
                           <Input 
                             type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             className="h-10 rounded-xl bg-muted/20 border-none font-black"
                             value={editingCosts[key] || ""}
                             onChange={(e) => setEditingCosts({...editingCosts, [key]: Number(e.target.value)})}
