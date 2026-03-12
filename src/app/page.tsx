@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -8,10 +9,12 @@ import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDia
 import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
 import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnouncementDialog'
 import { GasRequestDialog } from '@/components/dashboard/GasRequestDialog'
-import { AppWindow, Lock } from 'lucide-react'
+import { AppWindow, Lock, Flame, Boxes, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useFirebase } from '@/firebase'
+import { useFirebase, useDoc, useMemoFirebase, useFirestore } from '@/firebase'
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login'
+import { doc } from 'firebase/firestore'
+import { cn } from '@/lib/utils'
 
 export default function Home() {
   const [isCertificateOpen, setIsCertificateOpen] = useState(false)
@@ -21,6 +24,7 @@ export default function Home() {
   const [isGasOpen, setIsGasOpen] = useState(false)
   const router = useRouter()
   const { auth } = useFirebase()
+  const db = useFirestore()
 
   // Autenticación automática para interactuar con Firestore (Stock/Pedidos)
   useEffect(() => {
@@ -29,15 +33,12 @@ export default function Home() {
     }
   }, [auth])
 
-  // Desactivado temporalmente: Ventana emergente de convocatoria
-  /*
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsAssemblyOpen(true)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [])
-  */
+  const inventoryRef = useMemoFirebase(() => {
+    if (!db) return null
+    return doc(db, "configuracion_gas", "inventory")
+  }, [db])
+
+  const { data: inventoryData } = useDoc(inventoryRef)
 
   const handleAppClick = (app: Application) => {
     if (app.id === 'app-certificate') {
@@ -52,6 +53,12 @@ export default function Home() {
       window.open(app.url, '_blank')
     }
   }
+
+  const weights = ["5", "11", "15", "45"]
+  const brands = [
+    { label: "Abastible", key: "abastible" },
+    { label: "Gas del Sur", key: "gas del sur" }
+  ]
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -83,6 +90,66 @@ export default function Home() {
               <div className="text-3xl font-black text-primary">{PUBLIC_APPS.length}</div>
               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">Sistemas Activos</div>
             </div>
+          </div>
+        </div>
+
+        {/* BANNER DE STOCK DE GAS */}
+        <div className="mb-12 bg-white rounded-[2rem] border-2 border-dashed border-primary/10 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="bg-primary/5 px-8 py-6 border-b border-primary/5 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary rounded-2xl text-white">
+                <Flame className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-primary uppercase tracking-tight">Disponibilidad de Vales de Gas</h3>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Actualizado en tiempo real</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border shadow-sm">
+              <Boxes className="w-4 h-4 text-secondary" />
+              <span className="text-[10px] font-black uppercase text-primary tracking-widest">Stock Presencial</span>
+            </div>
+          </div>
+          
+          <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {brands.map((brand) => (
+              <div key={brand.key} className="space-y-4">
+                <h4 className="text-sm font-black text-primary/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-secondary" />
+                  {brand.label}
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {weights.map((w) => {
+                    const count = inventoryData?.[`${brand.key}_${w}`] || 0
+                    return (
+                      <div 
+                        key={w} 
+                        className={cn(
+                          "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all",
+                          count > 0 ? "bg-emerald-50/30 border-emerald-100" : "bg-slate-50 border-slate-100 grayscale opacity-50"
+                        )}
+                      >
+                        <span className="text-[10px] font-black text-muted-foreground uppercase mb-1">{w}Kg</span>
+                        <span className={cn(
+                          "text-3xl font-black tracking-tighter",
+                          count > 0 ? "text-emerald-600" : "text-slate-400"
+                        )}>
+                          {count}
+                        </span>
+                        <span className="text-[8px] font-bold text-muted-foreground/40 uppercase mt-1">Vales</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-8 py-4 bg-slate-50 border-t flex items-center gap-3">
+            <Info className="w-4 h-4 text-primary opacity-40" />
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
+              Recuerda que para retirar tus vales debes presentar el comprobante de pago en tesorería. 
+              Sujeto a confirmación de stock físico al momento del retiro.
+            </p>
           </div>
         </div>
 
