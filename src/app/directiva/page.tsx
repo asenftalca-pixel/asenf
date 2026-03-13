@@ -9,12 +9,12 @@ import { MemberManager } from '@/components/dashboard/MemberManager'
 import { TaskManager } from '@/components/dashboard/TaskManager'
 import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
 import { GasOrderManager } from '@/components/dashboard/GasOrderManager'
-import { AppWindow, Cloud, Loader2, Database, ShieldCheck, Lock, ArrowLeft, ArrowRight, AlertTriangle, Flame } from 'lucide-react'
-import { FirebaseClientProvider, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase'
+import { AppWindow, Loader2, ShieldCheck, ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react'
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase'
 import { collection, query, where, doc } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -42,7 +42,6 @@ const Landmark = ({ className }: { className?: string }) => (
 
 /**
  * DashboardContent - Núcleo del Panel Estratégico.
- * Sincroniza KPIs de Tareas, Nómina y Pedidos de Gas en tiempo real.
  */
 function DashboardContent() {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
@@ -52,9 +51,14 @@ function DashboardContent() {
   const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
   const [isGasManagerOpen, setIsGasManagerOpen] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [currentYear, setCurrentYear] = useState<number | null>(null)
   const router = useRouter()
 
   const db = useFirestore()
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear())
+  }, [])
 
   // KPI: Compromisos Pendientes
   const tasksQuery = useMemoFirebase(() => {
@@ -103,7 +107,6 @@ function DashboardContent() {
     }).length
   }, [allGasOrders])
 
-  // Cálculo de deuda proveedor para visualización rápida
   const pendingSupplierDebt = useMemo(() => {
     if (!pendingSupplierOrders || !costsData?.values) return 0
     let total = 0
@@ -245,7 +248,7 @@ function DashboardContent() {
       <footer className="mt-24 py-12 border-t bg-muted/30">
         <div className="container mx-auto px-4 text-center">
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.3em]">
-            &copy; {new Date().getFullYear()} SISTEMA ESTRATÉGICO FENASENF TALCA & DSSM. CLOUD FIRESTORE ACTIVO.
+            &copy; {currentYear || '...'} SISTEMA ESTRATÉGICO FENASENF TALCA & DSSM. CLOUD FIRESTORE ACTIVO.
           </p>
         </div>
       </footer>
@@ -306,9 +309,5 @@ export default function DirectivaPage() {
     )
   }
 
-  return (
-    <FirebaseClientProvider>
-      <DashboardContent />
-    </FirebaseClientProvider>
-  )
+  return <DashboardContent />
 }

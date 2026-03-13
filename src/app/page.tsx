@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -16,15 +15,28 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login'
 import { doc } from 'firebase/firestore'
 import { cn } from '@/lib/utils'
 
+const WEIGHTS = ["5", "11", "15", "45"]
+const BRANDS = [
+  { label: "Abastible", key: "abastible" },
+  { label: "Gas del Sur", key: "gas del sur" }
+]
+
 export default function Home() {
   const [isCertificateOpen, setIsCertificateOpen] = useState(false)
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
   const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
   const [isGasOpen, setIsGasOpen] = useState(false)
+  const [currentYear, setCurrentYear] = useState<number | null>(null)
+  
   const router = useRouter()
   const { auth } = useFirebase()
   const db = useFirestore()
+
+  // Evitar errores de hidratación con el año
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear())
+  }, [])
 
   // Autenticación automática para interactuar con Firestore (Stock/Pedidos)
   useEffect(() => {
@@ -53,12 +65,6 @@ export default function Home() {
       window.open(app.url, '_blank')
     }
   }
-
-  const weights = ["5", "11", "15", "45"]
-  const brands = [
-    { label: "Abastible", key: "abastible" },
-    { label: "Gas del Sur", key: "gas del sur" }
-  ]
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -112,14 +118,14 @@ export default function Home() {
           </div>
           
           <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {brands.map((brand) => (
+            {BRANDS.map((brand) => (
               <div key={brand.key} className="space-y-4">
                 <h4 className="text-sm font-black text-primary/40 uppercase tracking-[0.2em] flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-secondary" />
                   {brand.label}
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {weights.map((w) => {
+                  {WEIGHTS.map((w) => {
                     const count = inventoryData?.[`${brand.key}_${w}`] || 0
                     return (
                       <div 
@@ -172,7 +178,7 @@ export default function Home() {
               <span className="font-headline font-bold text-muted-foreground uppercase tracking-wider">FENASENF TALCA & DSSM</span>
             </div>
             <p className="text-sm text-muted-foreground font-medium">
-              &copy; {new Date().getFullYear()} Centro de Control Organizacional. Todos los derechos reservados.
+              &copy; {currentYear || '...'} Centro de Control Organizacional. Todos los derechos reservados.
             </p>
           </div>
           
