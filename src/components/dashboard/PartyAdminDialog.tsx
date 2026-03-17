@@ -8,12 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sparkles, Search, FileSpreadsheet, Loader2, Camera, Trash2, X, Users, Utensils } from "lucide-react"
+import { Sparkles, Search, FileSpreadsheet, Loader2, Camera, Trash2, X, Users, Utensils, CheckCircle2, CheckCircle } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, deleteDoc, doc } from "firebase/firestore"
+import { collection, query, orderBy, deleteDoc, doc, writeBatch, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 interface PartyAdminDialogProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ interface PartyAdminDialogProps {
 export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
   const [search, setSearch] = useState("")
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const db = useFirestore()
 
   const registrationsQuery = useMemoFirebase(() => {
@@ -46,6 +48,49 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
     return registrations.reduce((acc, r) => acc + (Number(r.monto) || 0), 0)
   }, [registrations])
 
+  const handleVerifyPayment = async (registration: any) => {
+    if (!db || registration.status === 'checked') return
+    
+    setIsProcessing(true)
+    try {
+      const batch = writeBatch(db)
+      const timestamp = serverTimestamp()
+      const today = format(new Date(), "yyyy-MM-dd")
+
+      // 1. Actualizar estado en la lista de la fiesta
+      const regRef = doc(db, "fiesta_enfermeria", registration.id)
+      batch.update(regRef, { 
+        status: 'checked',
+        updatedAt: timestamp 
+      })
+
+      // 2. Crear registro de ingreso en Finanzas
+      const financeRef = doc(db, "finanzas_asenftalca", `party_income_${registration.id}`)
+      batch.set(financeRef, {
+        tipo: "ingreso",
+        categoria: "Copago fiesta",
+        monto: Number(registration.monto),
+        fecha: today,
+        responsable: "Sistema",
+        cuenta: "Cuenta ASENF",
+        glosa: `Pago Fiesta - Socio: ${registration.nombre}`,
+        registrationId: registration.id,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      }, { merge: true })
+
+      await batch.commit()
+      toast({ 
+        title: "Pago Verificado", 
+        description: `Inscripción de ${registration.nombre} validada y registrada en finanzas.` 
+      })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error al verificar", description: e.message })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!db || !window.confirm("¿Eliminar esta inscripción?")) return
     try {
@@ -58,9 +103,17 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
 
   const exportToCSV = () => {
     if (registrations.length === 0) return
-    const headers = ["Nombre", "Servicio", "Email", "Teléfono", "Tipo Socio", "Plato", "Monto", "Fecha"]
+    const headers = ["Nombre", "Servicio", "Email", "Teléfono", "Tipo Socio", "Plato", "Monto", "Estado", "Fecha"]
     const rows = registrations.map(r => [
-      r.nombre, r.servicio, r.email, r.telefono, r.tipoSocio, r.eleccionPlato || "No especificado", r.monto, r.fecha
+      r.nombre, 
+      r.servicio, 
+      r.email, 
+      r.telefono, 
+      r.tipoSocio, 
+      r.eleccionPlato || "No especificado", 
+      r.monto,
+      r.status === 'checked' ? 'Pagado' : 'Pendiente',
+      r.fecha
     ])
     const csvContent = [headers.join(","), ...rows.map(row => row.join(","))].join("\n")
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -126,44 +179,67 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
                       <TableHead className="font-black text-[10px] uppercase">Plato</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-center">Tipo Socio</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-right">Monto</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase text-center">Estado</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-center px-8">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={5} className="h-40 text-center"><Loader2 className="w-10 h-10 animate-spin opacity-20 mx-auto" /></TableCell></TableRow>
-                    ) : filtered.map(r => (
-                      <TableRow key={r.id} className="hover:bg-slate-50">
-                        <TableCell className="px-8 py-4">
-                          <div className="font-bold text-primary uppercase text-sm">{r.nombre}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase font-black">{r.servicio}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Utensils className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs font-bold text-slate-600">{r.eleccionPlato || "No especificado"}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="rounded-lg text-[9px] font-black uppercase bg-secondary/10 text-primary border-secondary/30">
-                            {r.tipoSocio}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-black text-primary">
-                          {formatCLP(r.monto)}
-                        </TableCell>
-                        <TableCell className="text-center px-8">
-                          <div className="flex justify-center gap-2">
-                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl bg-slate-100 text-primary hover:bg-slate-200" onClick={() => setSelectedReceipt(r.comprobanteUrl)}>
-                              <Camera className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100" onClick={() => handleDelete(r.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      <TableRow><TableCell colSpan={6} className="h-40 text-center"><Loader2 className="w-10 h-10 animate-spin opacity-20 mx-auto" /></TableCell></TableRow>
+                    ) : filtered.map(r => {
+                      const isChecked = r.status === 'checked';
+                      return (
+                        <TableRow key={r.id} className={cn("hover:bg-slate-50 transition-colors", isChecked && "bg-emerald-50/30")}>
+                          <TableCell className="px-8 py-4">
+                            <div className="font-bold text-primary uppercase text-sm">{r.nombre}</div>
+                            <div className="text-[10px] text-muted-foreground uppercase font-black">{r.servicio}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Utensils className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs font-bold text-slate-600">{r.eleccionPlato || "No especificado"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="rounded-lg text-[9px] font-black uppercase bg-secondary/10 text-primary border-secondary/30">
+                              {r.tipoSocio}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-black text-primary">
+                            {formatCLP(r.monto)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className={cn(
+                              "rounded-lg text-[8px] font-black uppercase px-2 py-1",
+                              isChecked ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"
+                            )}>
+                              {isChecked ? "Pagado" : "Pendiente"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center px-8">
+                            <div className="flex justify-center gap-2">
+                              {r.comprobanteUrl && (
+                                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl bg-slate-100 text-primary hover:bg-slate-200" onClick={() => setSelectedReceipt(r.comprobanteUrl)}>
+                                  <Camera className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button 
+                                size="icon" 
+                                variant="secondary" 
+                                className={cn("h-9 w-9 rounded-xl transition-all shadow-sm", isChecked ? "bg-emerald-100 text-emerald-700 opacity-50" : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600")}
+                                onClick={() => handleVerifyPayment(r)}
+                                disabled={isChecked || isProcessing}
+                              >
+                                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100" onClick={() => handleDelete(r.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
