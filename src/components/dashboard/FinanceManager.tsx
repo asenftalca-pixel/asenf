@@ -80,7 +80,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }, [firestore])
 
   const costsRef = useMemoFirebase(() => {
-    if (!db) return null
+    if (!firestore) return null
     return doc(firestore, "settings", "gas_costs")
   }, [firestore])
 
