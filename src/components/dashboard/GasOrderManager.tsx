@@ -371,38 +371,55 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     
     allPedidosAll.forEach(p => {
       const socio = p.socioNombre || p.socioName || p.Nombre || 'Socio'
-      
-      // Fix: Robust date parsing using existing helper
       const dateObj = parseSafeDate(p.createdAt || p.fecha || p.Fecha)
       const fechaStr = dateObj ? format(dateObj, "dd/MM/yyyy", { locale: es }) : 'S/F'
-      
       const estado = p.status || 'Pendiente'
       
       if (Array.isArray(p.items) && p.items.length > 0) {
+        // Agrupar por marca dentro de un mismo pedido para tener las columnas de kilos limpias
+        const marcasEnPedido: Record<string, any> = {}
+        
         p.items.forEach((item: any) => {
+          const marca = item.marca || 'N/A'
+          if (!marcasEnPedido[marca]) {
+            marcasEnPedido[marca] = {
+              '5kg': 0, '11kg': 0, '15kg': 0, '45kg': 0, totalMarca: 0
+            }
+          }
+          const weightKey = `${String(item.peso || "").replace(/\D/g, "")}kg`
+          if (marcasEnPedido[marca].hasOwnProperty(weightKey)) {
+            marcasEnPedido[marca][weightKey] += Number(item.cantidad || 0)
+          }
+          marcasEnPedido[marca].totalMarca += Number(item.total || 0)
+        })
+
+        Object.entries(marcasEnPedido).forEach(([marca, data]) => {
           detailedData.push({
             Fecha: fechaStr,
             Socio: socio,
-            Marca: item.marca || 'N/A',
-            Kilos: item.peso || 'N/A',
-            Cantidad: item.cantidad || 0,
-            Precio_Unitario: item.precioUnitario || 0,
-            Subtotal_Item: item.total || 0,
-            Total_Pedido: p.totalGeneral || 0,
+            Marca: marca,
+            '5kg': data['5kg'] || 0,
+            '11kg': data['11kg'] || 0,
+            '15kg': data['15kg'] || 0,
+            '45kg': data['45kg'] || 0,
+            'Total Marca $': data.totalMarca,
+            'Total General Pedido $': p.totalGeneral || 0,
             Estado: estado
           })
         })
       } else {
-        // Fallback para pedidos antiguos o sin array de items
+        // Fallback para registros antiguos sin array de items
+        const weightKey = `${String(p.Kilos || "").replace(/\D/g, "")}kg`
         detailedData.push({
           Fecha: fechaStr,
           Socio: socio,
-          Marca: p.Marca || 'Ver detalle',
-          Kilos: p.Kilos || 'Ver detalle',
-          Cantidad: 1,
-          Precio_Unitario: p.totalGeneral || 0,
-          Subtotal_Item: p.totalGeneral || 0,
-          Total_Pedido: p.totalGeneral || 0,
+          Marca: p.Marca || 'N/A',
+          '5kg': weightKey === '5kg' ? 1 : 0,
+          '11kg': weightKey === '11kg' ? 1 : 0,
+          '15kg': weightKey === '15kg' ? 1 : 0,
+          '45kg': weightKey === '45kg' ? 1 : 0,
+          'Total Marca $': p.totalGeneral || 0,
+          'Total General Pedido $': p.totalGeneral || 0,
           Estado: estado
         })
       }
@@ -410,10 +427,10 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
     const ws = XLSX.utils.json_to_sheet(detailedData)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Pedidos Detallados")
-    XLSX.writeFile(wb, `Pedidos_Gas_Detallado_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, "Pedidos por Marca y Kilos")
+    XLSX.writeFile(wb, `Reporte_Gas_Kilos_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
     
-    toast({ title: "Excel Generado", description: "Se ha descargado el reporte detallado por marca y kilos." })
+    toast({ title: "Excel Generado", description: "El reporte ahora incluye columnas por cada formato de kilos." })
   }
 
   const weights = ["5", "11", "15", "45"]
