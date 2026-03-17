@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -8,6 +9,7 @@ import { JoinAssociationDialog } from '@/components/dashboard/JoinAssociationDia
 import { AgreementsDialog } from '@/components/dashboard/AgreementsDialog'
 import { AssemblyAnnouncementDialog } from '@/components/dashboard/AssemblyAnnouncementDialog'
 import { GasRequestDialog } from '@/components/dashboard/GasRequestDialog'
+import { PartyRegistrationDialog } from '@/components/dashboard/PartyRegistrationDialog'
 import { AppWindow, Lock, Flame, Boxes, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useFirebase, useDoc, useMemoFirebase, useFirestore } from '@/firebase'
@@ -27,6 +29,7 @@ export default function Home() {
   const [isAgreementsOpen, setIsAgreementsOpen] = useState(false)
   const [isAssemblyOpen, setIsAssemblyOpen] = useState(false)
   const [isGasOpen, setIsGasOpen] = useState(false)
+  const [isPartyOpen, setIsPartyOpen] = useState(false)
   const [currentYear, setCurrentYear] = useState<number | null>(null)
   
   const router = useRouter()
@@ -38,7 +41,7 @@ export default function Home() {
     setCurrentYear(new Date().getFullYear())
   }, [])
 
-  // Autenticación automática para interactuar con Firestore (Stock/Pedidos)
+  // Autenticación automática para interactuar con Firestore
   useEffect(() => {
     if (auth) {
       initiateAnonymousSignIn(auth)
@@ -53,7 +56,9 @@ export default function Home() {
   const { data: inventoryData } = useDoc(inventoryRef)
 
   const handleAppClick = (app: Application) => {
-    if (app.id === 'app-certificate') {
+    if (app.id === 'app-party') {
+      setIsPartyOpen(true)
+    } else if (app.id === 'app-certificate') {
       setIsCertificateOpen(true)
     } else if (app.id === 'app-join') {
       setIsJoinOpen(true)
@@ -199,6 +204,7 @@ export default function Home() {
       <JoinAssociationDialog isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
       <AgreementsDialog isOpen={isAgreementsOpen} onClose={() => setIsAgreementsOpen(false)} />
       <GasRequestDialog isOpen={isGasOpen} onClose={() => setIsGasOpen(false)} />
+      <PartyRegistrationDialog isOpen={isPartyOpen} onClose={() => setIsPartyOpen(false)} />
     </div>
   )
 }

@@ -87,5 +87,13 @@ service cloud.firestore {
     match /presupuesto_anual_asenf/{goalId} {
       allow read, write: if true;
     }
+
+    /**
+     * @description Rules for Party Registrations.
+     */
+    match /fiesta_enfermeria/{regId} {
+      allow create: if true;
+      allow read, update, delete: if true;
+    }
   }
 }

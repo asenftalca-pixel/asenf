@@ -1,3 +1,4 @@
+
 {
   "placeholderImages": [
     {
@@ -29,6 +30,12 @@
       "description": "Logo Oficial ASENF Talca",
       "imageUrl": "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf",
       "imageHint": "logo institucional"
+    },
+    {
+      "id": "party-hero",
+      "description": "Celebración Día de la Enfermera",
+      "imageUrl": "https://images.unsplash.com/photo-1513151233558-d860c5398176?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "imageHint": "party celebration"
     },
     {
       "id": "conv-rosa-agustina",
@@ -81,7 +88,7 @@
     {
       "id": "conv-unab",
       "description": "Universidad Andrés Bello",
-      "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc3MTAwMDAwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc1MTAwMDAwMHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "university campus"
     },
     {

@@ -109,6 +109,22 @@
         "year": { "type": "number" },
         "tipo": { "type": "string", "enum": ["ingreso", "egreso"] }
       }
+    },
+    "PartyRegistration": {
+      "title": "PartyRegistration",
+      "type": "object",
+      "description": "Registro de inscripción para la fiesta del día de la enfermera.",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "servicio": { "type": "string" },
+        "email": { "type": "string" },
+        "telefono": { "type": "string" },
+        "tipoSocio": { "type": "string", "enum": ["ASENF", "COLENF", "ASENF y COLENF", "Ninguno"] },
+        "monto": { "type": "number" },
+        "comprobanteUrl": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -170,6 +186,14 @@
           "entityName": "BudgetGoal",
           "schema": { "$ref": "#/backend/entities/BudgetGoal" },
           "description": "Metas de presupuesto para el control de gestión."
+        }
+      },
+      {
+        "path": "/fiesta_enfermeria/{registrationId}",
+        "definition": {
+          "entityName": "PartyRegistration",
+          "schema": { "$ref": "#/backend/entities/PartyRegistration" },
+          "description": "Registro de inscritos para la fiesta anual."
         }
       }
     ]

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
@@ -9,6 +10,7 @@ import { MemberManager } from '@/components/dashboard/MemberManager'
 import { TaskManager } from '@/components/dashboard/TaskManager'
 import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
 import { GasOrderManager } from '@/components/dashboard/GasOrderManager'
+import { PartyAdminDialog } from '@/components/dashboard/PartyAdminDialog'
 import { AppWindow, Loader2, ShieldCheck, ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react'
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase'
 import { collection, query, where, doc } from 'firebase/firestore'
@@ -50,6 +52,7 @@ function DashboardContent() {
   const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false)
   const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
   const [isGasManagerOpen, setIsGasManagerOpen] = useState(false)
+  const [isPartyAdminOpen, setIsPartyAdminOpen] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [currentYear, setCurrentYear] = useState<number | null>(null)
   const router = useRouter()
@@ -137,7 +140,8 @@ function DashboardContent() {
   }, [loadingTasks, loadingNominas, loadingGas])
 
   const handleAppClick = (app: Application) => {
-    if (app.id === 'app-report') setIsFinanceOpen(true)
+    if (app.id === 'app-party-admin') setIsPartyAdminOpen(true)
+    else if (app.id === 'app-report') setIsFinanceOpen(true)
     else if (app.id === 'app-budget') setIsBudgetOpen(true)
     else if (app.id === 'app3' || app.id === 'app-members') setIsMemberManagerOpen(true)
     else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
@@ -244,6 +248,7 @@ function DashboardContent() {
       <TaskManager isOpen={isTaskManagerOpen} onClose={() => setIsTaskManagerOpen(false)} />
       <FenasenfDialog isOpen={isFenasenfOpen} onClose={() => setIsFenasenfOpen(false)} />
       <GasOrderManager isOpen={isGasManagerOpen} onClose={() => setIsGasManagerOpen(false)} />
+      <PartyAdminDialog isOpen={isPartyAdminOpen} onClose={() => setIsPartyAdminOpen(false)} />
 
       <footer className="mt-24 py-12 border-t bg-muted/30">
         <div className="container mx-auto px-4 text-center">

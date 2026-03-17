@@ -1,4 +1,5 @@
-import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart } from 'lucide-react'
+
+import { Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart, Sparkles } from 'lucide-react'
 
 export interface Application {
   id: string
@@ -14,6 +15,14 @@ export interface Application {
  * Aplicaciones visibles para todos los socios en la raíz (/)
  */
 export const PUBLIC_APPS: Application[] = [
+  { 
+    id: 'app-party', 
+    name: 'Fiesta Día de la Enfermera', 
+    description: 'Inscríbete en nuestra gran celebración anual. ¡Te esperamos!', 
+    icon: 'Sparkles', 
+    category: 'Eventos',
+    variant: 'gold'
+  },
   { 
     id: 'app-join', 
     name: 'Asóciate', 
@@ -49,6 +58,13 @@ export const PUBLIC_APPS: Application[] = [
  * Aplicaciones exclusivas para la directiva en /directiva
  */
 export const ADMIN_APPS: Application[] = [
+  { 
+    id: 'app-party-admin', 
+    name: 'Gestión Fiesta', 
+    description: 'Listado de inscritos y validación de pagos de la fiesta.', 
+    icon: 'Sparkles', 
+    category: 'Gestión'
+  },
   { 
     id: 'app-tasks', 
     name: 'Compromisos', 
@@ -111,5 +127,5 @@ export const ADMIN_APPS: Application[] = [
 export const APPS = PUBLIC_APPS
 
 export const ICON_MAP: Record<string, any> = {
-  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart
+  Mail, Cloud, Users, Shield, LayoutGrid, FileText, Database, Settings, Coins, BarChart3, FileCheck, UserPlus, List, Tag, Flame, ListTodo, PieChart, Sparkles
 }
