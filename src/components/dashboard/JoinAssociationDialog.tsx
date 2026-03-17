@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -11,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useFirebase } from "@/firebase"
-import { doc, setDoc } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import Image from "next/image"
@@ -66,20 +65,30 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.aceptaCuota) return
+    
+    if (!formData.aceptaCuota) {
+      toast({
+        variant: "destructive",
+        title: "Aceptación requerida",
+        description: "Debe aceptar el descuento de la cuota social para afiliarse."
+      })
+      return
+    }
+
     if (!formData.firma) {
       toast({
         variant: "destructive",
         title: "Firma requerida",
-        description: "Por favor, cargue una foto de su firma para continuar."
+        description: "Por favor, cargue una foto de su firma para validar el documento."
       })
       return
     }
+
     if (!formData.sexo) {
       toast({
         variant: "destructive",
-        title: "Campo requerido",
-        description: "Por favor, seleccione su sexo."
+        title: "Sexo no seleccionado",
+        description: "Por favor, seleccione una opción en el campo Sexo."
       })
       return
     }
@@ -87,61 +96,71 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     setIsSubmitting(true)
     
     try {
-      const associateId = crypto.randomUUID()
+      // Generación de ID segura
+      const associateId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `assoc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const partnerId = 'asenf-talca' 
       const docRef = doc(firestore, 'partners', partnerId, 'associates', associateId)
       
       const dataToSave = {
         id: associateId,
         partnerId: partnerId,
-        nombre: formData.nombre,
-        rut: formData.rut,
+        nombre: formData.nombre.trim(),
+        rut: formData.rut.trim(),
         sexo: formData.sexo,
-        telefono: formData.telefono,
-        email: formData.email,
-        servicio: formData.servicio,
-        establecimiento: formData.establecimiento,
+        telefono: formData.telefono.trim(),
+        email: formData.email.trim(),
+        servicio: formData.servicio.trim(),
+        establecimiento: formData.establecimiento.trim(),
         firmaUrl: formData.firma,
         fecha: new Date().toLocaleDateString('es-ES'),
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
         processed: false
       }
 
       await setDoc(docRef, dataToSave)
+      
       setSavedData(dataToSave)
       setIsSuccess(true)
       toast({
         title: "Registro exitoso",
-        description: "Sus datos han sido guardados correctamente en la base de datos."
+        description: "Sus datos han sido guardados correctamente. Ya puede descargar su solicitud."
       })
     } catch (error: any) {
+      console.error("Error al enviar solicitud:", error);
       const permissionError = new FirestorePermissionError({
         path: `partners/asenf-talca/associates/new`,
         operation: 'create',
         requestResourceData: formData
       })
       errorEmitter.emit('permission-error', permissionError)
+      toast({
+        variant: "destructive",
+        title: "Error de servidor",
+        description: "No se pudo completar el registro. Intente de nuevo más tarde."
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const resetAndClose = () => {
-    setIsSuccess(false)
-    setShowDoc(false)
-    setFormData({
-      nombre: '',
-      rut: '',
-      sexo: '',
-      telefono: '',
-      email: '',
-      servicio: '',
-      establecimiento: '',
-      firma: null,
-      aceptaCuota: false
-    })
-    setSavedData(null)
-    onClose()
+    if (!isSubmitting) {
+      setIsSuccess(false)
+      setShowDoc(false)
+      setFormData({
+        nombre: '',
+        rut: '',
+        sexo: '',
+        telefono: '',
+        email: '',
+        servicio: '',
+        establecimiento: '',
+        firma: null,
+        aceptaCuota: false
+      })
+      setSavedData(null)
+      onClose()
+    }
   }
 
   const imageUrlToBase64 = async (url: string): Promise<string> => {
@@ -382,7 +401,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando en Base de Datos...
+                      Enviando a la Nube...
                     </>
                   ) : "Enviar Solicitud de Afiliación"}
                 </Button>
