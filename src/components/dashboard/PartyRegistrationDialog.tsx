@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sparkles, Camera, Loader2, CheckCircle2, Send, CreditCard, Building2, Copy, Info, Scale, ShieldCheck, X, Utensils } from "lucide-react"
+import { Sparkles, Camera, Loader2, CheckCircle2, Send, CreditCard, Building2, Copy, Info, Scale, ShieldCheck, X, Utensils, MapPin, Clock, Calendar } from "lucide-react"
 import { useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -111,7 +110,10 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
                 </div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase tracking-tight">Fiesta del Día de la Enfermera</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/60 font-medium">Inscríbete y celebremos juntos nuestra profesión.</DialogDescription>
+                  <DialogDescription className="text-primary-foreground font-bold mt-1 text-sm">
+                    15 de Mayo • 20:00 Hrs • Centro de Eventos Parque Oh!
+                  </DialogDescription>
+                  <p className="text-primary-foreground/60 text-xs font-medium mt-1">Inscríbete y celebremos juntos nuestra profesión.</p>
                 </div>
               </div>
             </DialogHeader>
