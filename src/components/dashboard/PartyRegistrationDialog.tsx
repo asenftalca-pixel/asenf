@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sparkles, Camera, Loader2, CheckCircle2, Send, CreditCard, Building2, Copy, Info, Scale, ShieldCheck, X } from "lucide-react"
+import { Sparkles, Camera, Loader2, CheckCircle2, Send, CreditCard, Building2, Copy, Info, Scale, ShieldCheck, X, Utensils } from "lucide-react"
 import { useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -32,7 +32,8 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
     servicio: '',
     email: '',
     telefono: '',
-    tipoSocio: ''
+    tipoSocio: '',
+    eleccionPlato: ''
   })
 
   const { firestore } = useFirebase()
@@ -56,7 +57,10 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firestore || !comprobante || !formData.tipoSocio || !acceptedTerms) return
+    if (!firestore || !comprobante || !formData.tipoSocio || !formData.eleccionPlato || !acceptedTerms) {
+      toast({ variant: "destructive", title: "Campos incompletos", description: "Por favor complete todos los campos y acepte las condiciones." })
+      return
+    }
 
     setIsSubmitting(true)
     const monto = getMonto(formData.tipoSocio)
@@ -88,7 +92,7 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
 
   const resetDialog = () => {
     setStep('form'); setComprobante(null); setAcceptedTerms(false); setShowTerms(false);
-    setFormData({ nombre: '', servicio: '', email: '', telefono: '', tipoSocio: '' }); onClose()
+    setFormData({ nombre: '', servicio: '', email: '', telefono: '', tipoSocio: '', eleccionPlato: '' }); onClose()
   }
 
   const formatCLP = (v: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(v)
@@ -144,19 +148,35 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
                   <Input required type="email" placeholder="ejemplo@correo.com" className="h-12 rounded-xl border-2" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Condición de Socio</Label>
-                  <Select required onValueChange={v => setFormData({...formData, tipoSocio: v})}>
-                    <SelectTrigger className="h-12 rounded-xl border-2">
-                      <SelectValue placeholder="Seleccione su membresía..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="ASENF">Socio ASENF</SelectItem>
-                      <SelectItem value="COLENF">Socio COLENF</SelectItem>
-                      <SelectItem value="ASENF y COLENF">Socio ASENF y COLENF</SelectItem>
-                      <SelectItem value="Ninguno">No Soy Socio (Ninguno)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Condición de Socio</Label>
+                    <Select required onValueChange={v => setFormData({...formData, tipoSocio: v})}>
+                      <SelectTrigger className="h-12 rounded-xl border-2">
+                        <SelectValue placeholder="Membresía..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="ASENF">Socio ASENF</SelectItem>
+                        <SelectItem value="COLENF">Socio COLENF</SelectItem>
+                        <SelectItem value="ASENF y COLENF">Socio ASENF y COLENF</SelectItem>
+                        <SelectItem value="Ninguno">No Soy Socio</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Elección de Plato</Label>
+                    <Select required onValueChange={v => setFormData({...formData, eleccionPlato: v})}>
+                      <SelectTrigger className="h-12 rounded-xl border-2">
+                        <SelectValue placeholder="Preferencia..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="Sin restricciones de alimentación">Sin restricciones</SelectItem>
+                        <SelectItem value="Vegetariano">Vegetariano</SelectItem>
+                        <SelectItem value="otra restricción">Otra restricción</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {formData.tipoSocio && (
@@ -181,7 +201,7 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Comprobante de Transferencia</Label>
-                  <div className="relative h-28 border-2 border-dashed rounded-2xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden group">
+                  <div className="relative h-28 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden group">
                     {comprobante ? (
                       <img src={comprobante} className="h-full w-full object-contain" />
                     ) : (
@@ -218,7 +238,7 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
 
               <Button 
                 className="w-full h-16 rounded-2xl font-black text-lg shadow-xl bg-primary hover:bg-primary/90 gap-2 transition-transform active:scale-95"
-                disabled={isSubmitting || !comprobante || !formData.tipoSocio || !acceptedTerms}
+                disabled={isSubmitting || !comprobante || !formData.tipoSocio || !formData.eleccionPlato || !acceptedTerms}
               >
                 {isSubmitting ? <Loader2 className="animate-spin w-6 h-6" /> : <Send className="w-6 h-6" />}
                 ENVIAR MI INSCRIPCIÓN
@@ -233,7 +253,7 @@ export function PartyRegistrationDialog({ isOpen, onClose }: PartyRegistrationDi
               </div>
               <div className="bg-secondary/10 p-6 rounded-[2rem] border-2 border-dashed border-secondary/30">
                 <p className="text-xs font-black text-primary uppercase flex items-center justify-center gap-2">
-                  <Info className="w-4 h-4" /> RECUERDA LLEVAR TU CARNET
+                  <Utensils className="w-4 h-4" /> Plato: {formData.eleccionPlato}
                 </p>
               </div>
               <Button className="w-full h-14 rounded-2xl font-black bg-primary text-white shadow-xl" onClick={resetDialog}>CERRAR Y VOLVER</Button>

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sparkles, Search, FileSpreadsheet, Loader2, Camera, Trash2, X, Users } from "lucide-react"
+import { Sparkles, Search, FileSpreadsheet, Loader2, Camera, Trash2, X, Users, Utensils } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, deleteDoc, doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -37,7 +37,8 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
     return registrations.filter(r => 
       r.nombre?.toLowerCase().includes(search.toLowerCase()) ||
       r.servicio?.toLowerCase().includes(search.toLowerCase()) ||
-      r.tipoSocio?.toLowerCase().includes(search.toLowerCase())
+      r.tipoSocio?.toLowerCase().includes(search.toLowerCase()) ||
+      r.eleccionPlato?.toLowerCase().includes(search.toLowerCase())
     )
   }, [registrations, search])
 
@@ -57,9 +58,9 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
 
   const exportToCSV = () => {
     if (registrations.length === 0) return
-    const headers = ["Nombre", "Servicio", "Email", "Teléfono", "Tipo Socio", "Monto", "Fecha"]
+    const headers = ["Nombre", "Servicio", "Email", "Teléfono", "Tipo Socio", "Plato", "Monto", "Fecha"]
     const rows = registrations.map(r => [
-      r.nombre, r.servicio, r.email, r.telefono, r.tipoSocio, r.monto, r.fecha
+      r.nombre, r.servicio, r.email, r.telefono, r.tipoSocio, r.eleccionPlato || "No especificado", r.monto, r.fecha
     ])
     const csvContent = [headers.join(","), ...rows.map(row => row.join(","))].join("\n")
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -122,7 +123,7 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
                   <TableHeader>
                     <TableRow className="bg-muted/30">
                       <TableHead className="font-black text-[10px] uppercase px-8 h-14">Inscrito / Servicio</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase">Contacto</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase">Plato</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-center">Tipo Socio</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-right">Monto</TableHead>
                       <TableHead className="font-black text-[10px] uppercase text-center px-8">Acciones</TableHead>
@@ -138,8 +139,10 @@ export function PartyAdminDialog({ isOpen, onClose }: PartyAdminDialogProps) {
                           <div className="text-[10px] text-muted-foreground uppercase font-black">{r.servicio}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-xs font-medium">{r.email}</div>
-                          <div className="text-[10px] font-black text-muted-foreground">{r.telefono}</div>
+                          <div className="flex items-center gap-2">
+                            <Utensils className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs font-bold text-slate-600">{r.eleccionPlato || "No especificado"}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className="rounded-lg text-[9px] font-black uppercase bg-secondary/10 text-primary border-secondary/30">

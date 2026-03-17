@@ -121,6 +121,7 @@
         "email": { "type": "string" },
         "telefono": { "type": "string" },
         "tipoSocio": { "type": "string", "enum": ["ASENF", "COLENF", "ASENF y COLENF", "Ninguno"] },
+        "eleccionPlato": { "type": "string", "enum": ["Vegetariano", "Sin restricciones de alimentación", "otra restricción"] },
         "monto": { "type": "number" },
         "comprobanteUrl": { "type": "string" },
         "fecha": { "type": "string", "format": "date-time" }
