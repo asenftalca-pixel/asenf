@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useMemo, useRef } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,7 +49,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   })
 
   const [formData, setFormData] = useState({
-    fecha: format(new Date(), "yyyy-MM-dd"),
+    fecha: "",
     tipo: "ingreso" as "ingreso" | "egreso",
     categoria: "",
     monto: 0,
@@ -59,6 +59,13 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
     glosa: "",
     devuelto: false
   })
+
+  // Evitar errores de hidratación inicializando la fecha en el cliente
+  useEffect(() => {
+    if (isFormOpen && !formData.fecha) {
+      setFormData(prev => ({ ...prev, fecha: format(new Date(), "yyyy-MM-dd") }))
+    }
+  }, [isFormOpen, formData.fecha])
 
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -73,7 +80,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }, [firestore])
 
   const costsRef = useMemoFirebase(() => {
-    if (!firestore) return null
+    if (!db) return null
     return doc(firestore, "settings", "gas_costs")
   }, [firestore])
 
@@ -184,7 +191,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
       batch.set(financeRef, {
         tipo: "egreso",
         categoria: "Costo Proveedor Gas",
-        monto: debt,
+        monto: Number(debt),
         fecha: fechaHoy,
         responsable: "Sistema",
         cuenta: "Cuenta ASENF",
@@ -296,29 +303,48 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   const handleSaveMovement = async () => {
-    if (!firestore || !formData.categoria || !formData.responsable || !formData.cuenta || formData.monto <= 0) {
-      toast({ variant: "destructive", title: "Campos incompletos", description: "Verifique monto y campos obligatorios." });
+    const montoNumerico = Number(formData.monto);
+    
+    if (!firestore || !formData.categoria || !formData.responsable || !formData.cuenta || isNaN(montoNumerico) || montoNumerico <= 0 || !formData.fecha) {
+      toast({ 
+        variant: "destructive", 
+        title: "Campos incompletos", 
+        description: "Asegúrese de completar la fecha, categoría, responsable, cuenta y que el monto sea mayor a 0." 
+      });
       return
     }
+    
     setIsSubmitting(true)
     
+    // Objeto limpio para evitar errores de envío a Firestore
     const dataToSave = { 
-      ...formData, 
-      monto: Number(formData.monto), 
+      fecha: formData.fecha,
+      tipo: formData.tipo,
+      categoria: formData.categoria,
+      monto: montoNumerico,
+      comprobanteUrl: formData.comprobanteUrl,
+      responsable: formData.responsable,
+      cuenta: formData.cuenta,
+      glosa: formData.glosa || "",
+      devuelto: formData.tipo === 'egreso' ? !!formData.devuelto : false,
       updatedAt: serverTimestamp() 
     }
 
-    const savePromise = editingId 
-      ? setDoc(doc(firestore, "finanzas_asenftalca", editingId), dataToSave, { merge: true })
-      : addDoc(collection(firestore, "finanzas_asenftalca"), { ...dataToSave, createdAt: serverTimestamp() })
+    const colRef = collection(firestore, "finanzas_asenftalca");
+    const docRef = editingId ? doc(firestore, "finanzas_asenftalca", editingId) : null;
 
-    savePromise
+    const saveOperation = docRef 
+      ? setDoc(docRef, dataToSave, { merge: true })
+      : addDoc(colRef, { ...dataToSave, createdAt: serverTimestamp() });
+
+    saveOperation
       .then(() => { 
         toast({ title: editingId ? "Movimiento actualizado" : "Movimiento guardado" }); 
         resetForm(); 
         setIsFormOpen(false); 
       })
       .catch((error) => {
+        console.error("Error al guardar movimiento:", error);
         const permissionError = new FirestorePermissionError({
           path: `finanzas_asenftalca/${editingId || 'new'}`,
           operation: editingId ? 'update' : 'create',
@@ -718,7 +744,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsFormOpen(open); }}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
           <div className="bg-primary p-8 text-primary-foreground border-b border-white/10 shrink-0"><DialogTitle className="text-xl font-black uppercase">{editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</DialogTitle></div>
           <ScrollArea className="flex-1 overflow-y-auto">
@@ -726,7 +752,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase">Fecha</Label>
-                  <Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} />
+                  <Input type="date" className="h-12 rounded-xl" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase">Tipo</Label>
@@ -741,14 +767,14 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase">Responsable</Label>
                   <Select value={formData.responsable} onValueChange={v => setFormData({...formData, responsable: v})}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                     <SelectContent>{RESPONSABLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase">Cuenta</Label>
                   <Select value={formData.cuenta} onValueChange={v => setFormData({...formData, cuenta: v})}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                     <SelectContent>{CUENTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
@@ -757,7 +783,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase">Categoría</Label>
                 <Select value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}>
-                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                   <SelectContent>{(formData.tipo === "ingreso" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -809,7 +835,7 @@ export function FinanceManager({ isOpen, onClose }: { isOpen: boolean; onClose: 
           </ScrollArea>
           <DialogFooter className="p-8 bg-muted/10 border-t shrink-0">
             <div className="flex gap-3 w-full">
-              <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none hover:bg-slate-200" onClick={() => setIsFormOpen(false)}>CANCELAR</Button>
+              <Button variant="secondary" className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none hover:bg-slate-200" onClick={() => { resetForm(); setIsFormOpen(false); }}>CANCELAR</Button>
               <Button className="flex-1 h-14 rounded-2xl font-black bg-primary text-white" onClick={handleSaveMovement} disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "GUARDAR"}
               </Button>
