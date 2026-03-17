@@ -3,7 +3,7 @@
     {
       "id": "app-email",
       "description": "Email Service Icon",
-      "imageUrl": "https://images.unsplash.com/photo-1581438395625-215c5c2c6f2e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw7fHxlbWFpbCUyMGVudmVsb3BlfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1581438395625-215c5c2c6f2e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxlbWFpbCUyMGVudmVsb3BlfGVufDB8fHx8MTc3MDI5OTI0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "email envelope"
     },
     {
@@ -29,6 +29,12 @@
       "description": "Logo Oficial ASENF Talca",
       "imageUrl": "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-02-24%20at%2014.44.32.jpeg?alt=media&token=425eaa22-97cf-4e9e-bdbe-7eb4474aebcf",
       "imageHint": "logo institucional"
+    },
+    {
+      "id": "party-hero",
+      "description": "Afiche Oficial Fiesta Día de la Enfermera",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/centras-de-socios-398495-f9325.firebasestorage.app/o/WhatsApp%20Image%202026-03-17%20at%2010.55.30.jpeg?alt=media",
+      "imageHint": "party celebration"
     },
     {
       "id": "conv-rosa-agustina",
@@ -81,7 +87,7 @@
     {
       "id": "conv-unab",
       "description": "Universidad Andrés Bello",
-      "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc3MTAwMDAwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc1MTAwMDAwMHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "university campus"
     },
     {
