@@ -366,17 +366,50 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const handleExportExcel = () => {
     if (!allPedidosAll.length) return
-    const data = allPedidosAll.map(p => ({
-      Fecha: p.fecha ? (p.fecha.toDate ? p.fecha.toDate().toLocaleDateString() : p.fecha) : 'S/F',
-      Socio: p.socioNombre || p.socioName || p.Nombre || 'Socio',
-      Detalle: p.detalleResumen || 'Sin detalle',
-      Total: p.totalGeneral || 0,
-      Estado: p.status || 'Pendiente'
-    }))
-    const ws = XLSX.utils.json_to_sheet(data)
+    
+    const detailedData: any[] = []
+    
+    allPedidosAll.forEach(p => {
+      const socio = p.socioNombre || p.socioName || p.Nombre || 'Socio'
+      const fechaStr = p.fecha ? (p.fecha.toDate ? p.fecha.toDate().toLocaleDateString() : p.fecha) : 'S/F'
+      const estado = p.status || 'Pendiente'
+      
+      if (Array.isArray(p.items) && p.items.length > 0) {
+        p.items.forEach((item: any) => {
+          detailedData.push({
+            Fecha: fechaStr,
+            Socio: socio,
+            Marca: item.marca || 'N/A',
+            Kilos: item.peso || 'N/A',
+            Cantidad: item.cantidad || 0,
+            Precio_Unitario: item.precioUnitario || 0,
+            Subtotal_Item: item.total || 0,
+            Total_Pedido: p.totalGeneral || 0,
+            Estado: estado
+          })
+        })
+      } else {
+        // Fallback para pedidos antiguos o sin array de items
+        detailedData.push({
+          Fecha: fechaStr,
+          Socio: socio,
+          Marca: p.Marca || 'Ver detalle',
+          Kilos: p.Kilos || 'Ver detalle',
+          Cantidad: 1,
+          Precio_Unitario: p.totalGeneral || 0,
+          Subtotal_Item: p.totalGeneral || 0,
+          Total_Pedido: p.totalGeneral || 0,
+          Estado: estado
+        })
+      }
+    })
+
+    const ws = XLSX.utils.json_to_sheet(detailedData)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Pedidos")
-    XLSX.writeFile(wb, `Pedidos_Gas_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, "Pedidos Detallados")
+    XLSX.writeFile(wb, `Pedidos_Gas_Detallado_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
+    
+    toast({ title: "Excel Generado", description: "Se ha descargado el reporte detallado por marca y kilos." })
   }
 
   const weights = ["5", "11", "15", "45"]
@@ -790,8 +823,8 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                   <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Costo Total Pagado ($)</Label>
                   <Input 
                     type="number" 
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                    inputMode="numeric" 
+                    pattern="[0-9]*" 
                     className="h-12 rounded-xl bg-white border-none font-black text-rose-600 text-lg" 
                     placeholder="Ej: 150000"
                     value={stockForm.costoTotal || ""} 
