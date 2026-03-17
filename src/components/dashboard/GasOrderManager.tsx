@@ -371,7 +371,11 @@ export function GasOrderManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     
     allPedidosAll.forEach(p => {
       const socio = p.socioNombre || p.socioName || p.Nombre || 'Socio'
-      const fechaStr = p.fecha ? (p.fecha.toDate ? p.fecha.toDate().toLocaleDateString() : p.fecha) : 'S/F'
+      
+      // Fix: Robust date parsing using existing helper
+      const dateObj = parseSafeDate(p.createdAt || p.fecha || p.Fecha)
+      const fechaStr = dateObj ? format(dateObj, "dd/MM/yyyy", { locale: es }) : 'S/F'
+      
       const estado = p.status || 'Pendiente'
       
       if (Array.isArray(p.items) && p.items.length > 0) {
