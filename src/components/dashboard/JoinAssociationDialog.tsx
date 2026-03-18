@@ -80,7 +80,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
 
     setIsSubmitting(true)
     
-    // Generación de ID segura
     const associateId = `assoc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const partnerId = 'asenf-talca' 
     const docRef = doc(firestore, 'partners', partnerId, 'associates', associateId)
@@ -101,7 +100,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       processed: false
     }
 
-    // Siguiendo la directiva de NO usar await directamente en mutaciones para permitir actualización de caché instantánea
     setDoc(docRef, dataToSave)
       .then(() => {
         setSavedData(dataToSave)
@@ -110,7 +108,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       })
       .catch((error) => {
         console.error("Error al enviar solicitud:", error);
-        // Quitamos el FirestorePermissionError complejo para evitar fallos en el móvil
         toast({ 
           variant: "destructive", 
           title: "Error de servidor", 
@@ -120,7 +117,6 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
       .finally(() => {
         setIsSubmitting(false)
       })
-  }
   }
 
   const resetAndClose = () => {
@@ -412,4 +408,5 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         )}
       </DialogContent>
     </Dialog>
+  )
 }
