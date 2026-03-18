@@ -412,5 +412,4 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         )}
       </DialogContent>
     </Dialog>
-  )
 }
