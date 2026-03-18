@@ -81,7 +81,7 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
     setIsSubmitting(true)
     
     // Generación de ID segura
-    const associateId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `assoc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const associateId = `assoc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const partnerId = 'asenf-talca' 
     const docRef = doc(firestore, 'partners', partnerId, 'associates', associateId)
     
@@ -108,19 +108,19 @@ export function JoinAssociationDialog({ isOpen, onClose }: JoinAssociationDialog
         setIsSuccess(true)
         toast({ title: "Registro exitoso", description: "Sus datos han sido guardados en la nube." })
       })
-      .catch(async (error) => {
+      .catch((error) => {
         console.error("Error al enviar solicitud:", error);
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'create',
-          requestResourceData: dataToSave
+        // Quitamos el FirestorePermissionError complejo para evitar fallos en el móvil
+        toast({ 
+          variant: "destructive", 
+          title: "Error de servidor", 
+          description: "No se pudo completar el registro. Intente nuevamente." 
         })
-        errorEmitter.emit('permission-error', permissionError)
-        toast({ variant: "destructive", title: "Error de servidor", description: "No se pudo completar el registro. Verifique su conexión." })
       })
       .finally(() => {
         setIsSubmitting(false)
       })
+  }
   }
 
   const resetAndClose = () => {
