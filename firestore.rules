@@ -1,99 +1,153 @@
-
 rules_version = '2';
-
-/**
- * FIRESTORE SECURITY RULES - PUBLIC MODE
- */
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- GLOBAL HELPER FUNCTIONS ---
+    /**
+     * APP CENTRAL SECURITY RULES (PROTOTYPE MODE)
+     *
+     * Core Philosophy:
+     * This ruleset enforces a strict identity-based and role-based access model. 
+     * It leverages "Authorization Independence" by ensuring that most security 
+     * decisions can be made using the data present on the document itself or 
+     * via lightweight role-check paths.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private user profiles.
+     * - /applications/{applicationId}: Global metadata for integrated apps.
+     * - /executives/{executiveId}: Roster of organization leaders.
+     * - /user_roles/executive/{userId}: DBAC path for role verification.
+     * - /meetings/{meetingId}: Meeting schedules and agendas.
+     *
+     * Key Security Decisions:
+     * - Role-Based Access: The "executive" role is verified by checking for 
+     *   a document at /user_roles/executive/{uid}.
+     * - Denormalization: Meetings include 'involvedExecutiveUids' and 
+     *   'organizerId' to allow performant authorization checks without 
+     *   recursive lookups.
+     * - Structural Segregation: Administrative data (credentials, roles) 
+     *   is separated from transactional data (meetings).
+     */
 
-    /** @description Checks if the request is from an authenticated user. */
+    // --- Global Helper Functions ---
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // --- COLLECTION RULES ---
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** 
+     * Verifies if the authenticated user has the 'executive' role.
+     * Uses a dedicated path check to maintain Authorization Independence.
+     */
+    function hasExecutiveRole() {
+      return isSignedIn() && exists(/databases/$(database)/documents/user_roles/executive/$(request.auth.uid));
+    }
+
+    // --- Collection Rules ---
 
     /**
-     * @description Rules for the Partner entity and nested associates.
+     * @description Rules for the User collection. Users can manage their own profile.
+     * @path /users/{userId}
+     * @allow get, list, create, update: If the authenticated user's UID matches the {userId} in the path.
+     * @deny (create): If request.auth.uid does not match the document ID.
+     * @principle Ownership: Restricts access to a user's own data tree.
      */
-    match /partners/{partnerId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if false; // User deletion usually requires admin intervention.
+    }
 
-      match /associates/{associateId} {
-        allow create, list, get: if true;
-        allow update, delete: if true;
+    /**
+     * @description Application metadata is readable by all signed-in users but only editable by admins.
+     * @path /applications/{applicationId}
+     * @allow get, list: For any authenticated user.
+     * @deny (write): For non-admin users.
+     * @principle Public Read: Metadata is shared; write access is restricted.
+     */
+    match /applications/{applicationId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access once admin roles are defined.
+
+      /**
+       * @description Credential metadata linked to an application.
+       * @path /applications/{applicationId}/credential_sets/{credentialSetId}
+       * @allow get, list: For any authenticated user.
+       * @deny (write): For non-admin users.
+       * @principle Hierarchical Access: Inherits basic read posture from parent.
+       */
+      match /credential_sets/{credentialSetId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if false; // TODO: Implement admin-only write access.
       }
     }
 
     /**
-     * @description Rules for the Products (Gas Vouchers) catalog.
+     * @description The global roster of organization executives ('dirigentes').
+     * @path /executives/{executiveId}
+     * @allow get, list: For any authenticated user to facilitate directory lookups.
+     * @deny (write): For non-admin users.
+     * @principle Public Read: Roster is available for meeting organization.
      */
-    match /productos/{productId} {
-      allow get, list: if true;
-      allow write: if true;
+    match /executives/{executiveId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Restricted to administrators.
     }
 
     /**
-     * @description Rules for Gas Orders submitted by socios.
+     * @description Role lookup for Database Access Control (DBAC).
+     * @path /user_roles/executive/{userId}
+     * @allow get, list: For the owner to verify their own role status.
+     * @deny (write): For all users; roles are managed externally/by admin.
+     * @principle Verified Identity: Uses a path-based role check.
      */
-    match /pedidos_socios/{orderId} {
-      allow create: if true;
-      allow get, list, update, delete: if true;
+    match /user_roles/executive/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create, update, delete: if false; // Roles must be provisioned by admin processes.
     }
 
     /**
-     * @description Rules for internal finance records.
+     * @description Management of meetings for the 'Agenda Directiva'.
+     * @path /meetings/{meetingId}
+     * @allow get: If user is an executive and listed in involvedExecutiveUids.
+     * @allow list: If user is an executive (requires array-contains query on involvedExecutiveUids).
+     * @allow create: If user is an executive and sets themselves as the organizerId.
+     * @allow update, delete: If user is an executive and is the original organizer.
+     * @principle Shared Access (Closed Collaborators): Access is restricted to participants via denormalized UIDs.
      */
-    match /finanzas_asenftalca/{docId} {
-      allow read, write: if true;
-    }
+    match /meetings/{meetingId} {
+      
+      function isParticipant(data) {
+        return request.auth.uid in data.involvedExecutiveUids;
+      }
 
-    /**
-     * @description Rules for gas inventory configuration.
-     */
-    match /configuracion_gas/{docId} {
-      allow read, write: if true;
-    }
+      function isOrganizer(data) {
+        return data.organizerId == request.auth.uid;
+      }
 
-    /**
-     * @description Rules for application settings (finances, gas costs).
-     */
-    match /settings/{docId} {
-      allow read, write: if true;
-    }
-
-    /**
-     * @description Rules for tasks and commitments.
-     */
-    match /tareas/{taskId} {
-      allow read, write: if true;
-    }
-
-    /**
-     * @description Rules for the master member list.
-     */
-    match /nomina_maestra/{nominaId} {
-      allow read, write: if true;
-    }
-
-    /**
-     * @description Rules for annual budget goals.
-     */
-    match /presupuesto_anual_asenf/{goalId} {
-      allow read, write: if true;
-    }
-
-    /**
-     * @description Rules for Party Registrations.
-     */
-    match /fiesta_enfermeria/{regId} {
-      allow create: if true;
-      allow read, update, delete: if true;
+      allow get: if hasExecutiveRole() && isParticipant(resource.data);
+      allow list: if hasExecutiveRole(); // Queries must filter by involvedExecutiveUids array-contains UID.
+      
+      allow create: if hasExecutiveRole() 
+                    && request.resource.data.organizerId == request.auth.uid 
+                    && request.auth.uid in request.resource.data.involvedExecutiveUids;
+      
+      allow update: if resource != null 
+                    && hasExecutiveRole() 
+                    && isOrganizer(resource.data) 
+                    && request.resource.data.organizerId == resource.data.organizerId;
+      
+      allow delete: if resource != null 
+                    && hasExecutiveRole() 
+                    && isOrganizer(resource.data);
     }
   }
 }

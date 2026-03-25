@@ -1,202 +1,356 @@
-
 {
   "entities": {
-    "Partner": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Partner",
+      "title": "User",
       "type": "object",
-      "description": "Represents a partner application.",
+      "description": "Represents a user of the App Central platform, managing their roles and access permissions. Authentication credentials (passwords) are managed by an external system and are not stored here.",
       "properties": {
-        "id": { "type": "string" },
-        "appName": { "type": "string" },
-        "description": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "websiteUrl": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "A unique identifier for the user within App Central, typically used for login purposes."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for communication and notifications.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role assigned to the user, determining their access and permissions within App Central (e.g., 'admin', 'external_user')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "appName", "description", "logoUrl", "websiteUrl"]
+      "required": [
+        "id",
+        "username",
+        "email",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Associate": {
+    "Application": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Associate",
+      "title": "Application",
       "type": "object",
-      "description": "Represents an associate linked to a partner application.",
+      "description": "Represents an external application identified and managed within App Central.",
       "properties": {
-        "id": { "type": "string" },
-        "partnerId": { "type": "string" },
-        "nombre": { "type": "string" },
-        "rut": { "type": "string" },
-        "sexo": { "type": "string" },
-        "telefono": { "type": "string" },
-        "email": { "type": "string" },
-        "servicio": { "type": "string" },
-        "establecimiento": { "type": "string" },
-        "firmaUrl": { "type": "string" },
-        "fecha": { "type": "string" },
-        "processed": { "type": "boolean" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Application entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The human-readable name of the external application (e.g., 'SAP', 'Salesforce')."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional longer description of the external application."
+        },
+        "iconUrl": {
+          "type": "string",
+          "description": "A URL pointing to the application's icon for display in the UI.",
+          "format": "uri"
+        },
+        "externalUrl": {
+          "type": "string",
+          "description": "The URL to the application's login page or main website.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the application record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the application record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "partnerId", "nombre", "rut", "firmaUrl"]
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Product": {
-      "title": "Product",
+    "CredentialSet": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CredentialSet",
       "type": "object",
-      "description": "Elemento del catálogo de vales de gas.",
+      "description": "Represents metadata for a set of login credentials for an external application. Actual sensitive login information (e.g., passwords) is stored in an external secure vault, not directly within App Central, adhering to security best practices.",
       "properties": {
-        "id": { "type": "string" },
-        "Nombre": { "type": "string" },
-        "Marca": { "type": "string" },
-        "Kilos": { "type": "string" },
-        "Precio": { "type": "number" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CredentialSet entity."
+        },
+        "applicationId": {
+          "type": "string",
+          "description": "Reference to the Application this credential set belongs to. (Relationship: Application 1:N CredentialSet)"
+        },
+        "name": {
+          "type": "string",
+          "description": "A human-readable name or label for this specific set of credentials (e.g., 'Main Account', 'Admin Login')."
+        },
+        "vaultReferenceId": {
+          "type": "string",
+          "description": "An identifier or reference to where the actual sensitive credentials are securely stored in an external vault system. This ID allows App Central to request credentials without storing them."
+        },
+        "usernameHint": {
+          "type": "string",
+          "description": "An optional hint or identifier for the username associated with this credential set, without revealing sensitive information."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the credential set record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the credential set record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["Nombre", "Marca", "Kilos", "Precio"]
+      "required": [
+        "id",
+        "applicationId",
+        "name",
+        "vaultReferenceId",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "GasOrder": {
-      "title": "GasOrder",
+    "Executive": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Executive",
       "type": "object",
-      "description": "Registro de pedidos de vales de gas realizados por los socios.",
+      "description": "Represents an executive ('dirigente') who is a key participant in meetings scheduled within the Agenda Directiva feature.",
       "properties": {
-        "id": { "type": "string" },
-        "socioNombre": { "type": "string" },
-        "items": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Executive entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the executive."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the executive (optional, for full name representation)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the executive, for communication and meeting notifications.",
+          "format": "email"
+        },
+        "roleDescription": {
+          "type": "string",
+          "description": "A descriptive title or role of the executive within the organization (e.g., 'Director de Operaciones')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the executive record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the executive record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Meeting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Meeting",
+      "type": "object",
+      "description": "Represents a scheduled meeting in the Agenda Directiva calendar, including its details, participants, and agenda.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Meeting entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or subject of the meeting (e.g., 'Reunión de planificación trimestral')."
+        },
+        "date": {
+          "type": "string",
+          "description": "The calendar date on which the meeting is scheduled.",
+          "format": "date"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The scheduled start time of the meeting.",
+          "format": "time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The scheduled end time of the meeting (optional).",
+          "format": "time"
+        },
+        "agenda": {
+          "type": "string",
+          "description": "The detailed agenda or topics to be discussed during the meeting."
+        },
+        "requiredExecutiveIds": {
           "type": "array",
+          "description": "An array of IDs of the Executive entities required to attend this meeting. (Relationship: Executive N:N Meeting)",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "marca": { "type": "string" },
-              "peso": { "type": "string" },
-              "cantidad": { "type": "number" },
-              "precioUnitario": { "type": "number" },
-              "total": { "type": "number" }
-            }
+            "type": "string"
           }
         },
-        "totalGeneral": { "type": "number" },
-        "comprobanteUrl": { "type": "string" },
-        "fecha": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["pendent", "checked", "delivered"] },
-        "detalleResumen": { "type": "string" }
+        "organizerId": {
+          "type": "string",
+          "description": "Reference to the User entity who created or organized this meeting. (Relationship: User 1:N Meeting)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the meeting record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the meeting record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["socioNombre", "items", "totalGeneral", "comprobanteUrl", "fecha"]
-    },
-    "Task": {
-      "title": "Task",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "titulo": { "type": "string" },
-        "prioridad": { "type": "string" },
-        "completada": { "type": "boolean" },
-        "fecha": { "type": "string" }
-      }
-    },
-    "Nomina": {
-      "title": "Nomina",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "nombre": { "type": "string" },
-        "rut": { "type": "string" },
-        "status": { "type": "string" }
-      }
-    },
-    "BudgetGoal": {
-      "title": "BudgetGoal",
-      "type": "object",
-      "description": "Metas de presupuesto anual por categoría.",
-      "properties": {
-        "categoria": { "type": "string" },
-        "presupuesto": { "type": "number" },
-        "year": { "type": "number" },
-        "tipo": { "type": "string", "enum": ["ingreso", "egreso"] }
-      }
-    },
-    "PartyRegistration": {
-      "title": "PartyRegistration",
-      "type": "object",
-      "description": "Registro de inscripción para la fiesta del día de la enfermera.",
-      "properties": {
-        "id": { "type": "string" },
-        "nombre": { "type": "string" },
-        "servicio": { "type": "string" },
-        "email": { "type": "string" },
-        "telefono": { "type": "string" },
-        "tipoSocio": { "type": "string", "enum": ["ASENF", "COLENF", "ASENF y COLENF", "Ninguno"] },
-        "eleccionPlato": { "type": "string", "enum": ["Vegetariano", "Sin restricciones de alimentación", "otra restricción"] },
-        "monto": { "type": "number" },
-        "comprobanteUrl": { "type": "string" },
-        "fecha": { "type": "string", "format": "date-time" }
-      }
+      "required": [
+        "id",
+        "title",
+        "date",
+        "startTime",
+        "agenda",
+        "requiredExecutiveIds",
+        "organizerId",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/partners/{partnerId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "Partner",
-          "schema": { "$ref": "#/backend/entities/Partner" },
-          "description": "Stores partner application data."
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores individual user profiles. Access is typically restricted to the user themselves (userId matches request.auth.uid) and administrators."
         }
       },
       {
-        "path": "/partners/{partnerId}/associates/{associateId}",
+        "path": "/applications/{applicationId}",
         "definition": {
-          "entityName": "Associate",
-          "schema": { "$ref": "#/backend/entities/Associate" },
-          "description": "Stores associate data."
+          "entityName": "Application",
+          "schema": {
+            "$ref": "#/backend/entities/Application"
+          },
+          "description": "Contains metadata for external applications integrated with App Central. Generally readable by authenticated users, editable by administrators.",
+          "params": [
+            {
+              "name": "applicationId",
+              "description": "Unique identifier for the application."
+            }
+          ]
         }
       },
       {
-        "path": "/productos/{productId}",
+        "path": "/applications/{applicationId}/credential_sets/{credentialSetId}",
         "definition": {
-          "entityName": "Product",
-          "schema": { "$ref": "#/backend/entities/Product" },
-          "description": "Catálogo de vales de gas disponibles."
+          "entityName": "CredentialSet",
+          "schema": {
+            "$ref": "#/backend/entities/CredentialSet"
+          },
+          "description": "Stores metadata for sets of login credentials linked to a specific application. Access is typically restricted to administrators or users with explicit permissions to manage credentials for the parent application. This structure maintains a clear hierarchical relationship.",
+          "params": [
+            {
+              "name": "applicationId",
+              "description": "Unique identifier of the parent application."
+            },
+            {
+              "name": "credentialSetId",
+              "description": "Unique identifier for the credential set."
+            }
+          ]
         }
       },
       {
-        "path": "/pedidos_socios/{orderId}",
+        "path": "/executives/{executiveId}",
         "definition": {
-          "entityName": "GasOrder",
-          "schema": { "$ref": "#/backend/entities/GasOrder" },
-          "description": "Registro de pedidos de vales de gas realizados por los socios."
+          "entityName": "Executive",
+          "schema": {
+            "$ref": "#/backend/entities/Executive"
+          },
+          "description": "A global roster of 'dirigente' (executive) individuals, containing their names and roles. Each document may include an optional 'userId' field (Firebase UID) to link the executive individual to a system user for deeper integration. Readable by authorized users, editable by administrators.",
+          "params": [
+            {
+              "name": "executiveId",
+              "description": "Unique identifier for the executive individual."
+            }
+          ]
         }
       },
       {
-        "path": "/tareas/{taskId}",
+        "path": "/user_roles/executive/{userId}",
         "definition": {
-          "entityName": "Task",
-          "schema": { "$ref": "#/backend/entities/Task" },
-          "description": "Tareas internas de la directiva."
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Used for Database Access Control (DBAC). The existence of a document at this path signifies that the Firebase user corresponding to '{userId}' has the 'executive' role. This allows for simple and efficient role-based security checks (e.g., allow create meeting if this document exists). Editable only by administrators; readable by the user themselves to verify their role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase User ID (UID) of the user with the executive role."
+            }
+          ]
         }
       },
       {
-        "path": "/nomina_maestra/{nominaId}",
+        "path": "/meetings/{meetingId}",
         "definition": {
-          "entityName": "Nomina",
-          "schema": { "$ref": "#/backend/entities/Nomina" },
-          "description": "Nomina maestra de socios activos."
-        }
-      },
-      {
-        "path": "/presupuesto_anual_asenf/{goalId}",
-        "definition": {
-          "entityName": "BudgetGoal",
-          "schema": { "$ref": "#/backend/entities/BudgetGoal" },
-          "description": "Metas de presupuesto para el control de gestión."
-        }
-      },
-      {
-        "path": "/fiesta_enfermeria/{registrationId}",
-        "definition": {
-          "entityName": "PartyRegistration",
-          "schema": { "$ref": "#/backend/entities/PartyRegistration" },
-          "description": "Registro de inscritos para la fiesta anual."
+          "entityName": "Meeting",
+          "schema": {
+            "$ref": "#/backend/entities/Meeting"
+          },
+          "description": "Centralized collection for all scheduled meetings for the 'Agenda Directiva'. Each document includes 'organizerId' (Firebase UID of the creator) and a denormalized 'involvedExecutiveUids' array (containing Firebase UIDs of all participating system users) to ensure authorization independence and enable QAP-compliant list queries. Access to create/edit/delete is restricted to users with the 'executive' role. Read access is granted if the user is an executive AND involved in the meeting (via 'involvedExecutiveUids'), with list operations requiring a specific 'array-contains' query on 'involvedExecutiveUids'.",
+          "params": [
+            {
+              "name": "meetingId",
+              "description": "Unique identifier for the meeting."
+            }
+          ]
         }
       }
-    ]
+    ],
+    "reasoning": "The Firestore structure is designed to support the 'Agenda Directiva' feature while adhering to core design principles, especially Authorization Independence, Structural Segregation, and QAPs (Queries Are Not Filters). We'll utilize existing `User` and `Application` entities and introduce new collections for `Executive` profiles, `User` roles, and `Meeting` schedules.\n\n**Authorization Independence:**\n1.  **Meetings (`/meetings/{meetingId}`):** To achieve authorization independence for meetings, the `Meeting` document will be denormalized to include all necessary user identifiers directly. The `organizerId` field (renamed to `organizerUid` for clarity in the description, assuming it refers to a Firebase User UID) and a new denormalized array field, `involvedExecutiveUids`, will be crucial. `involvedExecutiveUids` will contain the Firebase User UIDs of the meeting's organizer AND all required executives (who are also system users). This ensures that authorization rules can be evaluated solely by inspecting the `Meeting` document itself, avoiding expensive and complex `get()` calls to other collections (like `/executives`) to resolve user IDs.\n2.  **User Roles (`/user_roles/executive/{userId}`):** A dedicated collection for executive roles simplifies DBAC (Database Access Control). The mere existence of a document at `/user_roles/executive/$(request.auth.uid)` grants executive privileges, making role checks atomic and independent of user profile data.\n3.  **Executives (`/executives/{executiveId}`):** While this collection stores the *list of executive individuals* (e.g., Cecilia, Juan Carlos), it will also include an optional `userId` field to link to a Firebase User UID if the executive is also a system user. This link is primarily for populating the `involvedExecutiveUids` array in `Meeting` documents and for client-side logic, not for direct rule lookups on every `Meeting` read.\n\n**QAPs (Queries Are Not Filters):**\n1.  **Meetings (`/meetings/{meetingId}`):** To enable secure `list` operations for executives viewing their calendar, a top-level `/meetings` collection will be used. Access for listing meetings will be enforced by a combination of the user's `executive` role and a specific client-side query. An executive user will only be allowed to `list` meetings if they provide a query that explicitly filters by `involvedExecutiveUids array-contains request.auth.uid`. The Firestore security rules will validate that the incoming query matches this pattern, thus preventing unauthorized listing of meetings while allowing executives to efficiently retrieve only the meetings they are involved in. This fulfills the QAP principle by making the client's query a security requirement, rather than relying on rules to filter results after a broad `list` request.\n2.  **Structural Segregation:** Data with different security postures are segregated:\n    *   `/users/{userId}`: Private user data, accessible mainly by the owner or admins.\n    *   `/applications/{applicationId}`: Application metadata, likely globally readable or admin-controlled.\n    *   `/applications/{applicationId}/credential_sets/{credentialSetId}`: Credentials metadata, nested under application, typically admin-controlled or highly restricted.\n    *   `/executives/{executiveId}`: A global roster of executive individuals, generally readable by all relevant users (e.g., all system users, or all executives for invite purposes) and editable only by admins.\n    *   `/user_roles/executive/{userId}`: Role-based access, restricted to admin write access, and self-read for role verification.\n    *   `/meetings/{meetingId}`: Collaborative data specific to executives, with access governed by `organizerUid` and `involvedExecutiveUids` to ensure only relevant executives can read and manage. This avoids mixing public and private meeting data within the same collection."
   }
 }

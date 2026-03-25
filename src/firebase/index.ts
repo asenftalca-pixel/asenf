@@ -1,11 +1,9 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -35,21 +33,10 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  let firestore;
-  try {
-    // Inicializar Firestore forzando Long Polling para evitar errores de CSP
-    firestore = initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-    });
-  } catch (e) {
-    firestore = getFirestore(firebaseApp);
-  }
-
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: firestore,
-    storage: getStorage(firebaseApp)
+    firestore: getFirestore(firebaseApp)
   };
 }
 
