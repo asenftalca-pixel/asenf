@@ -7,7 +7,6 @@ import { AppCard } from '@/components/dashboard/AppCard'
 import { FinanceManager } from '@/components/dashboard/FinanceManager'
 import { ExpenseReports } from '@/components/dashboard/ExpenseReports'
 import { MemberManager } from '@/components/dashboard/MemberManager'
-import { TaskManager } from '@/components/dashboard/TaskManager'
 import { FenasenfDialog } from '@/components/dashboard/FenasenfDialog'
 import { GasOrderManager } from '@/components/dashboard/GasOrderManager'
 import { PartyAdminDialog } from '@/components/dashboard/PartyAdminDialog'
@@ -49,7 +48,6 @@ function DashboardContent() {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const [isBudgetOpen, setIsBudgetOpen] = useState(false)
   const [isMemberManagerOpen, setIsMemberManagerOpen] = useState(false)
-  const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false)
   const [isFenasenfOpen, setIsFenasenfOpen] = useState(false)
   const [isGasManagerOpen, setIsGasManagerOpen] = useState(false)
   const [isPartyAdminOpen, setIsPartyAdminOpen] = useState(false)
@@ -144,7 +142,6 @@ function DashboardContent() {
     else if (app.id === 'app-report') setIsFinanceOpen(true)
     else if (app.id === 'app-budget') setIsBudgetOpen(true)
     else if (app.id === 'app3' || app.id === 'app-members') setIsMemberManagerOpen(true)
-    else if (app.id === 'app-tasks') setIsTaskManagerOpen(true)
     else if (app.id === 'app-fenasenf') setIsFenasenfOpen(true)
     else if (app.id === 'app-gas') setIsGasManagerOpen(true)
     else if (app.id === 'app-admin-list') router.push('/admin/socios')
@@ -245,7 +242,6 @@ function DashboardContent() {
       <FinanceManager isOpen={isFinanceOpen} onClose={() => setIsFinanceOpen(false)} />
       <ExpenseReports isOpen={isBudgetOpen} onClose={() => setIsBudgetOpen(false)} />
       <MemberManager isOpen={isMemberManagerOpen} onClose={() => setIsMemberManagerOpen(false)} />
-      <TaskManager isOpen={isTaskManagerOpen} onClose={() => setIsTaskManagerOpen(false)} />
       <FenasenfDialog isOpen={isFenasenfOpen} onClose={() => setIsFenasenfOpen(false)} />
       <GasOrderManager isOpen={isGasManagerOpen} onClose={() => setIsGasManagerOpen(false)} />
       <PartyAdminDialog isOpen={isPartyAdminOpen} onClose={() => setIsPartyAdminOpen(false)} />
